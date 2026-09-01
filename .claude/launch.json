@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lofi",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "/Users/geraldmcauley/Desktop/lofi-generator"],
+      "port": 5173
+    }
+  ]
+}

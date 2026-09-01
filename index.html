@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dust Machine — generative lofi</title>
+    <meta name="description" content="A browser instrument that generates endless lofi and lets you shape it while it plays." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow+Condensed:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="unit">
+      <header class="unit-head">
+        <div class="brand">
+          <span class="brand-mark">Dust</span>
+          <span class="brand-sub">Machine</span>
+        </div>
+
+        <div class="head-right">
+          <div class="lamp-row">
+            <span class="lamp" id="powerLamp" aria-hidden="true"></span>
+            <span class="lamp-label" id="status">standby</span>
+          </div>
+          <div class="model-plate">mk I &middot; generative lofi</div>
+        </div>
+      </header>
+
+      <div class="transport-bay">
+        <button id="playButton" class="power" aria-label="Start and stop the generator">
+          <span class="power-glyph" aria-hidden="true"></span>
+          <span class="power-text">start</span>
+        </button>
+
+        <div class="tape" aria-hidden="true">
+          <div class="reel"><span></span></div>
+          <div class="tape-path"></div>
+          <div class="reel"><span></span></div>
+        </div>
+
+        <div class="counter">
+          <div class="counter-line">
+            <span class="counter-label">bar</span>
+            <span class="counter-value" id="barReadout">000</span>
+          </div>
+          <div class="counter-line">
+            <span class="counter-label">figure</span>
+            <span class="counter-value small" id="progressionReadout">—</span>
+          </div>
+        </div>
+
+        <div id="meterSlot"></div>
+      </div>
+
+      <section class="module">
+        <div class="module-head">
+          <h2>Composition</h2>
+          <span class="rule"></span>
+        </div>
+
+        <div class="selectors">
+          <div class="selector">
+            <span class="selector-label">key</span>
+            <div class="key-row" id="keyRow" role="radiogroup" aria-label="key"></div>
+          </div>
+
+          <div class="selector">
+            <span class="selector-label">mode</span>
+            <div class="segment" id="scaleRow" role="radiogroup" aria-label="mode"></div>
+          </div>
+        </div>
+
+        <div class="knob-bank" id="musicKnobs"></div>
+      </section>
+
+      <section class="module">
+        <div class="module-head">
+          <h2>Tape Path</h2>
+          <span class="rule"></span>
+        </div>
+
+        <div class="knob-bank" id="toneKnobs"></div>
+      </section>
+
+      <footer class="unit-foot">
+        <span>drag a knob &middot; shift for fine &middot; double-click to reset</span>
+        <span class="serial">no.&thinsp;0001</span>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
