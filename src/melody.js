@@ -138,3 +138,62 @@ export function gappedPool (scale) {
 
   return pool;
 }
+
+// --------------------------------------------------------------- the counter line
+
+/** Figuration shapes as indices into the current chord's notes. A pattern is
+    chosen once per phrase and held, which is the whole point: a repeating
+    figure reads as an accompaniment, while fresh note orders every bar read as
+    someone fidgeting. */
+const ARPEGGIOS = {
+  up:        [0, 1, 2, 3],
+  down:      [3, 2, 1, 0],
+  upDown:    [0, 1, 2, 1],
+  alberti:   [0, 2, 1, 2],      // the classic keyboard accompaniment shape
+  pendulum:  [0, 2, 1, 3],
+  rolling:   [0, 1, 2, 3, 2, 1] // longer cycle, so it drifts against the bar
+};
+
+const ARP_NAMES = Object.keys (ARPEGGIOS);
+
+/** Chooses how the counter line behaves for one phrase, and works out where
+    the melody is busy so the two parts can take turns.
+
+    Direction is set against the melody's overall motion: contrary motion is
+    the oldest trick there is for making two lines sound independent rather
+    than doubled. */
+export function planCounter (phrase) {
+  const name = ARP_NAMES[Math.floor (Math.random() * ARP_NAMES.length)];
+
+  // Net melodic direction across the phrase.
+  const rise = phrase[phrase.length - 1].degree - phrase[0].degree;
+  const pattern = ARPEGGIOS[name];
+
+  return {
+    name,
+    // Run the figure backwards when the melody climbs, and forwards when it
+    // falls, so the two lines lean away from each other.
+    pattern: rise > 0 ? [...pattern].reverse() : pattern,
+    busy: busyMap (phrase)
+  };
+}
+
+/** For each bar of the phrase, which eighth-note slots the melody is sounding
+    in. The counter line uses this to stay out of the way. */
+function busyMap (phrase) {
+  const bars = [[], [], [], []].map (() => new Array (8).fill (false));
+
+  for (const event of phrase) {
+    const bar = Math.floor (event.at / 8);
+    if (bar > 3) continue;
+
+    // Mark the attack and the note's length, so the counter fills real rests
+    // rather than talking over a held note.
+    for (let i = 0; i < event.length; i++) {
+      const slot = (event.at % 8) + i;
+      if (slot < 8) bars[bar][slot] = true;
+    }
+  }
+
+  return bars;
+}

@@ -1,96 +1,153 @@
-// A backlit VU meter driven by the real output signal.
+// A segmented LED spectrum display, driven by a real FFT of the output.
 //
-// Not decoration: it is the fastest way to tell whether density, dust and
-// drive have pushed the mix too hard, and it makes the panel feel alive when
-// nothing else is moving.
+// Drawn on a canvas rather than in the DOM: it repaints every frame, and
+// pushing 120 element styles per frame is a waste when a single fill loop does
+// it. Colours are read from CSS custom properties on mount, so the palette
+// still lives in one place with the rest of the design tokens.
 
-const START = -46;   // needle angle at silence
-const END = 46;      // needle angle at full scale
+const COLUMNS = 12;
+const ROWS = 12;
 
 export function createMeter () {
   const root = document.createElement ('div');
   root.className = 'meter';
   root.setAttribute ('aria-hidden', 'true');
 
-  root.innerHTML = `
-    <svg viewBox="0 0 200 104" class="meter-face">
-      <defs>
-        <linearGradient id="meterGlow" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(232,163,61,0.20)" />
-          <stop offset="100%" stop-color="rgba(232,163,61,0.02)" />
-        </linearGradient>
-      </defs>
+  const canvas = document.createElement ('canvas');
+  canvas.className = 'meter-canvas';
+  root.append (canvas);
 
-      <rect class="meter-bg" x="0" y="0" width="200" height="104" rx="4" />
-      <rect x="0" y="0" width="200" height="104" rx="4" fill="url(#meterGlow)" />
+  const context = canvas.getContext ('2d');
 
-      ${ticks()}
+  let palette = null;
+  let width = 0;
+  let height = 0;
 
-      <path class="meter-arc-hot" d="${arc (74, 12, 46)}" />
+  function readPalette () {
+    const styles = getComputedStyle (root);
 
-      <g class="meter-needle-group">
-        <line class="meter-needle" x1="100" y1="96" x2="100" y2="26" />
-        <circle class="meter-pivot" cx="100" cy="96" r="4.5" />
-      </g>
+    palette = {
+      low: styles.getPropertyValue ('--led-low').trim() || '#ffa53d',
+      high: styles.getPropertyValue ('--led-high').trim() || '#ff3d8e',
+      off: styles.getPropertyValue ('--led-off').trim() || 'rgba(255,255,255,0.06)'
+    };
+  }
 
-      <text class="meter-caption" x="100" y="62" text-anchor="middle">VU</text>
-    </svg>
-  `;
+  /** Canvas needs its backing store sized in device pixels, or the segments
+      come out soft on a retina display. */
+  function resize () {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = root.getBoundingClientRect();
 
-  const needle = root.querySelector ('.meter-needle-group');
+    if (! rect.width) return false;
 
-  let peak = 0;
-  let peakHold = 0;
+    width = rect.width;
+    height = rect.height;
+
+    canvas.width = Math.round (width * ratio);
+    canvas.height = Math.round (height * ratio);
+    context.setTransform (ratio, 0, 0, ratio, 0, 0);
+
+    return true;
+  }
+
+  function draw (levels) {
+    if (! palette) readPalette();
+    if (! width && ! resize()) return;
+
+    context.clearRect (0, 0, width, height);
+
+    const gapX = width * 0.02;
+    const gapY = height * 0.055;
+    const columnWidth = (width - gapX * (COLUMNS - 1)) / COLUMNS;
+    const rowHeight = (height - gapY * (ROWS - 1)) / ROWS;
+    const radius = Math.min (2.5, rowHeight * 0.4);
+
+    for (let column = 0; column < COLUMNS; column++) {
+      const level = levels[column] ?? 0;
+      const lit = Math.round (level * ROWS);
+      const x = column * (columnWidth + gapX);
+
+      for (let row = 0; row < ROWS; row++) {
+        // Row 0 is the bottom of the column.
+        const y = height - (row + 1) * rowHeight - row * gapY;
+        const isLit = row < lit;
+
+        if (isLit) {
+          // Warm at the bottom, hot at the top, so loud reads as colour rather
+          // than only as height.
+          const t = row / (ROWS - 1);
+          context.fillStyle = mix (palette.low, palette.high, t);
+        } else {
+          context.fillStyle = palette.off;
+        }
+
+        roundedRect (context, x, y, columnWidth, rowHeight, radius);
+        context.fill();
+      }
+    }
+  }
+
+  let lastLevels = new Array (COLUMNS).fill (0);
+
+  // The canvas has no size until it has been laid out, and at standby nothing
+  // is repainting it — so without this the unlit grid never appears until you
+  // press start.
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver (() => {
+      if (resize()) draw (lastLevels);
+    }).observe (root);
+  }
 
   return {
     element: root,
 
-    /** Called every animation frame with a 0..1 level. */
-    update (level) {
-      const angle = START + Math.min (1, level) * (END - START);
-      needle.style.transform = `rotate(${angle.toFixed (2)}deg)`;
-
-      // Peak lamp latches briefly so a short overshoot is still visible.
-      if (level > 0.86) {
-        peak = 1;
-        peakHold = 45;
-      } else if (peakHold > 0) {
-        peakHold--;
-      } else {
-        peak = 0;
-      }
-
-      root.classList.toggle ('peaking', peak === 1);
+    update (levels) {
+      lastLevels = levels;
+      draw (levels);
     },
 
     reset () {
-      needle.style.transform = `rotate(${START}deg)`;
-      root.classList.remove ('peaking');
+      lastLevels = new Array (COLUMNS).fill (0);
+      draw (lastLevels);
+    },
+
+    /** Called if the layout changes under it. */
+    refresh () {
+      resize();
+      readPalette();
+      draw (lastLevels);
     }
   };
 }
 
-function polar (radius, degrees) {
-  const rad = (degrees - 90) * Math.PI / 180;
-  return [100 + radius * Math.cos (rad), 96 + radius * Math.sin (rad)];
+function roundedRect (context, x, y, w, h, r) {
+  context.beginPath();
+  context.moveTo (x + r, y);
+  context.arcTo (x + w, y, x + w, y + h, r);
+  context.arcTo (x + w, y + h, x, y + h, r);
+  context.arcTo (x, y + h, x, y, r);
+  context.arcTo (x, y, x + w, y, r);
+  context.closePath();
 }
 
-function arc (radius, from, to) {
-  const [x1, y1] = polar (radius, from);
-  const [x2, y2] = polar (radius, to);
+/** Blends two CSS colours. Only handles hex, which is all the tokens use. */
+function mix (a, b, t) {
+  const parse = hex => {
+    const value = hex.replace ('#', '');
+    const full = value.length === 3 ? value.split ('').map (c => c + c).join ('') : value;
 
-  return `M ${x1.toFixed (2)} ${y1.toFixed (2)} A ${radius} ${radius} 0 0 1 ${x2.toFixed (2)} ${y2.toFixed (2)}`;
-}
+    return [
+      parseInt (full.slice (0, 2), 16),
+      parseInt (full.slice (2, 4), 16),
+      parseInt (full.slice (4, 6), 16)
+    ];
+  };
 
-/** Scale marks, denser toward the top of the range like a real VU face. */
-function ticks () {
-  const marks = [-46, -34, -22, -10, 0, 10, 20, 28, 36, 42, 46];
+  const [r1, g1, b1] = parse (a);
+  const [r2, g2, b2] = parse (b);
 
-  return marks.map (angle => {
-    const hot = angle > 20;
-    const [x1, y1] = polar (66, angle);
-    const [x2, y2] = polar (angle % 12 === 0 ? 56 : 60, angle);
+  const channel = (x, y) => Math.round (x + (y - x) * t);
 
-    return `<line class="meter-tick${hot ? ' hot' : ''}" x1="${x1.toFixed (2)}" y1="${y1.toFixed (2)}" x2="${x2.toFixed (2)}" y2="${y2.toFixed (2)}" />`;
-  }).join ('');
+  return `rgb(${channel (r1, r2)}, ${channel (g1, g2)}, ${channel (b1, b2)})`;
 }

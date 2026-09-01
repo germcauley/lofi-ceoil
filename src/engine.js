@@ -2,11 +2,11 @@
 // the knobs write into, and drives the bar-by-bar scheduling.
 
 import * as Tone from 'tone';
-import { createKeys, createBass, createLead, createDrums, createDrone, createVinyl } from './instruments.js';
+import { createKeys, createBass, createLead, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
-import { createPhrase, varyPhrase, gappedPool } from './melody.js';
-import { playChord, playBass, playDrums, playMelody, playDrone, playVinyl } from './parts.js';
+import { createPhrase, varyPhrase, gappedPool, planCounter } from './melody.js';
+import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl } from './parts.js';
 
 export function createEngine () {
   const chain = createChain();
@@ -16,11 +16,17 @@ export function createEngine () {
   const analyser = new Tone.Analyser ({ type: 'waveform', size: 1024 });
   chain.master.connect (analyser);
 
+  // Separate FFT for the spectrum display. Small size: the meter shows twelve
+  // bands, so resolving more bins than that would be thrown away.
+  const spectrum = new Tone.Analyser ({ type: 'fft', size: 256, smoothing: 0.72 });
+  chain.master.connect (spectrum);
+
   const keys = createKeys();
   const bass = createBass();
   const lead = createLead();
   const drums = createDrums();
   const drone = createDrone();
+  const pluck = createPluck();
   const vinyl = createVinyl();
 
   // Instruments run through the sidechain so the kick ducks them. The vinyl
@@ -29,11 +35,12 @@ export function createEngine () {
   bass.connect (chain.input);
   lead.connect (chain.input);
   drone.connect (chain.input);
+  pluck.connect (chain.input);
   drums.outputs.forEach (out => out.connect (chain.input));
   vinyl.level.connect (chain.master);
 
   const state = {
-    keys, bass, lead, drums, drone, vinyl, chain,
+    keys, bass, lead, drums, drone, pluck, vinyl, chain,
 
     rootMidi: noteNameToMidi ('C3'),
     scale: 'dorian',
@@ -43,9 +50,11 @@ export function createEngine () {
     dust: 0.3,
     ornament: 0.6,
     droneLevel: 0.25,
+    counter: 0.55,
 
     // Four four-bar phrases played as AABB. Rebuilt every sixteen bars.
     form: null,
+    counterPlans: null,
 
     progression: PROGRESSIONS.minor[0],
 
@@ -76,8 +85,18 @@ export function createEngine () {
     const size = gappedPool (state.scale).length;
     const a = createPhrase (state.scale, size);
     const b = createPhrase (state.scale, size);
+    const phrases = [a, varyPhrase (a), b, varyPhrase (b)];
 
-    state.form = [a, varyPhrase (a), b, varyPhrase (b)];
+    // One figuration per phrase, held for its four bars. A and its variation
+    // share a plan so the repeat sounds like the same music; B gets its own,
+    // which is what makes the B section read as a change.
+    const planA = planCounter (a);
+    const planB = planCounter (b);
+
+    state.form = phrases;
+    state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];
+    state.counterPlans[1].pattern = planA.pattern;
+    state.counterPlans[3].pattern = planB.pattern;
   }
 
   function scheduleBar (time) {
@@ -93,6 +112,8 @@ export function createEngine () {
     playBass (state, time, chordSpec);
     playDrums (state, time);
     playMelody (state, time, positionInForm % 4, phrase);
+    playCounter (state, time, positionInForm % 4, chordSpec,
+                 state.counterPlans?.[Math.floor (positionInForm / 4)]);
     playDrone (state, time);
     playVinyl (state, time);
 
@@ -218,6 +239,10 @@ export function createEngine () {
 
     drone (value) {
       state.droneLevel = value;
+    },
+
+    counter (value) {
+      state.counter = value;
     }
   };
 
@@ -239,5 +264,55 @@ export function createEngine () {
     return level;
   }
 
-  return { state, controls, start, stop, chain, analyser, getLevel };
+  const BANDS = 12;
+  const bands = new Array (BANDS).fill (0);
+
+  // FFT bins are evenly spaced in frequency, but music is not: with linear
+  // bands nearly all the energy lands in the first two columns and the rest of
+  // the meter never moves. These edges are spaced logarithmically from 80 Hz to
+  // 10 kHz, which is how the ear divides the range and how a spectrum display
+  // has to divide it to look alive.
+  const bandEdges = (() => {
+    const low = 80;
+    const high = 10000;
+    const binCount = 256;
+    const nyquist = Tone.getContext().sampleRate / 2;
+    const edges = [];
+
+    for (let i = 0; i <= BANDS; i++) {
+      const frequency = low * Math.pow (high / low, i / BANDS);
+      edges.push (Math.min (binCount - 1, Math.round (frequency / nyquist * binCount)));
+    }
+
+    return edges;
+  })();
+
+  /** Twelve normalised band levels for the meter. The analyser reports
+      decibels, so this maps a musically useful window onto 0..1 and lets the
+      columns fall slower than they rise. */
+  function getSpectrum () {
+    const frame = spectrum.getValue();
+
+    for (let band = 0; band < BANDS; band++) {
+      const from = bandEdges[band];
+      const to = Math.max (from + 1, bandEdges[band + 1]);
+
+      let peak = -Infinity;
+
+      for (let i = from; i < to && i < frame.length; i++) {
+        peak = Math.max (peak, frame[i]);
+      }
+
+      // -80 dB reads as silence, -22 dB as full scale. The top bands carry far
+      // less energy than the bottom, so they get a lift to stay visible.
+      const tilt = band * 1.6;
+      const target = Math.max (0, Math.min (1, (peak + tilt + 80) / 58));
+
+      bands[band] += (target - bands[band]) * (target > bands[band] ? 0.55 : 0.12);
+    }
+
+    return bands;
+  }
+
+  return { state, controls, start, stop, chain, analyser, getLevel, getSpectrum };
 }

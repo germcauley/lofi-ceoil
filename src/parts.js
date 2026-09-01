@@ -139,6 +139,49 @@ export function playMelody (state, time, barInPhrase, phrase) {
   }
 }
 
+/** The counter line: an arpeggio of the current chord that fills the melody's
+    rests.
+
+    Two rules do all the work. Notes come from the chord, so it is always
+    consonant with the harmony rather than merely in key. And it plays where
+    the melody is silent — complementary rhythm is what makes two lines sound
+    like a duet instead of a pile. */
+export function playCounter (state, time, barInPhrase, chordSpec, plan) {
+  const { pluck, rootMidi, scale, counter } = state;
+  if (! plan || counter <= 0.001) return;
+
+  const [degree, quality] = chordSpec;
+
+  // Sits below the melody and above the bass, so the three parts stay legible.
+  const chord = buildChord (rootMidi, scale, degree, quality, 55);
+  const busy = plan.busy[barInPhrase] ?? new Array (8).fill (false);
+
+  const eighth = Tone.Time ('8n').toSeconds();
+  let step = 0;
+
+  for (let slot = 0; slot < 8; slot++) {
+    // The rest the melody leaves is where this part belongs.
+    const free = ! busy[slot];
+
+    // Density rises with the knob; a few notes still sneak in under held
+    // melody notes at higher settings, which keeps it from sounding like a
+    // rigid alternation.
+    const probability = free ? 0.55 + counter * 0.45 : counter * 0.18;
+    if (! chance (probability)) continue;
+
+    const index = plan.pattern[step % plan.pattern.length];
+    const midi = chord[index % chord.length];
+
+    step++;
+
+    pluck.triggerAttackRelease (
+      midiToNoteName (midi),
+      eighth * 0.9,
+      jitter (time, time + slot * eighth, 0.012),
+      free ? 0.5 : 0.3);
+  }
+}
+
 /** A sustained fifth underneath, the way pipes hold a drone. Quiet enough to
     read as atmosphere rather than a part. */
 export function playDrone (state, time) {

@@ -91,6 +91,22 @@ export function createDrums () {
   return { kick, snare, ghost, hat, outputs: [kick, snareFilter, ghostFilter, hatFilter] };
 }
 
+/** The counter line: a Karplus-Strong pluck, which lands somewhere between a
+    harp and a nylon guitar. Physical-model decay means notes ring into each
+    other without any reverb help, and it sits clearly apart from the keys.
+
+    Monophonic, which is correct here — the figure is one voice, and its notes
+    are laid out strictly in order. */
+export function createPluck () {
+  return new Tone.PluckSynth ({
+    attackNoise: 0.7,
+    dampening: 2600,
+    resonance: 0.93,
+    release: 0.9,
+    volume: -17
+  });
+}
+
 /** A pipe-like drone. Sawtooth through a low filter with a slow attack, so it
     swells rather than starts. Monophonic is right here — a drone is one note. */
 export function createDrone () {

@@ -17,6 +17,7 @@ const MUSIC_KNOBS = [
     format: v => `${Math.round (v)} bpm` },
   { id: 'swing', label: 'swing', min: 0, max: 0.6, step: 0.01, value: 0.28 },
   { id: 'density', label: 'density', min: 0, max: 1, step: 0.01, value: 0.5 },
+  { id: 'counter', label: 'counter', min: 0, max: 1, step: 0.01, value: 0.55 },
   { id: 'ornament', label: 'cuts', min: 0, max: 1, step: 0.01, value: 0.6 },
   { id: 'drone', label: 'drone', min: 0, max: 1, step: 0.01, value: 0.25 }
 ];
@@ -81,6 +82,11 @@ mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
 
+// The canvas is sized from its laid-out box, so it has to be measured after
+// it is in the document and again whenever the layout changes.
+requestAnimationFrame (() => { meter.refresh(); meter.reset(); });
+window.addEventListener ('resize', () => meter.refresh());
+
 // ------------------------------------------------------------------ transport
 
 const playButton = document.getElementById ('playButton');
@@ -97,7 +103,7 @@ engine.state.onBar = (bar, progressionName) => {
 let meterFrame = null;
 
 function driveMeter () {
-  meter.update (engine.getLevel());
+  meter.update (engine.getSpectrum());
   meterFrame = requestAnimationFrame (driveMeter);
 }
 
