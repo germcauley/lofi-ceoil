@@ -1,10 +1,12 @@
-# Dust Machine
+# Lofi Ceoil
 
-A browser instrument that generates endless lofi and lets you shape it while it plays.
+A browser instrument that generates endless lofi with an Irish accent, and lets you shape it while it plays.
 
-**[▶ Play it](https://germcauley.github.io/dust-machine/)** — no install, no sign-up. Press start and turn things.
+*Ceoil* — of music.
 
-![The Dust Machine panel](docs/panel.png)
+**[▶ Play it](https://germcauley.github.io/lofi-ceoil/)** — no install, no sign-up. Press start and turn things.
+
+![The Lofi Ceoil panel](docs/panel.png)
 
 Everything is synthesised in the browser with [Tone.js](https://tonejs.github.io/). There are no audio files, no samples, and no server — the whole thing is about 280 kB of JavaScript and it will run forever without repeating itself.
 

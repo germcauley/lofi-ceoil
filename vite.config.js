@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
 
-// The site is served from https://<user>.github.io/dust-machine/, so assets
+// The site is served from https://<user>.github.io/lofi-ceoil/, so assets
 // need that prefix in production. Locally the base stays at the root.
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/dust-machine/' : '/',
+  base: command === 'build' ? '/lofi-ceoil/' : '/',
   build: { outDir: 'dist', assetsDir: 'assets' }
 }));
