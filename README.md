@@ -49,7 +49,9 @@ The bass has a pattern library rather than one figure — root, held, root-fifth
 
 Each turn also gets an **arrangement**: which layers play in which of its four parts, when the drums arrive and when they pull back. Nearly half of all turns open bare — no drums, no bass, chords held back two bars — so the motif is stated in the clear before anything joins it.
 
-Underneath, chords come from **per-mode progression sets** written in roman numerals, so they transpose to any key for free. Each mode gets its own, because the chords that define a mode only exist in that mode — dorian's major IV comes from its raised sixth, mixolydian's major ♭VII from its flat seventh. The sets include the pop canon (I–V–vi–IV and friends) alongside the modal vamps; chord progressions are unprotectable common material, so they are free to use.
+Underneath, chords come from **per-mode progression sets** written in roman numerals, so they transpose to any key for free. Each mode gets its own, because the chords that define a mode only exist in that mode — dorian's major IV comes from its raised sixth, mixolydian's major ♭VII from its flat seventh. The sets include the pop and rock canon — I–V–vi–IV, I–IV–V, I–vi–ii–V, vi–ii–V–I, the "royal road", Pachelbel's canon — alongside the modal vamps, 34 progressions in all. Chord progressions are unprotectable common material, so they are free to use.
+
+The chord cycle is indexed against position in the **part**, not the absolute bar count, so every part opens on the progression's first chord however many bars have gone by.
 
 Chords **voice-lead**: each voice moves to the nearest tone of the next chord and common tones stay put, which averages a little over one semitone of movement per voice. Re-voicing each chord independently is what makes block chords sound blocky. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.
 

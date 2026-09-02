@@ -46,6 +46,20 @@ export const PROGRESSIONS = {
     { name: 'I-vi-IV-V',    chords: [[0, 'maj7'], [5, 'min7'], [3, 'maj7'], [4, 'dom7']] },
     { name: 'I-iii-IV-V',   chords: [[0, 'maj7'], [2, 'min7'], [3, 'maj7'], [4, 'dom7']] },
     { name: 'ii-V-I',       chords: [[1, 'min9'], [4, 'dom9'], [0, 'maj9'], [0, 'maj7']] },
+    // The three-chord backbone of most rock ever written.
+    { name: 'I-IV-V',       chords: [[0, 'maj'], [3, 'maj'], [4, 'dom7']] },
+    { name: 'I-V-IV',       chords: [[0, 'maj9'], [4, 'dom7'], [3, 'maj7']] },
+    // Doo-wop's other half, and the front of rhythm changes.
+    { name: 'I-vi-ii-V',    chords: [[0, 'maj7'], [5, 'min7'], [1, 'min7'], [4, 'dom7']] },
+    // Round the circle of fifths and home.
+    { name: 'vi-ii-V-I',    chords: [[5, 'min7'], [1, 'min9'], [4, 'dom9'], [0, 'maj9']] },
+    { name: 'I-iii-vi-IV',  chords: [[0, 'maj7'], [2, 'min7'], [5, 'min7'], [3, 'maj7']] },
+    // The "royal road" — everywhere in Japanese pop, and it lands beautifully
+    // under a modal tune.
+    { name: 'IV-V-iii-vi',  chords: [[3, 'maj7'], [4, 'dom7'], [2, 'min7'], [5, 'min7']] },
+    // Pachelbel, one chord a bar across an eight-bar part.
+    { name: 'canon',        chords: [[0, 'maj'], [4, 'maj'], [5, 'min'], [2, 'min'],
+                                     [3, 'maj'], [0, 'maj'], [3, 'maj'], [4, 'dom7']] },
     { name: 'I-IV vamp',    chords: [[0, 'maj9'], [3, 'maj7']] }
   ],
 
@@ -54,7 +68,10 @@ export const PROGRESSIONS = {
     { name: 'i-VII-VI-VII', chords: [[0, 'min9'], [6, 'dom7'], [5, 'maj7'], [6, 'dom7']] },
     { name: 'i-iv',         chords: [[0, 'min9'], [3, 'min7']] },
     { name: 'i-VII-iv-i',   chords: [[0, 'min7'], [6, 'maj7'], [3, 'min7'], [0, 'min9']] },
-    { name: 'i-ii°-V',      chords: [[0, 'min7'], [1, 'min7b5'], [4, 'min7'], [0, 'min9']] }
+    { name: 'i-ii°-V',      chords: [[0, 'min7'], [1, 'min7b5'], [4, 'min7'], [0, 'min9']] },
+    { name: 'i-iv-VII-III',  chords: [[0, 'min9'], [3, 'min7'], [6, 'dom7'], [2, 'maj7']] },
+    { name: 'i-VI-VII',      chords: [[0, 'min9'], [5, 'maj7'], [6, 'dom7']] },
+    { name: 'i-VII-VI-v',    chords: [[0, 'min9'], [6, 'maj7'], [5, 'maj7'], [4, 'min7']] }
   ],
 
   // The raised sixth gives a major IV over a minor tonic. That i-IV shift is
@@ -64,7 +81,9 @@ export const PROGRESSIONS = {
     { name: 'i-VII-IV-i',   chords: [[0, 'min9'], [6, 'maj7'], [3, 'maj7'], [0, 'min7']] },
     { name: 'i-IV-VII-i',   chords: [[0, 'min7'], [3, 'maj7'], [6, 'maj7'], [0, 'min9']] },
     { name: 'i-VII vamp',   chords: [[0, 'min9'], [6, 'maj7']] },
-    { name: 'i-IV-i-VII',   chords: [[0, 'min7'], [3, 'maj7'], [0, 'min9'], [6, 'dom7']] }
+    { name: 'i-IV-i-VII',   chords: [[0, 'min7'], [3, 'maj7'], [0, 'min9'], [6, 'dom7']] },
+    { name: 'i-VII-i-IV',   chords: [[0, 'min9'], [6, 'maj7'], [0, 'min7'], [3, 'maj7']] },
+    { name: 'i-III-IV-i',   chords: [[0, 'min7'], [2, 'maj7'], [3, 'maj7'], [0, 'min9']] }
   ],
 
   // I-bVII-IV is the point where Irish traditional music and rock already meet.
@@ -72,7 +91,9 @@ export const PROGRESSIONS = {
     { name: 'I-VII-IV',     chords: [[0, 'dom9'], [6, 'maj7'], [3, 'maj7']] },
     { name: 'I-VII vamp',   chords: [[0, 'maj9'], [6, 'maj7']] },
     { name: 'I-IV-VII-IV',  chords: [[0, 'maj9'], [3, 'maj7'], [6, 'maj7'], [3, 'maj7']] },
-    { name: 'I-v-IV',       chords: [[0, 'dom9'], [4, 'min7'], [3, 'maj7']] }
+    { name: 'I-v-IV',       chords: [[0, 'dom9'], [4, 'min7'], [3, 'maj7']] },
+    { name: 'I-VII-IV-I',   chords: [[0, 'maj9'], [6, 'maj7'], [3, 'maj7'], [0, 'dom9']] },
+    { name: 'I-IV-I-VII',   chords: [[0, 'maj9'], [3, 'maj7'], [0, 'dom9'], [6, 'maj7']] }
   ]
 };
 

@@ -357,12 +357,6 @@ export function createEngine () {
       return;
     }
 
-    const chords = state.progression.chords;
-
-    // A pivot chord replaces the progression for the bars that carry the
-    // modulation. It belongs to both keys, so it is the seam.
-    const chordSpec = state.pivot ?? chords[state.barIndex % chords.length];
-
     // Four eight-bar parts: A A B B, so a full turn of the tune is 32 bars.
     const positionInForm = (state.barIndex - state.formOffset) % 32;
 
@@ -378,6 +372,17 @@ export function createEngine () {
     const partIndex = Math.floor (positionInForm / 8);
     const barInPart = positionInForm % 8;
     const plan = state.arrangement?.[partIndex] ?? {};
+
+    // The chord cycle is indexed against position in the part, not the absolute
+    // bar count. Counting bars meant the harmony drifted out of step with the
+    // form — a pause between tunes advanced the count but not the music, so a
+    // tune could resume on its subdominant rather than at home. Every part now
+    // begins on the progression's first chord.
+    const chords = state.progression.chords;
+
+    // A pivot chord replaces the progression for the bars that carry a
+    // modulation. It belongs to both keys, so it is the seam.
+    const chordSpec = state.pivot ?? chords[barInPart % chords.length];
 
     // Voice changes land on the part boundary, never mid-phrase.
     if (barInPart === 0) {

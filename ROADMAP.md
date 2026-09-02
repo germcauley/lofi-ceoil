@@ -393,3 +393,28 @@ Same fault, and the same fix, plus the point that one fixed feel every phrase is
 The figure also sits **an octave up** a quarter of the time, which changes its role from foundation to decoration without changing a note of it. Its velocity follows an arch across the bar rather than sitting flat.
 
 And the two echo textures — imitation and heterophony — now **carry the melody's own phrasing**, dynamics and slurs included. An echo that ignored the shape of what it was echoing would give the game away immediately.
+
+---
+
+## 28. Harmony aligned to the form — done
+
+The chord cycle was indexed off the **absolute bar count** — `barIndex % chords.length` — so it drifted out of step with the structure. The pause between tunes advanced the count but not the music, which meant a tune could resume on its subdominant rather than at home, and with a three-chord progression the harmony rotated against the eight-bar parts and only realigned every 24 bars.
+
+None of that was chosen. It is now indexed against **position within the part**, so every part opens on the progression's first chord regardless of how many bars have gone by.
+
+Verified across a set ending: at absolute bar 34, after a rest of irregular length, part 0 still opened on chord one. Under the old indexing that bar would have started on the third chord of a four-chord progression.
+
+## 29. The pop and rock canon — done
+
+The table had the headline four-chord loops but was missing several very common progressions, most glaringly **I–IV–V** — the three-chord backbone of most rock ever written.
+
+Added: `I-IV-V`, `I-V-IV`, `I-vi-ii-V` (doo-wop's other half, and the front of rhythm changes), `vi-ii-V-I` (round the circle and home), `I-iii-vi-IV`, `IV-V-iii-vi` (the "royal road", everywhere in Japanese pop and it lands beautifully under a modal tune), and `canon` — Pachelbel, eight chords, one a bar across an eight-bar part.
+
+Minor gained `i-iv-VII-III`, `i-VI-VII` and `i-VII-VI-v`; dorian `i-VII-i-IV` and `i-III-IV-i`; mixolydian `I-VII-IV-I` and `I-IV-I-VII`.
+
+**34 progressions across the four modes**, up from 20, every chord checked for a valid degree and a known quality.
+
+### Still missing, and why
+
+- **12-bar blues** does not fit an eight-bar part. It would need the harmonic rhythm work in item 8 first.
+- **The Andalusian cadence** (i–♭VII–♭VI–V) needs a major V in a minor key, which means a raised seventh that natural minor does not contain. That is the chromatic-alteration limitation recorded at the end of this file, still open.
