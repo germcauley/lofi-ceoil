@@ -32,7 +32,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **12. Instrument voices** *(now including a sampled piano)*
 - [x] **13. Voice changes driven by the arrangement**
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
-- [ ] **15. More bass voices**
+- [x] **15. More bass voices**
 - [ ] **16. Radio mode — tracks that segue**
 - [ ] **17. Generated tune names**
 - [ ] **18. Save the current tune**
@@ -287,7 +287,15 @@ The piano proved the point: synthesis has a ceiling for acoustic instruments, an
 
 Same lazy-load pattern as the piano: vendored, fetched only when chosen, with the panel showing a loading state. Each voice is roughly 500 kB, so they stay off the initial page load.
 
-## 15. More bass voices
+## 15. More bass voices — done
+
+Four voices, chosen by hand or by the arrangement: **`round`** (the original triangle), **`upright`** — pizzicato double bass, a fast filter sweep for the finger against the string and almost no sustain for the short woody decay — **`sub`**, near a pure sine and felt more than heard, and **`electric`**, fingered, with more sustain and a brighter edge so it carries through a busier arrangement.
+
+In `auto` the bass changes **least often of the three voices** — a quarter of the times the lead does. It is the foundation, and a foundation that keeps changing is not one.
+
+Upright remains a sampling candidate; a plucked double bass has a body resonance that a filter sweep only gestures at.
+
+### Original note
 
 The bass has one timbre and seven patterns. The patterns changed how it *moves*; a voice selector would change what it *is*, and the low end is doing more work than any other single part.
 

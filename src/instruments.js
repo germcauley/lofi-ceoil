@@ -238,9 +238,15 @@ export const LEAD_VOICES = {
 
 // ------------------------------------------------------------------ others
 
+// ------------------------------------------------------------------- bass
+//
+// The low end had seven patterns and one timbre. The patterns changed how it
+// moves; these change what it is, and the bass is doing more work than any
+// other single part.
+
 /** Soft round bass. Triangle plus a touch of sub, through its own filter so it
     stays under the keys instead of fighting them. */
-export function createBass () {
+function bassRound () {
   const voice = new Tone.MonoSynth ({
     oscillator: { type: 'triangle' },
     filter: { Q: 1, type: 'lowpass', rolloff: -24 },
@@ -254,6 +260,65 @@ export function createBass () {
 
   return { voice, output: voice };
 }
+
+/** Upright, pizzicato. The lofi default. A fast filter sweep gives the finger
+    against the string, and almost no sustain gives the short woody decay of a
+    plucked double bass. */
+function bassUpright () {
+  const voice = new Tone.MonoSynth ({
+    oscillator: { type: 'triangle' },
+    filter: { Q: 1.4, type: 'lowpass', rolloff: -24 },
+    envelope: { attack: 0.006, decay: 0.5, sustain: 0.06, release: 0.5 },
+    filterEnvelope: {
+      attack: 0.004, decay: 0.14, sustain: 0.08, release: 0.3,
+      baseFrequency: 90, octaves: 3.2
+    },
+    volume: -9
+  });
+
+  return { voice, output: voice };
+}
+
+/** Sub. Near a pure sine, felt more than heard. Sits well under the sparse and
+    held patterns, badly under the busy ones. */
+function bassSub () {
+  const voice = new Tone.MonoSynth ({
+    oscillator: { type: 'sine' },
+    filter: { Q: 0.6, type: 'lowpass', rolloff: -12 },
+    envelope: { attack: 0.06, decay: 0.3, sustain: 0.85, release: 1.4 },
+    filterEnvelope: {
+      attack: 0.05, decay: 0.3, sustain: 0.6, release: 1,
+      baseFrequency: 60, octaves: 1.2
+    },
+    volume: -7
+  });
+
+  return { voice, output: voice };
+}
+
+/** Fingered electric. More sustain than the upright and a brighter edge, so it
+    carries through a busier arrangement. */
+function bassElectric () {
+  const voice = new Tone.MonoSynth ({
+    oscillator: { type: 'sawtooth' },
+    filter: { Q: 2, type: 'lowpass', rolloff: -24 },
+    envelope: { attack: 0.01, decay: 0.4, sustain: 0.45, release: 0.8 },
+    filterEnvelope: {
+      attack: 0.008, decay: 0.22, sustain: 0.2, release: 0.6,
+      baseFrequency: 110, octaves: 2.6
+    },
+    volume: -13
+  });
+
+  return { voice, output: voice };
+}
+
+export const BASS_VOICES = {
+  round: bassRound,
+  upright: bassUpright,
+  sub: bassSub,
+  electric: bassElectric
+};
 
 /** The counter line's voice: a pluck, distinct from whichever lead is chosen. */
 export function createPluck () {

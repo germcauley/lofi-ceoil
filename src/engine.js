@@ -2,10 +2,11 @@
 // the knobs write into, and drives the bar-by-bar scheduling.
 
 import * as Tone from 'tone';
-import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
+import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
 
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
+const BASS_VOICE_NAMES = Object.keys (BASS_VOICES);
 import { createChain } from './effects.js';
 import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi, findPivot } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
@@ -29,7 +30,7 @@ export function createEngine () {
   let keys = KEYS_VOICES.rhodes();
   let lead = LEAD_VOICES.whistle();
 
-  const bass = createBass();
+  let bass = BASS_VOICES.round();
   const drums = createDrums();
   const drone = createDrone();
   const pluck = createPluck();
@@ -55,10 +56,12 @@ export function createEngine () {
 
     keysVoice: 'rhodes',
     leadVoice: 'whistle',
+    bassVoice: 'round',
 
     // When true, the arrangement chooses these voices itself.
     autoVoice: false,
     autoKeysVoice: false,
+    autoBassVoice: false,
 
     // Notified when a voice swap starts and when it is ready to play.
     onVoice: null,
@@ -181,6 +184,7 @@ export function createEngine () {
   function planVoices (arrangement) {
     let lead = state.leadVoice;
     let keysName = state.keysVoice;
+    let bassName = state.bassVoice;
 
     arrangement.forEach ((part, index) => {
       const previous = arrangement[index - 1];
@@ -197,8 +201,15 @@ export function createEngine () {
         keysName = pickFrom (KEYS_VOICE_NAMES.filter (name => name !== keysName));
       }
 
+      // The bass moves least often of the three. It is the foundation, and a
+      // foundation that keeps changing is not one.
+      if (followsADrop && Math.random() < 0.25) {
+        bassName = pickFrom (BASS_VOICE_NAMES.filter (name => name !== bassName));
+      }
+
       part.leadVoice = lead;
       part.keysVoice = keysName;
+      part.bassVoice = bassName;
     });
 
     return arrangement;
@@ -401,6 +412,7 @@ export function createEngine () {
     if (barInPart === 0) {
       if (state.autoVoice && plan.leadVoice) swapVoice ('lead', plan.leadVoice);
       if (state.autoKeysVoice && plan.keysVoice) swapVoice ('keys', plan.keysVoice);
+      if (state.autoBassVoice && plan.bassVoice) swapVoice ('bass', plan.bassVoice);
     }
 
     // Winding down to end the set: the last part sheds its layers a bar at a
@@ -556,11 +568,11 @@ export function createEngine () {
       throws "buffer is either not set or not loaded" on the next note. The old
       voice keeps playing until then, which also means the swap has no gap. */
   function swapVoice (kind, name) {
-    const table = kind === 'keys' ? KEYS_VOICES : LEAD_VOICES;
+    const table = kind === 'keys' ? KEYS_VOICES : kind === 'bass' ? BASS_VOICES : LEAD_VOICES;
     const factory = table[name];
     if (! factory) return;
 
-    const current = kind === 'keys' ? keys : lead;
+    const current = kind === 'keys' ? keys : kind === 'bass' ? bass : lead;
     if (current.name === name) return;
 
     const token = ++swapToken;
@@ -581,6 +593,10 @@ export function createEngine () {
         keys = next;
         state.keys = next.voice;
         state.keysVoice = name;
+      } else if (kind === 'bass') {
+        bass = next;
+        state.bass = next.voice;
+        state.bassVoice = name;
       } else {
         lead = next;
         state.lead = next.voice;
@@ -689,6 +705,10 @@ export function createEngine () {
 
     keysVoice (name) {
       swapVoice ('keys', name);
+    },
+
+    bassVoice (name) {
+      swapVoice ('bass', name);
     },
 
     leadVoice (name) {

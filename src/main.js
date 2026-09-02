@@ -118,6 +118,10 @@ mountVoiceChooser ('keysVoiceRow',
   ['rhodes', 'felt', 'piano', 'pad'],
   'rhodes', value => engine.controls.keysVoice (value), 'autoKeysVoice');
 
+mountVoiceChooser ('bassVoiceRow',
+  ['round', 'upright', 'sub', 'electric'],
+  'round', value => engine.controls.bassVoice (value), 'autoBassVoice');
+
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
 
