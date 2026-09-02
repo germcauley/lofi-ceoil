@@ -14,7 +14,9 @@ Everything is synthesised in the browser with [Tone.js](https://tonejs.github.io
 
 Most generative lofi toys roll new random notes every bar, which produces noodling rather than music. This one writes **phrases**.
 
-It works from **motifs**. Each cycle invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then plays them **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
+It plays in **tracks**. Each track holds its material for two to four turns — a tune played several times through, as a set does — then a new one begins, at its own tempo. Underneath, the arrangement, the energy arc, the voices and the counter textures keep moving.
+
+Within a track it works from **motifs**. Each cycle invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then plays them **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
 
 Bars 1 and 5 are always the plain statement and bars 4 and 8 are always cadences, so the two developments of a motif share a skeleton and differ only in the middles. That is what makes the repeat sound like a repeat.
 

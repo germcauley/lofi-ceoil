@@ -33,13 +33,14 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **13. Voice changes driven by the arrangement**
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
 - [x] **15. More bass voices**
-- [ ] **16. Radio mode — tracks that segue**
+- [x] **16. Radio mode — tracks that segue**
 - [ ] **17. Generated tune names**
-- [ ] **18. Save the current tune**
+- [ ] **18. Save the current tune — WAV download**
 - [ ] **19. Notation of the current tune** *(backlog)*
 - [x] **20. Sampled whistle and harp** *(fiddle still synthesised — no CC0 violin found)*
 - [ ] **21. More styles, slowed + reverb type music, trance, minimalism
 - [ ] **22. Animated DJ that actually controls the mix, tempo etc
+- [ ] **30. Liking a track, and learning from it**
 - [x] **23. Piano for chords, with an auto mode**
 - [x] **24. Ending a set — wind down, leave space, let the crackle run**
 - [x] **25. Moving between keys, through a pivot chord**
@@ -205,7 +206,17 @@ Coming back from a drop is exactly where an arrangement wants a new colour: the 
 
 The lead selector gained an `auto` option that hands the choice to the arrangement. Picking a voice by hand pins it. Verified across 900 part-pairs: 300 correct changes after a drop, 600 correct holds, zero errors in either direction.
 
-## 16. Radio mode — tracks that segue
+## 16. Radio mode — done
+
+**The problem was worse than "no radio".** The motifs were rebuilt every turn, so the tune changed every thirty-two bars and never settled — there was no track to recognise in the first place.
+
+A track now holds its material for **two to four turns**, which is a tune played several times through, exactly as a set does. Everything else keeps moving underneath: the arrangement, the energy arc, the voices, the counter textures. Each track also sits a few beats either side of where the tempo knob is set, so a set does not run at one speed all night — the knob became the centre a track varies around, as density and counter already had.
+
+Set endings are now tied to track boundaries. One mid-track would cut a tune off rather than finish it.
+
+Verified across four tracks: the motif was identical within every track and different across all of them, with tempos of 75, 72, 68 and 70 around a knob set to 72, and no scheduling failures.
+
+### Original notes
 
 Right now this plays one endless tune: the motifs rebuild every 32 bars, but the key, mode and tempo never change, so it is one piece forever. Radio mode makes each tune a **track** — a fixed set of key, mode, tempo, motifs, voices and bass patterns, held for three or four turns, perhaps five minutes — with the next one lined up and segued into.
 
@@ -448,3 +459,23 @@ Minor gained `i-iv-VII-III`, `i-VI-VII` and `i-VII-VI-v`; dorian `i-VII-i-IV` an
 
 - **12-bar blues** does not fit an eight-bar part. It would need the harmonic rhythm work in item 8 first.
 - **The Andalusian cadence** (i–♭VII–♭VI–V) needs a major V in a minor key, which means a raised seventh that natural minor does not contain. That is the chromatic-alteration limitation recorded at the end of this file, still open.
+
+---
+
+## 30. Liking a track, and learning from it
+
+A like button, and generation that leans toward what gets liked.
+
+**The learning part is tractable, because the parameters are already known.** A track is a small vector — key, mode, tempo, progression, motif shape, arc shape, voices, counter texture, comping pattern. A like is a labelled example. With enough of them the weighted picks throughout the generator could be biased toward combinations that get liked, which is a nudge to existing probabilities rather than a model.
+
+**The wrinkle is where the likes go.** This is a static site with no backend, which is the property that makes it a folder of files on Pages. Three options:
+
+1. **`localStorage`** — learns per listener, on their own machine. Honest, private, works today, and gets better the longer one person listens. It does not aggregate.
+2. **A backend** — aggregates across everyone and genuinely learns what *people* like rather than what one person likes. It also ends the no-server property, needs hosting, and puts you in charge of other people's data.
+3. **Export the likes** — a listener can download their liked tracks as JSON and send it on. No infrastructure, no privacy questions, and it works for gathering a first dataset before deciding whether option 2 is worth it.
+
+Worth starting with 1, since a listener hearing the machine drift toward their taste over an evening is the interesting half, and it needs nothing. Option 3 is a small addition on top and answers "what do people like" without a server.
+
+**Note the honest limit:** liking a *track* labels every parameter it had, most of which were not why you liked it. Dozens of likes are needed before the signal separates from the noise, and with one listener that is a long evening. Liking specific *moments* — this texture, this progression — would learn far faster from far fewer clicks, and is probably the better design.
+
+Pairs naturally with item 17: a track with a name is much easier to like than one without.

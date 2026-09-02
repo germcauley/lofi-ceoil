@@ -69,6 +69,11 @@ export function createEngine () {
     rootMidi: noteNameToMidi ('C3'),
     scale: 'dorian',
     tempo: 72,
+    tempoUser: 72,
+
+    // A track: one tune, held for several turns. Its motifs are its identity.
+    track: null,
+    trackNumber: 0,
     // The user's settings, and the values actually in force. The energy arc
     // scales the user's numbers rather than replacing them, so a knob still
     // means what it says — it sets the centre the arc swings around.
@@ -254,7 +259,11 @@ export function createEngine () {
   function planSetEnding () {
     state.turnsSinceEnding++;
 
-    if (state.turnsSinceEnding >= 4 && Math.random() < 0.3) {
+    // Only ever at the end of a track. A set ending mid-tune would cut the
+    // tune off rather than finish it.
+    const trackEnding = state.track && state.track.turnsLeft <= 0;
+
+    if (trackEnding && state.turnsSinceEnding >= 4 && Math.random() < 0.4) {
       state.endingSet = true;
       state.turnsSinceEnding = 0;
     }
@@ -394,15 +403,48 @@ export function createEngine () {
 
   const clamp01 = value => Math.max (0, Math.min (1, value));
 
-  function buildForm () {
+  /** Starts a new track: new material, a new tempo, and a fresh run of turns.
+
+      Until now the motifs were rebuilt every turn, so the tune changed every
+      thirty-two bars and never settled — there was no track to recognise. A
+      track holds its material for two to four turns, which is a tune played
+      several times through, exactly as a set does. Everything else keeps
+      moving underneath: the arrangement, the energy arc, the voices and the
+      counter textures. */
+  function startTrack () {
     const size = gappedPool (state.scale).length;
 
-    // Two motifs, each developed twice. The second development is the varied
-    // repeat: same opening bar, same cadence, different middle — which is what
-    // a player does on the repeat, and what makes AABB sound like a form
-    // rather than four unrelated phrases.
-    const motifA = createMotif();
-    const motifB = createMotif();
+    state.trackNumber++;
+    state.track = {
+      motifA: createMotif(),
+      motifB: createMotif(),
+      // Each track sits a few beats either side of where the tempo knob is
+      // set, so a set does not run at one speed all night.
+      tempoOffset: Math.round ((Math.random() - 0.5) * 8),
+      turnsLeft: 2 + Math.floor (Math.random() * 3),
+      size
+    };
+
+    const tempo = Math.max (50, Math.min (100, state.tempoUser + state.track.tempoOffset));
+    state.tempo = tempo;
+    Tone.getTransport().bpm.rampTo (tempo, 4);
+
+    return state.track;
+  }
+
+  function buildForm () {
+    // A track keeps its material until its turns run out. Rebuilding the
+    // motifs every turn is what stopped the tune ever settling.
+    if (! state.track || state.track.turnsLeft <= 0
+        || state.track.size !== gappedPool (state.scale).length) {
+      startTrack();
+    }
+
+    state.track.turnsLeft--;
+
+    const size = state.track.size;
+    const motifA = state.track.motifA;
+    const motifB = state.track.motifB;
 
     const partA = developPhrase (state.scale, size, motifA);
 
@@ -663,6 +705,8 @@ export function createEngine () {
     state.endingSet = false;
     state.resting = 0;
     state.turnsSinceEnding = 0;
+    state.track = null;
+    state.trackNumber = 0;
     state.pendingKey = null;
     state.pivot = null;
     state.running = false;
@@ -743,8 +787,9 @@ export function createEngine () {
 
   const controls = {
     tempo (value) {
-      state.tempo = value;
-      Tone.getTransport().bpm.rampTo (value, 0.4);
+      state.tempoUser = value;
+      state.tempo = Math.max (50, Math.min (100, value + (state.track?.tempoOffset ?? 0)));
+      Tone.getTransport().bpm.rampTo (state.tempo, 0.4);
     },
 
     swing (value) {
