@@ -33,6 +33,11 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **13. Voice changes driven by the arrangement**
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
 - [ ] **15. More bass voices**
+- [ ] **16. Radio mode — tracks that segue**
+- [ ] **17. Generated tune names**
+- [ ] **18. Save the current tune**
+- [ ] **19. Sheet music, as ABC**
+- [ ] **20. Sampled whistle, fiddle and harp**
 
 ---
 
@@ -188,6 +193,64 @@ Coming back from a drop is exactly where an arrangement wants a new colour: the 
 **As built.** A part following one that ended on an empty bar gets a *different* lead voice; otherwise the voice holds, because changing it every part would be a gimmick rather than an arrangement. Changes land on the part boundary, never mid-phrase.
 
 The lead selector gained an `auto` option that hands the choice to the arrangement. Picking a voice by hand pins it. Verified across 900 part-pairs: 300 correct changes after a drop, 600 correct holds, zero errors in either direction.
+
+## 16. Radio mode — tracks that segue
+
+Right now this plays one endless tune: the motifs rebuild every 32 bars, but the key, mode and tempo never change, so it is one piece forever. Radio mode makes each tune a **track** — a fixed set of key, mode, tempo, motifs, voices and bass patterns, held for three or four turns, perhaps five minutes — with the next one lined up and segued into.
+
+**The good news: the transition machinery already exists.** Empty bars and staged entrances were built for phrasing, and they are exactly how a lofi segue works. End the outgoing track on a drop, start the incoming one bare. No crossfade, no second engine, no doubled CPU — and Tone has only one Transport, so running two tracks at once would be the hard way to do this.
+
+Two things need care:
+
+- **Key relationship.** A jump to an unrelated key sounds like someone changed station. The next key should come from a pivot set — the relative major or minor, or up a fourth or fifth — so the move reads as a modulation rather than an edit. Better still, end the outgoing track on a chord the two keys share and simply continue into it.
+- **Tempo.** Tracks want different tempos, but a jump is jarring. `Transport.bpm.rampTo` over a bar or two carries it, and a slight rallentando into the drop would sound deliberate.
+
+## 17. Generated tune names
+
+Wistful, longing titles: *thinking of you here*, *why can't it rain every day*.
+
+**The wrinkle is that this is a static site, so it cannot hold an API key.** Anything shipped to the browser is readable, so a live LLM call would either expose a key or require a server — which would undo the fact that this whole thing is a folder of files on GitHub Pages.
+
+Three routes, and the third is clearly best:
+
+1. **A local grammar** — word banks and templates. Free, instant, offline, but the seams show after a dozen titles.
+2. **Live LLM** — best variety, but needs a proxy server or asks each listener for their own key.
+3. **Pre-generated at build time.** An LLM writes several hundred titles once; they ship as a JSON file; the app picks one per track. The quality of an LLM, none of the runtime cost, no key anywhere. Regenerate the pool whenever it starts to feel familiar.
+
+The title also wants somewhere to live on the panel — probably where the model plate sits now.
+
+## 18. Save the current tune
+
+Export what is playing, with **Ger McAuley** and this repository credited as composer.
+
+**This shares its foundation with the turntable.** Both need the master captured into a rolling buffer, so building item 14's capture worklet delivers most of this one for free. Build the capture once.
+
+From a captured buffer, two output routes:
+
+- **WAV** with a `LIST`/`INFO` chunk carrying artist and composer. No dependencies, but tag support is thin and not every player reads it.
+- **MP3** with proper ID3 tags via an encoder such as `lamejs`. Better metadata, at the cost of a dependency and encoding time.
+
+Worth also writing the **seed** into the metadata — the key, mode, tempo, motifs and voices that produced the track. A saved file that records how to regenerate itself is a nicer artefact than a bare audio export, and it costs one JSON blob in a comment field.
+
+## 19. Sheet music, as ABC
+
+The generator already works in scale degrees and MIDI, so it holds everything notation needs. The question is only which format.
+
+**ABC is the obvious answer, and not only on technical grounds.** It is *the* notation Irish traditional music is written and shared in — plain text, tiny, and directly pasteable into thesession.org. `abcjs` renders it in the browser and can play it back. For a Celtic tune generator, exporting anything else would be slightly missing the point. MusicXML remains worth adding later for anyone importing into MuseScore or Sibelius.
+
+Two things to decide:
+
+- **What gets notated.** The melody is the tune. Chords fit naturally as ABC chord symbols above the staff. The counter line is a second voice — ABC supports that, but a single staff with chord symbols is the idiomatic trad presentation and probably the right default.
+- **What the form looks like on paper.** Eight-bar A and B parts with repeat marks, which is exactly how a tune is written down — so the structure built in item 7 maps onto the page with no translation.
+
+## 20. Sampled whistle, fiddle and harp
+
+The piano proved the point: synthesis has a ceiling for acoustic instruments, and past it the honest move is samples.
+
+- **Whistle** and **fiddle** are the two most exposed voices and the two that most betray their oscillators. VCSL and VSCO 2 Community Edition are both CC0 and carry winds and strings.
+- **Harp** gets a sampled option too — but the current Karplus-Strong one **stays**. Its retro character is liked, and it is a genuinely different instrument rather than a worse version of a real harp. It should be renamed to say so, something like `harp (synth)` beside `harp`.
+
+Same lazy-load pattern as the piano: vendored, fetched only when chosen, with the panel showing a loading state. Each voice is roughly 500 kB, so they stay off the initial page load.
 
 ## 15. More bass voices
 
