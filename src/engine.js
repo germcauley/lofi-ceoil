@@ -5,7 +5,7 @@ import * as Tone from 'tone';
 import { createKeys, createBass, createLead, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
-import { createPhrase, varyPhrase, gappedPool, planCounter } from './melody.js';
+import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl } from './parts.js';
 
 export function createEngine () {
@@ -86,15 +86,26 @@ export function createEngine () {
       shape return is what separates a tune from noodling. */
   function buildForm () {
     const size = gappedPool (state.scale).length;
-    const a = createPhrase (state.scale, size);
-    const b = createPhrase (state.scale, size);
-    const phrases = [a, varyPhrase (a), b, varyPhrase (b)];
+
+    // Two motifs, each developed twice. The second development is the varied
+    // repeat: same opening bar, same cadence, different middle — which is what
+    // a player does on the repeat, and what makes AABB sound like a form
+    // rather than four unrelated phrases.
+    const motifA = createMotif();
+    const motifB = createMotif();
+
+    const phrases = [
+      developPhrase (state.scale, size, motifA),
+      developPhrase (state.scale, size, motifA),
+      developPhrase (state.scale, size, motifB),
+      developPhrase (state.scale, size, motifB)
+    ];
 
     // One figuration per phrase, held for its four bars. A and its variation
     // share a plan so the repeat sounds like the same music; B gets its own,
     // which is what makes the B section read as a change.
-    const planA = planCounter (a);
-    const planB = planCounter (b);
+    const planA = planCounter (phrases[0]);
+    const planB = planCounter (phrases[2]);
 
     state.form = phrases;
     state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];

@@ -19,7 +19,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 
 - [x] **1. Chord voice leading**
 - [x] **2. Per-mode progression sets, including the pop canon**
-- [ ] **3. Motif and development**
+- [x] **3. Motif and development**
 - [ ] **4. Chord-aware melody**
 - [ ] **5. Cadences and question/answer**
 - [ ] **6. Counter-line textures: imitation and heterophony**
@@ -48,9 +48,9 @@ Notable additions: **I–♭VII–IV** in mixolydian is where Irish traditional 
 
 ---
 
-## 3. Motif and development
+## 3. Motif and development — done
 
-**The problem, and the biggest one remaining.** `createPhrase` picks each note by weighted interval with a contour nudge. That is a *constrained random walk* — the current note is the only influence on the next. No idea is stated, so nothing can be developed, and `varyPhrase` can only perturb degrees by ±1, which is noise rather than development.
+**The problem.** `createPhrase` picks each note by weighted interval with a contour nudge. That is a *constrained random walk* — the current note is the only influence on the next. No idea is stated, so nothing can be developed, and `varyPhrase` can only perturb degrees by ±1, which is noise rather than development.
 
 Real tunes are built from **motifs**: a short cell, restated transformed.
 
@@ -65,6 +65,10 @@ Real tunes are built from **motifs**: a short cell, restated transformed.
 | **Truncation + extension** | First half, then continue differently | Keeps the opening recognisable |
 
 The randomness moves from *which note* to *which operation*, and every operation yields something coherent because it derives from material already accepted.
+
+**As built.** Bar 1 is always the plain statement and bar 4 is always a cadence, so two phrases developed from the same motif share their opening and their ending — which is what makes the repeat in an AABB sound like a repeat while still varying in the middle. Bar 2 is weighted heavily toward sequence; bar 3 is where the phrase develops further.
+
+Two rejection gates keep it honest. A **motif gate** requires three distinct pitches and a range between a second and a sixth, because a weak cell makes every bar derived from it inert. A **phrase gate** rejects a range over a tenth, more than two leaps in a row, or a note repeated more than three times.
 
 ## 4. Chord-aware melody
 

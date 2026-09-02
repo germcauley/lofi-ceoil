@@ -14,7 +14,11 @@ Everything is synthesised in the browser with [Tone.js](https://tonejs.github.io
 
 Most generative lofi toys roll new random notes every bar, which produces noodling rather than music. This one writes **phrases**.
 
-On each sixteen-bar cycle it composes two four-bar phrases and plays them as **AABB** — phrase A, a varied repeat of A, phrase B, a varied repeat of B. Hearing a shape come back is what makes a melody sound like a melody instead of a random walk, and varying the repeat instead of replacing it is how a player would actually handle a tune.
+It works from **motifs**. Each sixteen-bar cycle invents two one-bar cells and develops each into a four-bar phrase, then plays them **AABB**. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
+
+Bar 1 is always the plain statement and bar 4 is always a cadence, so the two developments of a motif share an opening and an ending while differing in the middle. That is what makes the repeat sound like a repeat.
+
+Two gates keep it honest: a motif needs three distinct pitches and a range between a second and a sixth, and a finished phrase is rejected if it spans more than a tenth, leaps more than twice in a row, or repeats a note more than three times.
 
 The melodic grammar leans Celtic and folk:
 
