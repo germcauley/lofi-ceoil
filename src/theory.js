@@ -191,6 +191,78 @@ export function voiceLead (previous, pitchClasses, targetMidi = 60, voices = 4) 
   return sorted;
 }
 
+/** The diatonic triads of a key, as pitch-class sets with a quality.
+
+    Triads rather than sevenths, because a seventh is far less likely to be
+    shared between two keys and a pivot only works if the chord genuinely
+    belongs to both. */
+export function diatonicTriads (rootMidi, scale) {
+  const triads = [];
+
+  for (let degree = 0; degree < 7; degree++) {
+    const root = scaleDegreeToMidi (rootMidi, scale, degree);
+    const third = scaleDegreeToMidi (rootMidi, scale, degree + 2);
+    const fifth = scaleDegreeToMidi (rootMidi, scale, degree + 4);
+
+    const thirdInterval = third - root;
+    const fifthInterval = fifth - root;
+
+    const quality = fifthInterval === 6 ? 'min7b5'
+      : thirdInterval === 4 ? 'maj'
+      : 'min';
+
+    triads.push ({
+      degree,
+      quality,
+      pitchClasses: new Set ([root % 12, third % 12, fifth % 12])
+    });
+  }
+
+  return triads;
+}
+
+function sameNotes (a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) if (! b.has (value)) return false;
+  return true;
+}
+
+/** Finds a chord belonging to both keys — a pivot.
+
+    A modulation across silence is an edit; a modulation through a chord that
+    belongs to both keys happens inside the music. The ear hears the pivot in
+    the old key, and then finds it has been in the new one all along.
+
+    The tonic of the outgoing key is rejected as a pivot: it is the least
+    ambiguous chord there is, and ambiguity is the whole mechanism. Returns
+    null when the keys share nothing, which is the signal to fall back to a
+    plain change. */
+export function findPivot (fromRoot, fromScale, toRoot, toScale) {
+  const from = diatonicTriads (fromRoot, fromScale);
+  const to = diatonicTriads (toRoot, toScale);
+
+  const options = [];
+
+  for (const a of from) {
+    if (a.degree === 0) continue;
+
+    for (const b of to) {
+      if (sameNotes (a.pitchClasses, b.pitchClasses)) {
+        options.push ({ fromDegree: a.degree, toDegree: b.degree, quality: a.quality });
+      }
+    }
+  }
+
+  if (! options.length) return null;
+
+  // Prefer a pivot that is a strong chord in the key we are arriving at —
+  // landing on its fourth or fifth sets up the new tonic.
+  const strong = options.filter (o => o.toDegree === 3 || o.toDegree === 4);
+  const pool = strong.length ? strong : options;
+
+  return pool[Math.floor (Math.random() * pool.length)];
+}
+
 /** Nudges a melody note onto a chord tone, but only ever by one scale step.
 
     Melody notes are chosen from a gapped pool with no knowledge of the chord

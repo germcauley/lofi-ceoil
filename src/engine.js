@@ -7,7 +7,7 @@ import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createP
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 import { createChain } from './effects.js';
-import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi } from './theory.js';
+import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi, findPivot } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, BASS_PATTERN_NAMES } from './parts.js';
 
@@ -92,6 +92,11 @@ export function createEngine () {
     endingSet: false,
     resting: 0,
     turnsSinceEnding: 0,
+
+    // A modulation in flight: where we are going, and the chord that belongs
+    // to both keys and carries us there.
+    pendingKey: null,
+    pivot: null,
 
     // Notified when the key moves on its own, so the panel can follow.
     onKey: null,
@@ -206,32 +211,71 @@ export function createEngine () {
     }
   }
 
-  /** Moves to a related key between tunes.
+  const RELATIVE_OF = { minor: 'major', dorian: 'mixolydian', major: 'minor', mixolydian: 'dorian' };
+  const MODES = ['major', 'minor', 'dorian', 'mixolydian'];
 
-      Only the safe moves: the relative major or minor, or up or down a fifth.
-      Those share most of their notes with where we were, so the change reads
-      as the set moving on rather than as an edit. Anything more adventurous is
-      worth doing deliberately rather than at random. */
-  function moveKey () {
-    const relativeOf = { minor: 'major', dorian: 'mixolydian', major: 'minor', mixolydian: 'dorian' };
-    const goingMinor = state.scale === 'major' || state.scale === 'mixolydian';
+  /** Chooses where to modulate to.
 
-    if (Math.random() < 0.5) {
+      Four moves, all defensible. The relative and the fifth share nearly every
+      note with where we are. A tone up is the lift a trad set uses. Modal
+      interchange keeps the tonic and changes only the mode, which is the
+      subtlest of the four — nothing moves, everything recolours. */
+  function chooseTargetKey () {
+    let root = state.rootMidi;
+    let scale = state.scale;
+    const roll = Math.random();
+
+    if (roll < 0.3) {
       // Relative: same notes, different centre.
-      state.rootMidi += goingMinor ? -3 : 3;
-      state.scale = relativeOf[state.scale] ?? state.scale;
-    } else {
+      const goingMinor = scale === 'major' || scale === 'mixolydian';
+      root += goingMinor ? -3 : 3;
+      scale = RELATIVE_OF[scale] ?? scale;
+    } else if (roll < 0.6) {
       // A fifth either way: one note different.
-      state.rootMidi += Math.random() < 0.5 ? 5 : -5;
+      root += Math.random() < 0.5 ? 5 : -5;
+    } else if (roll < 0.8) {
+      // Up a tone — the lift a set of tunes uses.
+      root += 2;
+    } else {
+      // Modal interchange: same tonic, new mode.
+      scale = pickFrom (MODES.filter (mode => mode !== scale));
     }
 
     // Keep the tonic in one octave so the register never drifts.
-    while (state.rootMidi < 48) state.rootMidi += 12;
-    while (state.rootMidi > 59) state.rootMidi -= 12;
+    while (root < 48) root += 12;
+    while (root > 59) root -= 12;
+
+    return { root, scale };
+  }
+
+  /** Sets up a modulation, finding a chord that belongs to both keys.
+
+      With a pivot the change happens inside the music: the ear hears the chord
+      in the old key and then finds it has been in the new one all along.
+      Without one — the keys share nothing — it falls back to a plain change,
+      which is why the pivot is optional rather than required. */
+  function beginModulation () {
+    const target = chooseTargetKey();
+    const pivot = findPivot (state.rootMidi, state.scale, target.root, target.scale);
+
+    state.pendingKey = target;
+    state.pivot = pivot ? [pivot.fromDegree, pivot.quality] : null;
+
+    return pivot;
+  }
+
+  function applyPendingKey () {
+    if (! state.pendingKey) return;
+
+    state.rootMidi = state.pendingKey.root;
+    state.scale = state.pendingKey.scale;
+    state.pendingKey = null;
+    state.pivot = null;
 
     const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
     state.progression = set[Math.floor (Math.random() * set.length)];
     state.previousVoicing = null;
+    state.form = null;
 
     if (state.onKey) {
       const name = NOTE_NAMES[state.rootMidi % 12];
@@ -298,7 +342,7 @@ export function createEngine () {
 
       if (state.resting === 0) {
         Tone.getTransport().bpm.rampTo (state.tempo, 2.5);
-        moveKey();
+        applyPendingKey();
         state.form = null;
         state.formOffset = state.barIndex + 1;
       }
@@ -314,10 +358,19 @@ export function createEngine () {
     }
 
     const chords = state.progression.chords;
-    const chordSpec = chords[state.barIndex % chords.length];
+
+    // A pivot chord replaces the progression for the bars that carry the
+    // modulation. It belongs to both keys, so it is the seam.
+    const chordSpec = state.pivot ?? chords[state.barIndex % chords.length];
 
     // Four eight-bar parts: A A B B, so a full turn of the tune is 32 bars.
     const positionInForm = (state.barIndex - state.formOffset) % 32;
+
+    // A mid-flight modulation lands at the top of a turn, and must be applied
+    // before the form is built — otherwise the phrases are written for the key
+    // we are leaving and then played in the one we arrived at.
+    if (positionInForm === 0 && state.pendingKey && ! state.endingSet) applyPendingKey();
+
     if (! state.form || positionInForm === 0) buildForm();
 
     const phrase = state.form[Math.floor (positionInForm / 8)];
@@ -340,7 +393,25 @@ export function createEngine () {
     if (winding && barInPart === 4) {
       const barSeconds = (60 / state.tempo) * 4;
       Tone.getTransport().bpm.rampTo (state.tempo * 0.82, barSeconds * 4);
+
+      // Decide where the next tune is going now, so the last bars can lean on
+      // a chord shared with it.
+      beginModulation();
     }
+
+    // Occasionally a tune modulates without stopping — the pivot lands on the
+    // turn's last bar and the new key begins on the next one. Rarer than a set
+    // ending, because a modulation nobody was expecting should be a surprise
+    // rather than a habit.
+    if (! winding && ! state.pendingKey && positionInForm === 31
+        && state.turnsSinceEnding >= 2 && Math.random() < 0.12) {
+      if (! beginModulation()) {
+        // No shared chord, so there is no seam to hide the change in. Leave it.
+        state.pendingKey = null;
+        state.pivot = null;
+      }
+    }
+
 
     if (winding && barInPart === 7) {
       // Two to four bars of nothing but crackle before the next tune.
@@ -441,6 +512,8 @@ export function createEngine () {
     state.endingSet = false;
     state.resting = 0;
     state.turnsSinceEnding = 0;
+    state.pendingKey = null;
+    state.pivot = null;
     state.running = false;
   }
 

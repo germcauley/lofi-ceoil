@@ -42,7 +42,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **22. Animated DJ that actually controls the mix, tempo etc
 - [x] **23. Piano for chords, with an auto mode**
 - [x] **24. Ending a set — wind down, leave space, let the crackle run**
-- [~] **25. Moving between keys** — the safe moves are in; the adventurous ones are still open
+- [x] **25. Moving between keys, through a pivot chord**
 
 ---
 
@@ -343,19 +343,24 @@ The bar count keeps running through the pause so the transport never stops. A `f
 
 Verified end to end: wind-down, two bars of crackle alone, key moved, form rebuilt, tempo restored, no scheduling failures.
 
-## 25. Moving between keys — partly done
+## 25. Moving between keys — done
 
-**What is in.** Between tunes, at a set ending, the key moves. Only the safe options: the **relative major or minor** — same notes, different centre — or **up or down a fifth**, which changes one note. Both share nearly everything with where we were, so the change reads as the set moving on rather than as an edit. The mode moves with it, since dorian's relative is mixolydian just as minor's is major.
+**Four moves.** The **relative** major or minor and a **fifth** either way share nearly every note with where we are. **Up a tone** is the lift a trad set uses. **Modal interchange** keeps the tonic and changes only the mode — nothing moves, everything recolours, and it is the subtlest of the four.
 
-The tonic is kept inside one octave so the register never drifts, and the panel's key and mode buttons follow the change — otherwise they quietly stop describing what is playing.
+**And a pivot to carry it.** A modulation across silence is an edit; a modulation through a chord belonging to *both* keys happens inside the music. The ear hears the chord in the old key and then finds it has been in the new one all along.
 
-Exercised over 500 consecutive moves: never out of octave, never an unknown mode, reaching 24 distinct key and mode pairs.
+`findPivot` compares the diatonic triads of both keys and returns one they share — triads rather than sevenths, because a seventh is far less likely to be common and a pivot only works if the chord genuinely belongs to both. The outgoing tonic is rejected: it is the least ambiguous chord there is, and ambiguity is the mechanism. Where two keys are strong in the arriving key — its fourth or fifth — those are preferred, because they set up the new tonic.
 
-**What is still open, and worth deciding together.** More adventurous moves are defensible but want intent rather than a dice roll:
+Across all 92 key and mode pairs the move set can produce, **63% have a pivot**; the rest fall back to a plain change, which is why the pivot is optional rather than required. Zero pivots were wrong — every one's notes belong to both keys.
 
-- **Up a tone** (C to D), very common in trad sets and a real lift.
-- **Chromatic mediants** (C to A♭ or E), which sound cinematic rather than folk — probably wrong here, but striking.
-- **Modal interchange** — staying on the same tonic and changing only the mode, which is the subtlest move of all and might be better than any transposition.
-- **Pivot chords** — ending the outgoing tune on a chord both keys share, so the move happens *inside* the music rather than across a gap. This is the one I would build next, and it pairs with radio mode.
+**Two places it happens.** At a set ending, the target is chosen as the wind-down begins so the last bars can lean on the shared chord. And occasionally — 12%, and never straight after a set ending — a tune **modulates without stopping**: the pivot lands on the turn's final bar and the new key begins on the next one.
 
-Also unresolved: whether a key move should always coincide with a set ending, or whether the tune should occasionally modulate mid-flight.
+That answers the open question: it does both. A modulation nobody was expecting should be a surprise rather than a habit, so the mid-flight one is rarer than the set ending.
+
+One ordering trap worth recording: the key must be applied **before** the form is built. Otherwise the phrases are written for the key being left and then played in the one just arrived at.
+
+Verified live: E♭ mixolydian to F mixolydian, up a tone, carried by a C minor pivot — vi in the old key, v in the new. Arrived exactly where planned, with no scheduling failures.
+
+### Still open
+
+- **Chromatic mediants** (C to A♭). Cinematic rather than folk. Probably wrong here, but striking, and the pivot machinery would find no shared chord so it would land as a hard change — which may be the point.

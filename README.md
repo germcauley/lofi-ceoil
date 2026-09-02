@@ -63,7 +63,9 @@ Phrases can begin with an **anacrusis** — a pickup into the answering sentence
 
 Notes can also **tie over the barline**, but only where the next bar starts with a rest, so a sustained note fills silence rather than colliding with the next attack. About a fifth of parts carry one.
 
-Every so often — no more than once in seven or eight turns — the tune **ends a set** rather than rolling on. The last part sheds a layer at a time, the tempo eases off, the melody lands on its cadence, and two to four bars of nothing but surface noise follow before the next tune starts in a **related key**: the relative major or minor, or a fifth away. The panel's key and mode buttons follow it.
+Every so often — no more than once in seven or eight turns — the tune **ends a set** rather than rolling on. The last part sheds a layer at a time, the tempo eases off, the melody lands on its cadence, and two to four bars of nothing but surface noise follow before the next tune starts in a **new key**.
+
+Keys move four ways: the relative major or minor, a fifth either way, up a tone, or modal interchange — same tonic, new mode. Where the two keys share a chord, that **pivot** carries the change, so the ear hears it in the old key and then finds it has been in the new one all along. Tunes occasionally modulate this way *without* stopping, which is rarer still. The panel's key and mode buttons follow it either way.
 
 ## The controls
 
