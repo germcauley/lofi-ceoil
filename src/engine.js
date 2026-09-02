@@ -94,11 +94,30 @@ export function createEngine () {
     const motifA = createMotif();
     const motifB = createMotif();
 
+    const partA = developPhrase (state.scale, size, motifA);
+
+    // The B part — "the turn" — sits higher than the A part, which is how trad
+    // tunes are built and the clearest signal that the form has moved on.
+    //
+    // A fixed shift is not enough: B has its own motif, whose shape can more
+    // than cancel it out. So the shift is raised until the turn actually sits
+    // above the A part, which is the thing the listener hears.
+    const mean = part => part.reduce ((sum, e) => sum + e.degree, 0) / part.length;
+    const target = mean (partA) + 1.5;
+
+    let partBShift = 2;
+    let partB = developPhrase (state.scale, size, motifB, 0.28, partBShift);
+
+    while (partBShift < 6 && mean (partB) < target) {
+      partBShift++;
+      partB = developPhrase (state.scale, size, motifB, 0.28, partBShift);
+    }
+
     const phrases = [
+      partA,
       developPhrase (state.scale, size, motifA),
-      developPhrase (state.scale, size, motifA),
-      developPhrase (state.scale, size, motifB),
-      developPhrase (state.scale, size, motifB)
+      partB,
+      developPhrase (state.scale, size, motifB, 0.28, partBShift)
     ];
 
     // One figuration per phrase, held for its four bars. A and its variation
@@ -117,17 +136,18 @@ export function createEngine () {
     const chords = state.progression.chords;
     const chordSpec = chords[state.barIndex % chords.length];
 
-    if (! state.form || state.barIndex % 16 === 0) buildForm();
+    // Four eight-bar parts: A A B B, so a full turn of the tune is 32 bars.
+    if (! state.form || state.barIndex % 32 === 0) buildForm();
 
-    const positionInForm = state.barIndex % 16;
-    const phrase = state.form[Math.floor (positionInForm / 4)];
+    const positionInForm = state.barIndex % 32;
+    const phrase = state.form[Math.floor (positionInForm / 8)];
 
     playChord (state, time, chordSpec);
     playBass (state, time, chordSpec);
     playDrums (state, time);
-    playMelody (state, time, positionInForm % 4, phrase, chordSpec);
-    playCounter (state, time, positionInForm % 4, chordSpec,
-                 state.counterPlans?.[Math.floor (positionInForm / 4)], phrase);
+    playMelody (state, time, positionInForm % 8, phrase, chordSpec);
+    playCounter (state, time, positionInForm % 8, chordSpec,
+                 state.counterPlans?.[Math.floor (positionInForm / 8)], phrase);
     playDrone (state, time);
     playVinyl (state, time);
 
@@ -142,7 +162,7 @@ export function createEngine () {
     state.barIndex++;
 
     if (state.onBar) {
-      const texture = state.counterPlans?.[Math.floor (positionInForm / 4)]?.texture ?? '';
+      const texture = state.counterPlans?.[Math.floor (positionInForm / 8)]?.texture ?? '';
       Tone.getDraw().schedule (
         () => state.onBar (bar, state.progression.name + (texture ? ' · ' + texture : '')), time);
     }

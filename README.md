@@ -14,9 +14,9 @@ Everything is synthesised in the browser with [Tone.js](https://tonejs.github.io
 
 Most generative lofi toys roll new random notes every bar, which produces noodling rather than music. This one writes **phrases**.
 
-It works from **motifs**. Each sixteen-bar cycle invents two one-bar cells and develops each into a four-bar phrase, then plays them **AABB**. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
+It works from **motifs**. Each cycle invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then plays them **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
 
-Bar 1 is always the plain statement and bar 4 is always a cadence, so the two developments of a motif share an opening and an ending while differing in the middle. That is what makes the repeat sound like a repeat.
+Bars 1 and 5 are always the plain statement and bars 4 and 8 are always cadences, so the two developments of a motif share a skeleton and differ only in the middles. That is what makes the repeat sound like a repeat.
 
 Two gates keep it honest: a motif needs three distinct pitches and a range between a second and a sixth, and a finished phrase is rejected if it spans more than a tenth, leaps more than twice in a row, or repeats a note more than three times.
 
@@ -27,7 +27,9 @@ The melodic grammar leans Celtic and folk:
 - **Arched contour.** Each phrase rises toward a peak bar and falls back, coming to rest on the tonic. That cadence is what makes a phrase sound finished.
 - **Cuts.** Fast grace notes flicked in above the main note. This single ornament does more for the folk character than any amount of note choice.
 
-Phrases are shaped as a **question and an answer**: bar 2 lands on the fifth or second — a half cadence, leaving it open — and bar 4 closes on the tonic using a stock formula. That is what makes four bars feel like a sentence rather than four bars.
+Each part is two four-bar sentences shaped as a **question and an answer**: the first stops on a half cadence — the fifth or the second, leaving it open — and the second closes on the tonic. That is what makes eight bars feel like a sentence rather than eight bars.
+
+The **B part sits higher** than the A part, as the turn does in trad. A fixed shift is not enough, since B's own motif can cancel it out, so the shift is raised until the turn genuinely sits above the A part.
 
 There is a second line too, in one of three **textures** chosen per phrase. *Figuration* arpeggiates the chord into the melody's rests. *Imitation* answers with the melody's previous bar an octave down — canon, carried across the phrase boundary so it never falls silent. *Heterophony* plays the same tune thinned to its longer notes and nudged fractionally late, the way a second player sits behind the lead; it is the traditional Celtic texture and the one almost nobody implements.
 

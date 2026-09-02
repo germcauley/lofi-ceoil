@@ -23,7 +23,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **4. Chord-aware melody**
 - [x] **5. Cadences and question/answer**
 - [x] **6. Counter-line textures: imitation and heterophony**
-- [ ] **7. Eight-bar parts with a higher turn**
+- [x] **7. Eight-bar parts with a higher turn**
 - [ ] **8. Comping rhythms and harmonic rhythm**
 - [ ] **9. Long-form structure**
 
@@ -111,9 +111,15 @@ Currently the counter line is *figuration* — an arpeggio. It fills space intel
 
 Both echo textures are fitted to the current chord, since the harmony has moved on since the melody played that material. The active texture is shown next to the progression in the readout.
 
-## 7. Eight-bar parts with a higher turn
+## 7. Eight-bar parts with a higher turn — done
 
-Irish tunes are **8-bar parts**, AABB, and the B part — "the turn" — typically starts a register higher. We are at 4-bar phrases. This is the most idiomatic structural change available, and it gives the listener a shape spanning minutes rather than seconds.
+Irish tunes are **8-bar parts**, AABB, and the B part — "the turn" — typically starts a register higher.
+
+**As built.** A part is two four-bar sentences: the first states the material and stops on a **half cadence**, leaving the question open; the second restates it and closes on the **tonic**. Bars 1 and 5 are always the plain statement and bars 4 and 8 are always cadences, so two parts from the same motif share a skeleton and differ only in the middles.
+
+A full turn of the tune is now **32 bars** — roughly a minute and three quarters at 72 bpm — so the form spans minutes rather than seconds.
+
+The turn needed more care than a fixed shift. B has its own motif, whose shape can more than cancel a constant +2, so the shift is **raised until the B part's mean degree actually sits above A's**. Measured live: A at 5.03, B at 7.69, a turn 2.66 degrees higher. Over 300 generated parts every bar totals exactly eight quavers, half cadences land on the fifth or second, and full cadences on the tonic 300/300.
 
 ## 8. Comping rhythms and harmonic rhythm
 

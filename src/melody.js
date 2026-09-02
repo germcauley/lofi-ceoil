@@ -53,7 +53,7 @@ const RHYTHMS = [
 //         what turns the first two bars into a question
 const CADENCE_FORMULAS = {
   full: [[2, 1, 0], [4, 2, 0], [1, 0], [2, 0], [0]],
-  half: [[0, 1, 4], [2, 4], [1, 4], [4]]
+  half: [[0, 1, 4], [2, 4], [1, 4], [4], [0, 2, 1], [4, 2, 1]]
 };
 
 // Rhythms indexed by how many notes the formula needs.
@@ -231,21 +231,6 @@ function renderCadence (bar, poolSize, kind = 'full') {
   return events;
 }
 
-/** Turns the end of the antecedent into a question by landing it on an
-    unstable degree. Whichever of the fifth or second is nearer is used, so the
-    development keeps its shape and only its last note is redirected. */
-function applyHalfCadence (events, poolSize) {
-  if (! events.length) return events;
-
-  const last = events[events.length - 1];
-  const options = [4, 1];
-  const target = options.reduce ((best, option) =>
-    Math.abs (option - last.degree) < Math.abs (best - last.degree) ? option : best);
-
-  last.degree = clampDegree (target, poolSize);
-  return events;
-}
-
 /** Rejects phrases that would sound wrong regardless of how they were built.
     Cheap, and it is what lets the operations stay adventurous. */
 function isSingable (events) {
@@ -279,40 +264,44 @@ function isSingable (events) {
   return true;
 }
 
-/** Builds a four-bar phrase from a motif: statement, development, further
-    development, cadence.
+/** Builds an eight-bar part from a motif — the length an Irish tune actually
+    comes in.
 
-    Bar one and bar four are always the plain statement and the cadence, so two
-    phrases built from the same motif share their opening and their ending.
-    That is what makes the repeat in an AABB sound like a repeat while still
-    being varied in the middle. */
-export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28) {
-  const startDegree = Math.round (poolSize * 0.35);
+    A part is two four-bar sentences. The first states the material and stops
+    on a half cadence, leaving the question open; the second restates it and
+    closes on the tonic. Bar 1 and bar 5 are always the plain statement and
+    bars 4 and 8 are always cadences, so two parts developed from the same
+    motif share their skeleton and differ only in the middles — which is what
+    makes the repeat in an AABB sound like a repeat.
+
+    `registerShift` lifts the whole part, used for the B part: in trad the
+    second part, "the turn", typically sits higher than the first. */
+export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, registerShift = 0) {
+  const startDegree = Math.round (poolSize * 0.35) + registerShift;
   const peak = startDegree + 2;
 
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const events = [
-      ...renderCell (OPERATIONS.repeat (motif), 0, startDegree, poolSize, ornamentBias),
-      ...applyHalfCadence (
-        renderCell (OPERATIONS[pick (BAR_TWO_OPERATIONS)] (motif), 1, peak, poolSize, ornamentBias),
-        poolSize),
-      ...renderCell (OPERATIONS[pick (BAR_THREE_OPERATIONS)] (motif), 2, startDegree, poolSize, ornamentBias),
-      ...renderCadence (3, poolSize, 'full')
-    ];
+  const sentence = (offset, closing) => [
+    ...renderCell (OPERATIONS.repeat (motif), offset, startDegree, poolSize, ornamentBias),
+    ...renderCell (OPERATIONS[pick (BAR_TWO_OPERATIONS)] (motif), offset + 1, peak, poolSize, ornamentBias),
+    ...renderCell (OPERATIONS[pick (BAR_THREE_OPERATIONS)] (motif), offset + 2, startDegree, poolSize, ornamentBias),
+    ...renderCadence (offset + 3, poolSize, closing)
+  ];
 
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const events = [...sentence (0, 'half'), ...sentence (4, 'full')];
     if (isSingable (events)) return events;
   }
 
-  // Nothing passed: fall back to the plainest possible reading of the motif,
-  // still shaped as a question and an answer.
-  return [
-    ...renderCell (OPERATIONS.repeat (motif), 0, startDegree, poolSize, ornamentBias),
-    ...applyHalfCadence (
-      renderCell (OPERATIONS.repeat (motif), 1, startDegree, poolSize, ornamentBias),
-      poolSize),
-    ...renderCell (OPERATIONS.repeat (motif), 2, startDegree, poolSize, ornamentBias),
-    ...renderCadence (3, poolSize, 'full')
+  // Nothing passed: the plainest possible reading of the motif, still shaped
+  // as a question and an answer.
+  const plain = (offset, closing) => [
+    ...renderCell (OPERATIONS.repeat (motif), offset, startDegree, poolSize, ornamentBias),
+    ...renderCell (OPERATIONS.repeat (motif), offset + 1, startDegree, poolSize, ornamentBias),
+    ...renderCell (OPERATIONS.repeat (motif), offset + 2, startDegree, poolSize, ornamentBias),
+    ...renderCadence (offset + 3, poolSize, closing)
   ];
+
+  return [...plain (0, 'half'), ...plain (4, 'full')];
 }
 
 /** Convenience for callers that just want a phrase and do not care about
@@ -383,11 +372,11 @@ export function planCounter (phrase) {
 /** For each bar of the phrase, which eighth-note slots the melody is sounding
     in. The counter line uses this to stay out of the way. */
 function busyMap (phrase) {
-  const bars = [[], [], [], []].map (() => new Array (8).fill (false));
+  const bars = Array.from ({ length: 8 }, () => new Array (8).fill (false));
 
   for (const event of phrase) {
     const bar = Math.floor (event.at / 8);
-    if (bar > 3) continue;
+    if (bar > 7) continue;
 
     for (let i = 0; i < event.length; i++) {
       const slot = (event.at % 8) + i;

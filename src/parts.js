@@ -245,9 +245,9 @@ function renderEcho (state, time, events, chordSpec, offsetSeconds, velocity) {
 function playImitation (state, time, barInPhrase, chordSpec, phrase) {
   if (! phrase) return;
 
-  // Bar 0 answers bar 3, so the canon carries across the phrase boundary
-  // instead of falling silent every four bars.
-  const source = (barInPhrase + 3) % 4;
+  // Bar 0 answers bar 7, so the canon carries across the part boundary instead
+  // of falling silent at the start of every part.
+  const source = (barInPhrase + 7) % 8;
   const events = phrase.filter (e => Math.floor (e.at / 8) === source);
 
   renderEcho (state, time, events, chordSpec, 0, 0.34 + state.counter * 0.16);
