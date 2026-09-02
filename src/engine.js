@@ -6,7 +6,7 @@ import { createKeys, createBass, createLead, createDrums, createDrone, createPlu
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
-import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl } from './parts.js';
+import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, BASS_PATTERN_NAMES } from './parts.js';
 
 export function createEngine () {
   const chain = createChain();
@@ -59,6 +59,9 @@ export function createEngine () {
     // Carried between bars so each chord can voice-lead from the last.
     previousVoicing: null,
 
+    // Which layers play in which part of the turn.
+    arrangement: null,
+
     progression: PROGRESSIONS.dorian[0],
 
     barIndex: 0,
@@ -84,6 +87,37 @@ export function createEngine () {
 
   /** AABB: a phrase, its variation, a second phrase, its variation. Hearing a
       shape return is what separates a tune from noodling. */
+  const pickFrom = arr => arr[Math.floor (Math.random() * arr.length)];
+
+  /** Decides which layers play in each of the turn's four parts.
+
+      Everything entering at once and never stopping is what makes a generative
+      piece sound like a loop rather than an arrangement. So parts get staged
+      entrances: a turn often opens with the tune almost alone, drums arrive
+      partway through the first part, and they pull back before the end of the
+      last one. */
+  function buildArrangement () {
+    // Open with the melody carrying it: no drums, no bass, chords held back a
+    // couple of bars so the motif is stated in the clear.
+    const openBare = Math.random() < 0.45;
+
+    return [0, 1, 2, 3].map (part => {
+      const first = part === 0;
+      const last = part === 3;
+
+      return {
+        bass: first && openBare ? 'none' : pickFrom (BASS_PATTERN_NAMES),
+        chordsFrom: first && openBare ? 2 : 0,
+        // 8 means the layer never arrives in this part.
+        drumsFrom: first ? (openBare ? 8 : 4) : 0,
+        // Pulling the drums before the end of the last part lets the turn
+        // breathe instead of stopping dead.
+        drumsUntil: last ? 6 : 8,
+        counter: ! (first && openBare)
+      };
+    });
+  }
+
   function buildForm () {
     const size = gappedPool (state.scale).length;
 
@@ -127,6 +161,7 @@ export function createEngine () {
     const planB = planCounter (phrases[2]);
 
     state.form = phrases;
+    state.arrangement = buildArrangement();
     state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];
     state.counterPlans[1].pattern = planA.pattern;
     state.counterPlans[3].pattern = planB.pattern;
@@ -142,12 +177,23 @@ export function createEngine () {
     const positionInForm = state.barIndex % 32;
     const phrase = state.form[Math.floor (positionInForm / 8)];
 
-    playChord (state, time, chordSpec);
-    playBass (state, time, chordSpec);
-    playDrums (state, time);
-    playMelody (state, time, positionInForm % 8, phrase, chordSpec);
-    playCounter (state, time, positionInForm % 8, chordSpec,
-                 state.counterPlans?.[Math.floor (positionInForm / 8)], phrase);
+    const partIndex = Math.floor (positionInForm / 8);
+    const barInPart = positionInForm % 8;
+    const plan = state.arrangement?.[partIndex] ?? {};
+
+    if (barInPart >= (plan.chordsFrom ?? 0)) playChord (state, time, chordSpec);
+    if (plan.bass && plan.bass !== 'none') playBass (state, time, chordSpec, plan.bass);
+
+    if (barInPart >= (plan.drumsFrom ?? 0) && barInPart < (plan.drumsUntil ?? 8)) {
+      playDrums (state, time);
+    }
+
+    playMelody (state, time, barInPart, phrase, chordSpec);
+
+    if (plan.counter !== false) {
+      playCounter (state, time, barInPart, chordSpec, state.counterPlans?.[partIndex], phrase);
+    }
+
     playDrone (state, time);
     playVinyl (state, time);
 
@@ -162,7 +208,7 @@ export function createEngine () {
     state.barIndex++;
 
     if (state.onBar) {
-      const texture = state.counterPlans?.[Math.floor (positionInForm / 8)]?.texture ?? '';
+      const texture = state.counterPlans?.[partIndex]?.texture ?? '';
       Tone.getDraw().schedule (
         () => state.onBar (bar, state.progression.name + (texture ? ' · ' + texture : '')), time);
     }
@@ -202,6 +248,7 @@ export function createEngine () {
 
     state.barIndex = 0;
     state.previousVoicing = null;
+    state.arrangement = null;
     state.running = false;
   }
 

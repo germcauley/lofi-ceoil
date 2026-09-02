@@ -49,18 +49,44 @@ export function playChord (state, time, chordSpec) {
   }
 }
 
-export function playBass (state, time, chordSpec) {
+// Bass patterns as positions in eighths, with the scale step above the chord
+// root and an optional octave lift. Having a library rather than one fixed
+// figure is most of what stops the low end sounding like a metronome — and
+// `sparse` deliberately leaves the downbeat empty, which is the only way the
+// bar stops being bass-driven.
+export const BASS_PATTERNS = {
+  root:       [{ at: 0, step: 0, len: 6 }],
+  held:       [{ at: 0, step: 0, len: 8 }],
+  rootFifth:  [{ at: 0, step: 0, len: 3 }, { at: 4, step: 4, len: 3 }],
+  octave:     [{ at: 0, step: 0, len: 3 }, { at: 4, step: 0, len: 3, oct: 1 }],
+  walk:       [{ at: 0, step: 0, len: 3 }, { at: 4, step: 4, len: 2 }, { at: 6, step: 2, len: 2 }],
+  // Pushes the root a quaver early, so the bar arrives before the downbeat.
+  anticipate: [{ at: 0, step: 0, len: 5 }, { at: 7, step: 0, len: 1 }],
+  // No downbeat at all: the bar opens on the chord and the melody instead.
+  sparse:     [{ at: 2, step: 0, len: 5 }]
+};
+
+export const BASS_PATTERN_NAMES = Object.keys (BASS_PATTERNS);
+
+export function playBass (state, time, chordSpec, patternName = 'root') {
   const { bass, rootMidi, scale } = state;
-  const [degree, quality] = chordSpec;
+  const [degree] = chordSpec;
+
+  const pattern = BASS_PATTERNS[patternName] ?? BASS_PATTERNS.root;
+  const eighth = Tone.Time ('8n').toSeconds();
+
   // The bass takes the chord's actual root, independent of how the keys are
   // voiced — voice leading moves the upper parts, not the foundation.
   const root = scaleDegreeToMidi (rootMidi, scale, degree) - 12;
-  bass.triggerAttackRelease (midiToNoteName (root), '4n.', jitter (time, time, 0.012), 0.75);
 
-  if (chance (0.55)) {
-    const fifth = root + (chance (0.3) ? 12 : 7);
-    const at = jitter (time, time + Tone.Time ('2n').toSeconds(), 0.012);
-    bass.triggerAttackRelease (midiToNoteName (fifth), '4n', at, 0.55);
+  for (const note of pattern) {
+    const midi = scaleDegreeToMidi (root, scale, note.step) + (note.oct ?? 0) * 12;
+
+    bass.triggerAttackRelease (
+      midiToNoteName (midi),
+      Math.max (0.1, note.len * eighth - 0.04),
+      jitter (time, time + note.at * eighth, 0.012),
+      note.at === 0 ? 0.75 : 0.55);
   }
 }
 

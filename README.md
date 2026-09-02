@@ -43,6 +43,12 @@ It also runs in contrary motion: when the melody climbs across a phrase, the fig
 
 Melody notes are **fitted to the chord** as they play. Anything exposed — on a strong beat and at least a quaver long, or longer than that anywhere — is nudged onto a chord tone, but never by more than one scale step, so the motif's shape is preserved rather than overwritten. Short passing notes are left dissonant, because that is what they are for. It takes exposed notes from under half landing on chord tones to virtually all of them, without a single change of melodic direction.
 
+Rhythm cells carry rests as well as notes, so a bar can start after the downbeat or stop before the barline — about a fifth do each. Without that the melody never stops and every bar lands on the beat, which is what makes a generated tune sound locked to a grid.
+
+The bass has a pattern library rather than one figure — root, held, root-fifth, octave, walk, *anticipate* (pushing the root a quaver early so the bar arrives before the downbeat) and *sparse* (no downbeat at all). One is chosen per part.
+
+Each turn also gets an **arrangement**: which layers play in which of its four parts, when the drums arrive and when they pull back. Nearly half of all turns open bare — no drums, no bass, chords held back two bars — so the motif is stated in the clear before anything joins it.
+
 Underneath, chords come from **per-mode progression sets** written in roman numerals, so they transpose to any key for free. Each mode gets its own, because the chords that define a mode only exist in that mode — dorian's major IV comes from its raised sixth, mixolydian's major ♭VII from its flat seventh. The sets include the pop canon (I–V–vi–IV and friends) alongside the modal vamps; chord progressions are unprotectable common material, so they are free to use.
 
 Chords **voice-lead**: each voice moves to the nearest tone of the next chord and common tones stay put, which averages a little over one semitone of movement per voice. Re-voicing each chord independently is what makes block chords sound blocky. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.

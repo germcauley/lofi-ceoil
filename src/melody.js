@@ -30,18 +30,35 @@ const GAPPED = {
   mixolydian: [0, 1, 2, 3, 4, 6]
 };
 
-// Rhythms over an eight-step (eighth note) bar, as lengths in eighths. The
-// dotted groupings are the lilt; straight runs give it somewhere to go.
+// Rhythms over an eight-step (eighth note) bar. `start` is where the bar's
+// first note falls and `lengths` are the note values from there.
+//
+// The rests matter more than the notes. An earlier version had every cell
+// filling all eight quavers from position zero, which meant the tune never
+// stopped and every bar landed on the downbeat — a wall of notes locked to the
+// beat. Cells that start late, or stop early, are what give the melody
+// phrasing and leave room for the second voice.
 const RHYTHMS = [
-  [3, 1, 2, 2],
-  [2, 2, 3, 1],
-  [3, 1, 3, 1],
-  [2, 1, 1, 2, 2],
-  [4, 2, 2],
-  [3, 3, 2],
-  [2, 2, 2, 2],
-  [6, 2],
-  [1, 1, 2, 4]
+  // filling the bar — the lilt
+  { start: 0, lengths: [3, 1, 2, 2] },
+  { start: 0, lengths: [2, 2, 3, 1] },
+  { start: 0, lengths: [3, 1, 3, 1] },
+  { start: 0, lengths: [2, 1, 1, 2, 2] },
+  { start: 0, lengths: [3, 3, 2] },
+  { start: 0, lengths: [1, 1, 2, 4] },
+
+  // starting late — the downbeat is a rest, which is the strongest way to
+  // break the lockstep
+  { start: 2, lengths: [2, 2, 2] },
+  { start: 1, lengths: [1, 2, 2, 2] },
+  { start: 3, lengths: [1, 2, 2] },
+  { start: 2, lengths: [3, 3] },
+
+  // stopping early — the bar breathes before the next one
+  { start: 0, lengths: [3, 1, 2] },
+  { start: 0, lengths: [2, 2, 2] },
+  { start: 0, lengths: [4, 2] },
+  { start: 1, lengths: [2, 2, 2] }
 ];
 
 // Stock closes. Trad tunes reuse the same handful constantly — that is a
@@ -88,18 +105,20 @@ export function createMotif () {
   // wandering by a step — makes every bar derived from it inert. Worth
   // rejecting and redrawing rather than accepting whatever comes out.
   for (let attempt = 0; attempt < 20; attempt++) {
-    const rhythm = pick (RHYTHMS);
+    const cell = pick (RHYTHMS);
     const offsets = [0];
 
-    for (let i = 1; i < rhythm.length; i++) {
+    for (let i = 1; i < cell.lengths.length; i++) {
       offsets.push (offsets[i - 1] + nextInterval());
     }
 
-    if (isGoodMotif (offsets)) return { rhythm, offsets };
+    if (isGoodMotif (offsets)) {
+      return { start: cell.start, rhythm: cell.lengths, offsets };
+    }
   }
 
   // Guaranteed-decent fallback: a rising figure that turns back on itself.
-  return { rhythm: [3, 1, 2, 2], offsets: [0, 1, 2, 0] };
+  return { start: 0, rhythm: [3, 1, 2, 2], offsets: [0, 1, 2, 0] };
 }
 
 /** A motif has to actually go somewhere. Three distinct pitches and a range
@@ -135,41 +154,42 @@ const OPERATIONS = {
   /** Double the note lengths and keep whatever fits the bar. Same pitches,
       new weight — the tune leans on itself. */
   augmentation: motif => {
+    const budget = 8 - (motif.start ?? 0);
     const rhythm = [];
     const offsets = [];
     let total = 0;
 
     for (let i = 0; i < motif.rhythm.length; i++) {
       const length = motif.rhythm[i] * 2;
-      if (total + length > 8) break;
+      if (total + length > budget) break;
 
       rhythm.push (length);
       offsets.push (motif.offsets[i]);
       total += length;
     }
 
-    // Pad any remainder with a held final note rather than leaving a gap.
-    if (total < 8 && rhythm.length) rhythm[rhythm.length - 1] += 8 - total;
-
-    return rhythm.length ? { rhythm, offsets, shift: 0 } : { ...motif, shift: 0 };
+    return rhythm.length
+      ? { start: motif.start, rhythm, offsets, shift: 0 }
+      : { ...motif, shift: 0 };
   },
 
   /** Keep the opening, then go somewhere new. Recognisable, but it moves. */
   truncate: motif => {
+    const budget = 8 - (motif.start ?? 0);
     const keep = Math.max (1, Math.floor (motif.rhythm.length / 2));
     const rhythm = motif.rhythm.slice (0, keep);
     const offsets = motif.offsets.slice (0, keep);
     let total = rhythm.reduce ((sum, n) => sum + n, 0);
 
     // New tail, built from the same interval weighting as the motif itself.
-    while (total < 8) {
-      const length = Math.min (8 - total, pick ([1, 2, 2, 3]));
+    while (total < budget) {
+      const length = Math.min (budget - total, pick ([1, 2, 2, 3]));
       rhythm.push (length);
       offsets.push (offsets[offsets.length - 1] + nextInterval());
       total += length;
     }
 
-    return { rhythm, offsets, shift: 0 };
+    return { start: motif.start, rhythm, offsets, shift: 0 };
   }
 };
 
@@ -183,7 +203,7 @@ const BAR_THREE_OPERATIONS = ['inversion', 'augmentation', 'truncate', 'sequence
 /** Renders one derived cell into note events at a bar position. */
 function renderCell (cell, bar, startDegree, poolSize, ornamentBias) {
   const events = [];
-  let position = 0;
+  let position = cell.start ?? 0;
 
   for (let i = 0; i < cell.rhythm.length; i++) {
     const length = cell.rhythm[i];

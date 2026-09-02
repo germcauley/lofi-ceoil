@@ -24,8 +24,10 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **5. Cadences and question/answer**
 - [x] **6. Counter-line textures: imitation and heterophony**
 - [x] **7. Eight-bar parts with a higher turn**
-- [ ] **8. Comping rhythms and harmonic rhythm**
-- [ ] **9. Long-form structure**
+- [x] **8. Bass patterns and staged entrances** *(the comping-rhythm half remains)*
+- [ ] **9. Long-form structure** — arrangement done; energy arc and modal shift remain
+- [x] **10. Rests and phrasing**
+- [ ] **11. Anacrusis, ties and empty bars**
 
 ---
 
@@ -121,7 +123,35 @@ A full turn of the tune is now **32 bars** — roughly a minute and three quarte
 
 The turn needed more care than a fixed shift. B has its own motif, whose shape can more than cancel a constant +2, so the shift is **raised until the B part's mean degree actually sits above A's**. Measured live: A at 5.03, B at 7.69, a turn 2.66 degrees higher. Over 300 generated parts every bar totals exactly eight quavers, half cadences land on the fifth or second, and full cadences on the tonic 300/300.
 
-## 8. Comping rhythms and harmonic rhythm
+## 10. Rests and phrasing — done
+
+**The problem, and it was hiding in plain sight.** Every rhythm cell filled all eight quavers starting at position zero. The melody never stopped and every bar landed on the downbeat — a wall of notes locked to the beat, which is what made the whole thing feel bass-driven and mechanical.
+
+**The fix.** Cells now carry a `start` as well as `lengths`, so a bar can begin late or stop early. Fourteen cells: six filling the bar, four starting after a rest on the downbeat, four stopping before the barline.
+
+Measured over 2,400 bars: **21.8% now start off the downbeat**, 18.7% stop before the barline, average notes per bar down from about four to **3.19**, and no bar overruns its length.
+
+## 8. Bass patterns and staged entrances — partly done
+
+**Bass.** One fixed figure — root on beat one, sometimes the fifth on three — is a metronome. There is now a library: `root`, `held`, `rootFifth`, `octave`, `walk`, `anticipate` (pushes the root a quaver early so the bar arrives before the downbeat) and `sparse` (no downbeat at all, so the bar opens on the chord and the melody instead). One is chosen per part.
+
+**Staged entrances.** Everything entering at once and never stopping is what makes a generative piece sound like a loop rather than an arrangement. Each of the turn's four parts now has a plan: which bass pattern, when the chords come in, when the drums arrive, when they pull back, whether the counter line plays.
+
+45% of turns open **bare** — no drums, no bass, no counter, and chords held back two bars so the motif is stated in the clear. Verified by forcing the path: only the lead fires, 10 notes across three bars with every other layer silent.
+
+Drums pull out before the end of the last part, so a turn breathes rather than stopping dead. Borrowed from jacbz/Lofi's producer, which pads its sections the same way.
+
+**Still to do:** comping rhythm patterns for the keys (bouzouki-style driving eighths, boom-chuck, sparse pad), inversions chosen for smooth bass motion, sus4 resolutions, and harmonic rhythm — two bars per chord in the A part against one in the B part.
+
+## 11. Anacrusis, ties and empty bars
+
+Three things that would push the rhythm further from the grid, none of them yet built.
+
+- **Anacrusis.** Irish tunes very often start on an upbeat — the last quaver or two of the preceding bar. Every phrase here still starts on beat one of bar one. This needs phrase events with a negative position, rendered during the previous bar.
+- **Ties over the barline.** No note currently sustains across a barline, so every bar is metrically sealed. This is the single strongest remaining source of syncopation.
+- **Empty bars.** jacbz/Lofi lets a chord be *empty* and drops the drums when it is. A bar with no harmony at all is a structural rest, and there is nothing like it here.
+
+## Original item 8 notes
 
 - A vocabulary of backing patterns: bouzouki-style driving eighths, boom-chuck, sparse pad. Chosen per section instead of the fixed hit-plus-stab.
 - **Inversions chosen for bass motion** — pick the inversion giving the smoothest bass line.
