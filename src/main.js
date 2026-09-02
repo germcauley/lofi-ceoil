@@ -51,7 +51,8 @@ function mountKnobs (definitions, container) {
 mountKnobs (MUSIC_KNOBS, document.getElementById ('musicKnobs'));
 mountKnobs (TONE_KNOBS, document.getElementById ('toneKnobs'));
 
-/** A row of latching buttons behaving as one radio group. */
+/** A row of latching buttons behaving as one radio group. Returns a `select`
+    so the panel can follow a change the engine made on its own. */
 function mountChooser (container, options, initial, className, onSelect) {
   const buttons = options.map (option => {
     const button = document.createElement ('button');
@@ -71,13 +72,26 @@ function mountChooser (container, options, initial, className, onSelect) {
   });
 
   onSelect (initial);
+
+  return {
+    select (value) {
+      buttons.forEach (b => b.setAttribute ('aria-checked', String (b.textContent === value)));
+    }
+  };
 }
 
-mountChooser (document.getElementById ('keyRow'), NOTE_NAMES, 'C', 'key',
+const keyChooser = mountChooser (document.getElementById ('keyRow'), NOTE_NAMES, 'C', 'key',
   value => engine.controls.key (value));
 
-mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
+const scaleChooser = mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
   value => engine.controls.scale (value));
+
+// Between tunes the engine can move to a related key. The panel has to follow
+// it, or the buttons quietly stop describing what is playing.
+engine.state.onKey = (note, scale) => {
+  keyChooser.select (note);
+  scaleChooser.select (scale);
+};
 
 // Voices swap while it plays, so you can hear the difference in context rather
 // than having to restart to compare.

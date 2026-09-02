@@ -7,7 +7,7 @@ import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createP
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 import { createChain } from './effects.js';
-import { PROGRESSIONS, noteNameToMidi } from './theory.js';
+import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, BASS_PATTERN_NAMES } from './parts.js';
 
@@ -82,6 +82,19 @@ export function createEngine () {
 
     // Which layers play in which part of the turn.
     arrangement: null,
+
+    // Where the current turn started, so a pause between tunes does not put
+    // the form out of step with the bar count.
+    formOffset: 0,
+
+    // A set ending: the tune winds down, then a few bars of nothing but
+    // surface noise before the next one begins.
+    endingSet: false,
+    resting: 0,
+    turnsSinceEnding: 0,
+
+    // Notified when the key moves on its own, so the panel can follow.
+    onKey: null,
 
     progression: PROGRESSIONS.dorian[0],
 
@@ -178,6 +191,54 @@ export function createEngine () {
     return arrangement;
   }
 
+  /** Occasionally the tune should stop rather than roll on forever — a DJ
+      finishing a set rather than beat-matching another record.
+
+      Kept rare and never back to back: the effect only works if it is not
+      expected, and a generative piece that keeps pausing is worse than one
+      that never does. */
+  function planSetEnding () {
+    state.turnsSinceEnding++;
+
+    if (state.turnsSinceEnding >= 4 && Math.random() < 0.3) {
+      state.endingSet = true;
+      state.turnsSinceEnding = 0;
+    }
+  }
+
+  /** Moves to a related key between tunes.
+
+      Only the safe moves: the relative major or minor, or up or down a fifth.
+      Those share most of their notes with where we were, so the change reads
+      as the set moving on rather than as an edit. Anything more adventurous is
+      worth doing deliberately rather than at random. */
+  function moveKey () {
+    const relativeOf = { minor: 'major', dorian: 'mixolydian', major: 'minor', mixolydian: 'dorian' };
+    const goingMinor = state.scale === 'major' || state.scale === 'mixolydian';
+
+    if (Math.random() < 0.5) {
+      // Relative: same notes, different centre.
+      state.rootMidi += goingMinor ? -3 : 3;
+      state.scale = relativeOf[state.scale] ?? state.scale;
+    } else {
+      // A fifth either way: one note different.
+      state.rootMidi += Math.random() < 0.5 ? 5 : -5;
+    }
+
+    // Keep the tonic in one octave so the register never drifts.
+    while (state.rootMidi < 48) state.rootMidi += 12;
+    while (state.rootMidi > 59) state.rootMidi -= 12;
+
+    const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
+    state.progression = set[Math.floor (Math.random() * set.length)];
+    state.previousVoicing = null;
+
+    if (state.onKey) {
+      const name = NOTE_NAMES[state.rootMidi % 12];
+      Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
+    }
+  }
+
   function buildForm () {
     const size = gappedPool (state.scale).length;
 
@@ -222,19 +283,43 @@ export function createEngine () {
 
     state.form = phrases;
     state.arrangement = planVoices (buildArrangement());
+    planSetEnding();
     state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];
     state.counterPlans[1].pattern = planA.pattern;
     state.counterPlans[3].pattern = planB.pattern;
   }
 
   function scheduleBar (time) {
+    // Between tunes: nothing but the record surface. The bar count keeps
+    // running so the transport never stops, but the form is held.
+    if (state.resting > 0) {
+      playVinyl (state, time);
+      state.resting--;
+
+      if (state.resting === 0) {
+        Tone.getTransport().bpm.rampTo (state.tempo, 2.5);
+        moveKey();
+        state.form = null;
+        state.formOffset = state.barIndex + 1;
+      }
+
+      const restingBar = state.barIndex;
+      state.barIndex++;
+
+      if (state.onBar) {
+        Tone.getDraw().schedule (() => state.onBar (restingBar, '— — —'), time);
+      }
+
+      return;
+    }
+
     const chords = state.progression.chords;
     const chordSpec = chords[state.barIndex % chords.length];
 
     // Four eight-bar parts: A A B B, so a full turn of the tune is 32 bars.
-    if (! state.form || state.barIndex % 32 === 0) buildForm();
+    const positionInForm = (state.barIndex - state.formOffset) % 32;
+    if (! state.form || positionInForm === 0) buildForm();
 
-    const positionInForm = state.barIndex % 32;
     const phrase = state.form[Math.floor (positionInForm / 8)];
 
     const partIndex = Math.floor (positionInForm / 8);
@@ -247,20 +332,44 @@ export function createEngine () {
       if (state.autoKeysVoice && plan.keysVoice) swapVoice ('keys', plan.keysVoice);
     }
 
+    // Winding down to end the set: the last part sheds its layers a bar at a
+    // time and the tempo eases off, so the tune arrives at a stop rather than
+    // being cut off at one.
+    const winding = state.endingSet && partIndex === 3;
+
+    if (winding && barInPart === 4) {
+      const barSeconds = (60 / state.tempo) * 4;
+      Tone.getTransport().bpm.rampTo (state.tempo * 0.82, barSeconds * 4);
+    }
+
+    if (winding && barInPart === 7) {
+      // Two to four bars of nothing but crackle before the next tune.
+      state.resting = 2 + Math.floor (Math.random() * 3);
+      state.endingSet = false;
+    }
+
     // An empty bar drops everything but the tune, the drone and the surface
     // noise — so the melody's cadence is heard on its own.
-    const empty = barInPart === plan.emptyBar;
+    const empty = barInPart === plan.emptyBar
+      || (winding && barInPart === 7);
 
     if (! empty && barInPart >= (plan.chordsFrom ?? 0)) playChord (state, time, chordSpec);
-    if (! empty && plan.bass && plan.bass !== 'none') playBass (state, time, chordSpec, plan.bass);
+    const bassWound = winding && barInPart >= 6;
 
-    if (! empty && barInPart >= (plan.drumsFrom ?? 0) && barInPart < (plan.drumsUntil ?? 8)) {
+    if (! empty && ! bassWound && plan.bass && plan.bass !== 'none') {
+      playBass (state, time, chordSpec, plan.bass);
+    }
+
+    const drumsWound = winding && barInPart >= 5;
+
+    if (! empty && ! drumsWound
+        && barInPart >= (plan.drumsFrom ?? 0) && barInPart < (plan.drumsUntil ?? 8)) {
       playDrums (state, time);
     }
 
     playMelody (state, time, barInPart, phrase, chordSpec);
 
-    if (! empty && plan.counter !== false) {
+    if (! empty && ! (winding && barInPart >= 6) && plan.counter !== false) {
       playCounter (state, time, barInPart, chordSpec, state.counterPlans?.[partIndex], phrase);
     }
 
@@ -326,8 +435,12 @@ export function createEngine () {
     state.drone.triggerRelease?.();
 
     state.barIndex = 0;
+    state.formOffset = 0;
     state.previousVoicing = null;
     state.arrangement = null;
+    state.endingSet = false;
+    state.resting = 0;
+    state.turnsSinceEnding = 0;
     state.running = false;
   }
 

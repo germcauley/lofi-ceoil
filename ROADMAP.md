@@ -41,8 +41,8 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **21. More styles, slowed + reverb type music, trance, minimalism
 - [ ] **22. Animated DJ that actually controls the mix, tempo etc
 - [x] **23. Piano for chords, with an auto mode**
-- [ ] **24. Sometimes we need to slow things down and end a tune, give some space before next tune start, let vinyl crackle continue, this can be a random thing that only happend every so often, like a DJ finsihing a set of songs, dont overuse it.
-- [ ] **25. We should be able to move between keys, major to minor relative is the easiest choice but we can also be adventurou if the theory makes sense. Changing key after a bunch of songs that are all similar might be the best choice. I'll leave the decision making up to you we can talk about this when implementing
+- [x] **24. Ending a set — wind down, leave space, let the crackle run**
+- [~] **25. Moving between keys** — the safe moves are in; the adventurous ones are still open
 
 ---
 
@@ -328,3 +328,34 @@ Worth building. It is the most distinctive thing on the list, and it is the only
 ## Known limitation
 
 A few famous progressions need chords from *outside* the mode. The Andalusian cadence (i–♭VII–♭VI–**V**) needs a major V in a minor key, which requires a raised seventh that natural minor does not contain. `buildChord` derives everything from scale degrees and cannot currently produce an accidental. Supporting these means adding explicit chromatic alteration or a mode-mixture mechanism — a change to the theory layer, not a table entry.
+
+---
+
+## 24. Ending a set — done
+
+Occasionally the tune should stop rather than roll on forever: a DJ finishing a set rather than beat-matching another record.
+
+**How it runs.** In the last part of a turn, the arrangement sheds a layer at a time — drums from bar 5, bass and counter from bar 6, everything but the tune at bar 7 — while the tempo eases to 82% over four bars. The melody lands on its cadence, then **two to four bars of nothing but surface noise** before the next tune begins.
+
+**Kept rare, and never back to back.** At least four turns must pass, and then it is a 30% chance — so roughly one set ending every seven or eight turns, which at 32 bars a turn is several minutes apart. The effect only works if it is not expected; a generative piece that keeps pausing is worse than one that never does.
+
+The bar count keeps running through the pause so the transport never stops. A `formOffset` holds the form in place, so the next tune starts at the beginning of a part rather than wherever the bar count happened to land.
+
+Verified end to end: wind-down, two bars of crackle alone, key moved, form rebuilt, tempo restored, no scheduling failures.
+
+## 25. Moving between keys — partly done
+
+**What is in.** Between tunes, at a set ending, the key moves. Only the safe options: the **relative major or minor** — same notes, different centre — or **up or down a fifth**, which changes one note. Both share nearly everything with where we were, so the change reads as the set moving on rather than as an edit. The mode moves with it, since dorian's relative is mixolydian just as minor's is major.
+
+The tonic is kept inside one octave so the register never drifts, and the panel's key and mode buttons follow the change — otherwise they quietly stop describing what is playing.
+
+Exercised over 500 consecutive moves: never out of octave, never an unknown mode, reaching 24 distinct key and mode pairs.
+
+**What is still open, and worth deciding together.** More adventurous moves are defensible but want intent rather than a dice roll:
+
+- **Up a tone** (C to D), very common in trad sets and a real lift.
+- **Chromatic mediants** (C to A♭ or E), which sound cinematic rather than folk — probably wrong here, but striking.
+- **Modal interchange** — staying on the same tonic and changing only the mode, which is the subtlest move of all and might be better than any transposition.
+- **Pivot chords** — ending the outgoing tune on a chord both keys share, so the move happens *inside* the music rather than across a gap. This is the one I would build next, and it pairs with radio mode.
+
+Also unresolved: whether a key move should always coincide with a set ending, or whether the tune should occasionally modulate mid-flight.

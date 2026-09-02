@@ -63,6 +63,8 @@ Phrases can begin with an **anacrusis** — a pickup into the answering sentence
 
 Notes can also **tie over the barline**, but only where the next bar starts with a rest, so a sustained note fills silence rather than colliding with the next attack. About a fifth of parts carry one.
 
+Every so often — no more than once in seven or eight turns — the tune **ends a set** rather than rolling on. The last part sheds a layer at a time, the tempo eases off, the melody lands on its cadence, and two to four bars of nothing but surface noise follow before the next tune starts in a **related key**: the relative major or minor, or a fifth away. The panel's key and mode buttons follow it.
+
 ## The controls
 
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.
