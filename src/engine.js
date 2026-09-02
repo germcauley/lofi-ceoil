@@ -5,6 +5,7 @@ import * as Tone from 'tone';
 import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
 
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
+const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
@@ -55,8 +56,9 @@ export function createEngine () {
     keysVoice: 'rhodes',
     leadVoice: 'whistle',
 
-    // When true, the arrangement chooses the lead voice itself.
+    // When true, the arrangement chooses these voices itself.
     autoVoice: false,
+    autoKeysVoice: false,
 
     // Notified when a voice swap starts and when it is ready to play.
     onVoice: null,
@@ -151,18 +153,26 @@ export function createEngine () {
       different voice, and otherwise the voice holds — changing it every part
       would be a gimmick rather than an arrangement. */
   function planVoices (arrangement) {
-    let current = state.leadVoice;
+    let lead = state.leadVoice;
+    let keysName = state.keysVoice;
 
     arrangement.forEach ((part, index) => {
       const previous = arrangement[index - 1];
       const followsADrop = previous && previous.emptyBar >= 0;
 
       if (followsADrop) {
-        const others = LEAD_VOICE_NAMES.filter (name => name !== current);
-        current = pickFrom (others);
+        lead = pickFrom (LEAD_VOICE_NAMES.filter (name => name !== lead));
       }
 
-      part.leadVoice = current;
+      // The chord voice moves less often than the lead. Changing both at every
+      // return would leave nothing recognisable across the seam — one of them
+      // has to carry the thread.
+      if (followsADrop && Math.random() < 0.4) {
+        keysName = pickFrom (KEYS_VOICE_NAMES.filter (name => name !== keysName));
+      }
+
+      part.leadVoice = lead;
+      part.keysVoice = keysName;
     });
 
     return arrangement;
@@ -232,8 +242,9 @@ export function createEngine () {
     const plan = state.arrangement?.[partIndex] ?? {};
 
     // Voice changes land on the part boundary, never mid-phrase.
-    if (state.autoVoice && barInPart === 0 && plan.leadVoice) {
-      swapVoice ('lead', plan.leadVoice);
+    if (barInPart === 0) {
+      if (state.autoVoice && plan.leadVoice) swapVoice ('lead', plan.leadVoice);
+      if (state.autoKeysVoice && plan.keysVoice) swapVoice ('keys', plan.keysVoice);
     }
 
     // An empty bar drops everything but the tune, the drone and the surface
@@ -284,6 +295,15 @@ export function createEngine () {
     // first bars play dry.
     await chain.reverb.ready;
 
+    // A sampled voice chosen before playback started still has to load, or its
+    // first notes throw. A sample that never arrives must not wedge playback,
+    // so this gives up after a few seconds and starts anyway.
+    const withTimeout = promise => Promise.race ([
+      promise, new Promise (resolve => setTimeout (resolve, 6000))
+    ]);
+
+    await Promise.all ([keys.ready, lead.ready].filter (Boolean).map (withTimeout));
+
     vinyl.hiss.start();
     scheduleId = Tone.getTransport().scheduleRepeat (onBar, '1m');
 
@@ -317,6 +337,15 @@ export function createEngine () {
   /** Replaces a voice while the transport keeps running. The old chain is
       disposed after a short delay so any notes still ringing are not cut off
       mid-decay. */
+  // Guards against a slow swap landing after a later one has already won.
+  let swapToken = 0;
+
+  /** Replaces a voice while the transport keeps running.
+
+      A sampled voice has nothing to play until its files arrive, so the new
+      voice is not handed to the scheduler until it is loaded — otherwise Tone
+      throws "buffer is either not set or not loaded" on the next note. The old
+      voice keeps playing until then, which also means the swap has no gap. */
   function swapVoice (kind, name) {
     const table = kind === 'keys' ? KEYS_VOICES : LEAD_VOICES;
     const factory = table[name];
@@ -325,37 +354,50 @@ export function createEngine () {
     const current = kind === 'keys' ? keys : lead;
     if (current.name === name) return;
 
+    const token = ++swapToken;
     const next = factory();
     next.name = name;
-
     next.output.connect (chain.input);
 
-    // A sampled voice has nothing to play until its files arrive, so the panel
-    // is told when the swap starts and again when it is ready.
-    if (state.onVoice) state.onVoice (kind, name, ! next.loading);
-    if (next.loading) {
-      Tone.loaded().then (() => { if (state.onVoice) state.onVoice (kind, name, true); });
-    }
-
-    if (kind === 'keys') {
-      keys = next;
-      state.keys = next.voice;
-      state.keysVoice = name;
-    } else {
-      lead = next;
-      state.lead = next.voice;
-      state.leadVoice = name;
-    }
-
-    setTimeout (() => {
-      try {
-        current.output.disconnect();
-        current.voice.dispose();
-        if (current.output !== current.voice) current.output.dispose();
-      } catch (error) {
-        // A voice that was already torn down is not worth reporting.
+    const commit = () => {
+      // A later swap has already been asked for; throw this one away.
+      if (token !== swapToken) {
+        next.output.disconnect();
+        next.voice.dispose();
+        if (next.output !== next.voice) next.output.dispose();
+        return;
       }
-    }, 3000);
+
+      if (kind === 'keys') {
+        keys = next;
+        state.keys = next.voice;
+        state.keysVoice = name;
+      } else {
+        lead = next;
+        state.lead = next.voice;
+        state.leadVoice = name;
+      }
+
+      // Dispose after a delay so notes still ringing are not cut off.
+      setTimeout (() => {
+        try {
+          current.output.disconnect();
+          current.voice.dispose();
+          if (current.output !== current.voice) current.output.dispose();
+        } catch (error) {
+          // A voice already torn down is not worth reporting.
+        }
+      }, 3000);
+
+      if (state.onVoice) state.onVoice (kind, name, true);
+    };
+
+    if (next.ready) {
+      if (state.onVoice) state.onVoice (kind, name, false);
+      next.ready.then (commit);
+    } else {
+      commit();
+    }
   }
 
   const controls = {

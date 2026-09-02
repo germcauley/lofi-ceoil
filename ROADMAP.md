@@ -37,10 +37,10 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **17. Generated tune names**
 - [ ] **18. Save the current tune**
 - [ ] **19. Sheet music, as ABC**
-- [ ] **20. Sampled whistle, fiddle and harp**
+- [x] **20. Sampled whistle and harp** *(fiddle still synthesised — no CC0 violin found)*
 - [ ] **21. More styles, slowed + reverb type music, trance, minimalism
 - [ ] **22. Animated DJ that actually controls the mix, tempo etc
-- [ ] **23. add piano for chords too, have auto mode for chords that switched periodically like the melody. Make good, musical choices
+- [x] **23. Piano for chords, with an auto mode**
 - [ ] **24. Sometimes we need to slow things down and end a tune, give some space before next tune start, let vinyl crackle continue, this can be a random thing that only happend every so often, like a DJ finsihing a set of songs, dont overuse it.
 - [ ] **25. We should be able to move between keys, major to minor relative is the easiest choice but we can also be adventurou if the theory makes sense. Changing key after a bunch of songs that are all similar might be the best choice. I'll leave the decision making up to you we can talk about this when implementing
 
@@ -248,7 +248,31 @@ Two things to decide:
 - **What gets notated.** The melody is the tune. Chords fit naturally as ABC chord symbols above the staff. The counter line is a second voice — ABC supports that, but a single staff with chord symbols is the idiomatic trad presentation and probably the right default.
 - **What the form looks like on paper.** Eight-bar A and B parts with repeat marks, which is exactly how a tune is written down — so the structure built in item 7 maps onto the page with no translation.
 
-## 20. Sampled whistle, fiddle and harp
+## 20. Sampled whistle and harp — done
+
+Both come from the **Versilian Community Sample Library**, which is CC0.
+
+- **Whistle** is a Baroque soprano recorder — the nearest thing in a CC0 library, and the same family of edge-blown pipe. It sounds an octave above where the tune is written, which is what a tin whistle does anyway.
+- **Harp** is a folk harp, which is the instrument this music actually belongs to.
+- The Karplus-Strong pluck stays as **`harp (synth)`**, and the old synthesised whistle as **`whistle (synth)`** — their character is a different instrument, not a worse one.
+
+**Fiddle is still synthesised.** VCSL has no violin: its Composite Chordophones are harp, folk harp and strumstick only. A CC0 bowed string is still to be found — VSCO 2 Community Edition is the likely source.
+
+### Three things this cost, all worth recording
+
+**VCSL names an octave below scientific pitch.** Their `C4` measures 522 Hz, which is MIDI 72, so it is Tone's C5. Verified by spectrum rather than assumed — autocorrelation first suggested the octave above, and only the FFT showed there was no energy at 261 Hz at all. Every sample is filed under the note it actually sounds.
+
+**A `#` in a filename silently breaks the load.** In a URL a `#` begins the fragment, so `G#4.mp3` requests `G` and the sampler simply never gets a buffer — with no error, because nothing failed. Sharps in filenames are written `s`.
+
+**A sampler must not be handed to the scheduler before it loads**, or the next note throws `buffer is either not set or not loaded`. The old voice now keeps playing until the new one signals ready, which also removes the gap. `Tone.loaded()` is global and resolved too early here, so each sampler carries its own `onload` promise. A six-second timeout stops a sample that never arrives from wedging playback.
+
+## 23. Piano for chords, with an auto mode — done
+
+The Salamander piano is now a keys voice too, voiced for chords: quieter and rolled off further so a four-note voicing does not crowd the melody.
+
+Both rows have an `auto` option. The chord voice deliberately changes **less often than the lead** — 40% of the time the lead changes, rather than every time. Changing both at every section return would leave nothing recognisable across the seam; one of them has to carry the thread.
+
+## Original notes on 20
 
 The piano proved the point: synthesis has a ceiling for acoustic instruments, and past it the honest move is samples.
 

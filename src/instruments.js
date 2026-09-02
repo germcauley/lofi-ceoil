@@ -15,6 +15,37 @@
 
 import * as Tone from 'tone';
 
+/** Builds a sampled voice from a folder under public/samples.
+
+    VCSL names its files an octave below scientific pitch — their C4 measures
+    522 Hz, which is MIDI 72 — so the mapping here is always written in the
+    Tone note each sample actually sounds, not the name it shipped with.
+
+    Filenames use `s` rather than `#` for sharps. In a URL a `#` begins the
+    fragment, so `G#4.mp3` requests `G` and the sample never arrives — silently,
+    because the sampler simply has no buffer for that note. */
+function sampled (folder, urls, { volume = -10, release = 1.2, cutoff = 6000 } = {}) {
+  // Tone.loaded() is global and can resolve before a sampler built moments ago
+  // has its buffers, so each one carries its own signal instead.
+  let markReady;
+  const ready = new Promise (resolve => { markReady = resolve; });
+
+  const voice = new Tone.Sampler ({
+    urls,
+    baseUrl: `${import.meta.env.BASE_URL}samples/${folder}/`,
+    release,
+    volume,
+    onload: () => markReady()
+  });
+
+  // Rolled off so a sampled voice sits inside the tape path rather than on
+  // top of it — real recordings are brighter than the synths they replace.
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: cutoff, rolloff: -12 });
+  voice.connect (tone);
+
+  return { voice, output: tone, loading: true, ready };
+}
+
 // ------------------------------------------------------------------- keys
 
 /** Electric-piano-ish. FM with a low modulation index gets close to a Rhodes:
@@ -76,7 +107,18 @@ function pad () {
   return { voice, output: tone };
 }
 
-export const KEYS_VOICES = { rhodes, felt, pad };
+/** The same Salamander piano the lead can use, voiced for chords: quieter, and
+    rolled off further so a four-note voicing does not crowd the melody. */
+function pianoKeys () {
+  return sampled ('piano', {
+    C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
+    C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+    C5: 'C5.mp3', 'F#5': 'Fs5.mp3',
+    C6: 'C6.mp3'
+  }, { volume: -16, release: 1.4, cutoff: 3400 });
+}
+
+export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, pad };
 
 // ------------------------------------------------------------------- lead
 
@@ -115,9 +157,35 @@ function fiddle () {
   return { voice, output: tone };
 }
 
+/** Baroque soprano recorder, standing in for a tin whistle — the nearest thing
+    in a CC0 library, and the same family of edge-blown pipe.
+
+    A recorder sounds an octave above where the tune is written, and VCSL names
+    an octave low; the two cancel, so each file is filed under the note it is
+    named after and the voice transposes up for free. */
+function whistleSampled () {
+  return sampled ('recorder', {
+    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
+    C5: 'C5.mp3', E5: 'E5.mp3',
+    C6: 'C6.mp3'
+  }, { volume: -14, release: 0.6, cutoff: 5200 });
+}
+
+/** A real folk harp — the instrument this music actually belongs to. */
+function harpSampled () {
+  return sampled ('harp', {
+    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
+    C5: 'C5.mp3', E5: 'E5.mp3', 'G#5': 'Gs5.mp3',
+    C6: 'C6.mp3'
+  }, { volume: -8, release: 1.4, cutoff: 6500 });
+}
+
 /** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
-    is a physical model rather than an envelope. */
-function harp () {
+    is a physical model rather than an envelope.
+
+    Kept alongside the sampled harp rather than replaced by it: its retro
+    character is a different instrument, not a worse one. */
+function harpSynth () {
   const voice = new Tone.PluckSynth ({
     attackNoise: 0.6,
     dampening: 3200,
@@ -159,7 +227,14 @@ function piano () {
   return { voice, output: tone, loading: true };
 }
 
-export const LEAD_VOICES = { whistle, fiddle, piano, harp };
+export const LEAD_VOICES = {
+  whistle: whistleSampled,
+  'whistle (synth)': whistle,
+  fiddle,
+  piano,
+  harp: harpSampled,
+  'harp (synth)': harpSynth
+};
 
 // ------------------------------------------------------------------ others
 

@@ -83,21 +83,26 @@ mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
 // than having to restart to compare.
 // `auto` hands the choice to the arrangement, which changes voice coming back
 // from a drop. Picking a voice by hand pins it.
-mountChooser (document.getElementById ('leadVoiceRow'),
-  ['auto', 'whistle', 'fiddle', 'piano', 'harp'], 'whistle', 'seg',
-  value => {
-    if (value === 'auto') {
-      engine.state.autoVoice = true;
-      return;
-    }
+function mountVoiceChooser (id, names, initial, apply, autoFlag) {
+  mountChooser (document.getElementById (id), ['auto', ...names], initial, 'seg',
+    value => {
+      if (value === 'auto') {
+        engine.state[autoFlag] = true;
+        return;
+      }
 
-    engine.state.autoVoice = false;
-    engine.controls.leadVoice (value);
-  });
+      engine.state[autoFlag] = false;
+      apply (value);
+    });
+}
 
-mountChooser (document.getElementById ('keysVoiceRow'),
-  ['rhodes', 'felt', 'pad'], 'rhodes', 'seg',
-  value => engine.controls.keysVoice (value));
+mountVoiceChooser ('leadVoiceRow',
+  ['whistle', 'whistle (synth)', 'fiddle', 'piano', 'harp', 'harp (synth)'],
+  'whistle', value => engine.controls.leadVoice (value), 'autoVoice');
+
+mountVoiceChooser ('keysVoiceRow',
+  ['rhodes', 'felt', 'piano', 'pad'],
+  'rhodes', value => engine.controls.keysVoice (value), 'autoKeysVoice');
 
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
@@ -117,7 +122,6 @@ const progressionReadout = document.getElementById ('progressionReadout');
 
 // A sampled voice takes a moment to load; say so rather than going quiet.
 engine.state.onVoice = (kind, name, ready) => {
-  if (kind !== 'lead') return;
   status.textContent = ready ? (engine.state.running ? 'running' : 'standby') : `loading ${name}`;
 };
 
