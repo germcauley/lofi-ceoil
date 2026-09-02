@@ -31,7 +31,9 @@ There is a second line too — an arpeggiated counter-melody rather than static 
 
 It also runs in contrary motion: when the melody climbs across a phrase, the figure runs backwards.
 
-Underneath, chords come from a table of progressions written in roman numerals, so they transpose to any key and mode for free. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.
+Underneath, chords come from **per-mode progression sets** written in roman numerals, so they transpose to any key for free. Each mode gets its own, because the chords that define a mode only exist in that mode — dorian's major IV comes from its raised sixth, mixolydian's major ♭VII from its flat seventh. The sets include the pop canon (I–V–vi–IV and friends) alongside the modal vamps; chord progressions are unprotectable common material, so they are free to use.
+
+Chords **voice-lead**: each voice moves to the nearest tone of the next chord and common tones stay put, which averages a little over one semitone of movement per voice. Re-voicing each chord independently is what makes block chords sound blocky. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
@@ -91,7 +93,13 @@ Tone's monophonic voices — `MonoSynth`, `Synth`, `NoiseSynth` — reject event
 
 ## Design
 
-The whole palette lives in `:root` at the top of [`src/style.css`](src/style.css) — page gradient, panel, ink, accents, and the two LED colours. Restyling is about fifteen values.
+Five colours, with roles rather than decoration: violet for the page, **mint** for anything you can turn, **coral** and **yellow** for warm fills and the meter ramp.
+
+The whole palette lives in `:root` at the top of [`src/style.css`](src/style.css). Restyling is about fifteen values.
+
+## Roadmap
+
+[ROADMAP.md](ROADMAP.md) — what is planned for the music engine and why, including the reasoning on how to add variety without adding randomness.
 
 ## Licence
 

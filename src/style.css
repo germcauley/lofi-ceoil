@@ -1,36 +1,43 @@
-/* Lofi Ceoil — a dark object floating on hot colour.
-   Near-black maroon panel, generous radius, soft shadow, and a pink-to-coral
-   page behind it doing all the shouting. */
+/* Lofi Ceoil — a dark object floating on deep violet.
+   Palette: mint #23F0C7, coral #EF767A, violet #7D7ABC / #6457A6, yellow #FFE347.
+
+   Roles, so the five colours stay legible rather than decorative:
+     violet   the page it sits on
+     mint     anything you can turn — knob arcs, values, the running lamp
+     coral    warm accents, and the top of the meter
+     yellow   the bottom of the meter, and the warm half of button fills */
 
 :root {
   /* the page */
-  --page-top: #f43ba6;
-  --page-mid: #f8446f;
-  --page-bottom: #fb5a3c;
+  --page-top: #7d7abc;
+  --page-mid: #6457a6;
+  --page-bottom: #55489a;
 
   /* the panel */
-  --panel: #200a12;
-  --panel-lift: #2b0f19;
-  --panel-sunk: #170710;
+  --panel: #191331;
+  --panel-lift: #221a3f;
+  --panel-sunk: #120e24;
   --panel-edge: rgba(255, 255, 255, 0.07);
 
   /* type */
-  --ink: #f6e6ec;
-  --ink-dim: #c99aae;
-  --ink-faint: #8b5f74;
+  --ink: #f0ebfa;
+  --ink-dim: #b3aad4;
+  --ink-faint: #7e75a0;
 
-  /* accents */
-  --accent: #ff5fa2;
-  --accent-hot: #ff86bb;
-  --accent-warm: #ff8a5c;
-  --accent-glow: rgba(255, 95, 162, 0.45);
+  /* accents — mint is the interactive colour, coral and yellow the warm pair */
+  --accent: #23f0c7;
+  --accent-hot: #6ffbdd;
+  --accent-warm: #ef767a;
+  --accent-yellow: #ffe347;
+  --accent-glow: rgba(35, 240, 199, 0.4);
+  --warm-glow: rgba(239, 118, 122, 0.4);
 
-  /* the LED meter reads these */
-  --led-low: #ffa53d;
-  --led-high: #ff3d8e;
+  /* the LED meter reads these: cool yellow at the bottom, hot coral at the top */
+  --led-low: #ffe347;
+  --led-high: #ef767a;
   --led-off: rgba(255, 255, 255, 0.085);
 
-  --run: #4ddba4;
+  --run: #23f0c7;
 
   --font-display: "Instrument Serif", Georgia, serif;
   --font-panel: "Barlow Condensed", "Arial Narrow", sans-serif;
@@ -79,8 +86,8 @@ body {
   position: relative;
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.05) inset,
-    0 40px 90px -24px rgba(90, 8, 34, 0.55),
-    0 12px 34px -12px rgba(120, 12, 44, 0.4);
+    0 40px 90px -24px rgba(32, 16, 74, 0.6),
+    0 12px 34px -12px rgba(48, 24, 96, 0.45);
   animation: settle 700ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
 
@@ -124,7 +131,7 @@ body {
   font-family: var(--font-display);
   font-style: italic;
   font-size: clamp(1.15rem, 3vw, 1.6rem);
-  background: linear-gradient(96deg, var(--accent-hot), var(--accent-warm));
+  background: linear-gradient(96deg, var(--accent-hot), var(--accent-yellow));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -144,7 +151,7 @@ body {
 
 body.running .lamp {
   background: var(--run);
-  box-shadow: 0 0 12px 2px rgba(77, 219, 164, 0.5);
+  box-shadow: 0 0 12px 2px var(--accent-glow);
 }
 
 .lamp-label, .model-plate {
@@ -177,15 +184,15 @@ body.running .lamp {
   padding: 0.9rem 1.9rem;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(96deg, var(--accent), var(--accent-warm));
-  color: #2b0713;
+  background: linear-gradient(96deg, var(--accent-warm), var(--accent-yellow));
+  color: #2a1030;
   font-family: var(--font-panel);
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 8px 22px -8px var(--accent-glow);
+  box-shadow: 0 8px 22px -8px var(--warm-glow);
   transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 
@@ -204,7 +211,7 @@ body.running .power {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(43, 7, 19, 0.55);
+  background: rgba(42, 16, 48, 0.55);
   transition: background 200ms ease, box-shadow 200ms ease;
 }
 
@@ -347,11 +354,11 @@ body.running .reel:last-child span { animation-duration: 3.1s; }
 .key:hover, .seg:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.34); }
 
 .key[aria-checked="true"], .seg[aria-checked="true"] {
-  color: #2b0713;
+  color: #2a1030;
   font-weight: 600;
   border-color: transparent;
-  background: linear-gradient(96deg, var(--accent), var(--accent-warm));
-  box-shadow: 0 6px 18px -8px var(--accent-glow);
+  background: linear-gradient(96deg, var(--accent-warm), var(--accent-yellow));
+  box-shadow: 0 6px 18px -8px var(--warm-glow);
 }
 
 .key:focus-visible, .seg:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

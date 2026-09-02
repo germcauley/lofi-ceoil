@@ -5,7 +5,7 @@
 // reason about and easy to replace.
 
 import * as Tone from 'tone';
-import { buildChord, scaleDegreeToMidi, midiToNoteName } from './theory.js';
+import { buildChord, chordPitchClasses, voiceLead, scaleDegreeToMidi, midiToNoteName } from './theory.js';
 import { gappedPool } from './melody.js';
 
 const chance = p => Math.random() < p;
@@ -22,7 +22,14 @@ const jitter = (time, base, amount) => Math.max (time, base + humanise (amount))
 export function playChord (state, time, chordSpec) {
   const { keys, rootMidi, scale } = state;
   const [degree, quality] = chordSpec;
-  const notes = buildChord (rootMidi, scale, degree, quality, 60);
+
+  // Move each voice to the nearest tone of the new chord rather than rebuilding
+  // the voicing from scratch. Common tones stay put, which is what stops a
+  // progression sounding like a row of unrelated blocks.
+  const pitchClasses = chordPitchClasses (rootMidi, scale, degree, quality);
+  const notes = voiceLead (state.previousVoicing, pitchClasses, 60);
+
+  state.previousVoicing = notes;
 
   // Roll the voicing slightly rather than hitting all notes dead together.
   notes.forEach ((midi, i) => {
@@ -36,7 +43,7 @@ export function playChord (state, time, chordSpec) {
   if (chance (0.4)) {
     const at = jitter (time, time + Tone.Time ('2n').toSeconds(), 0.02);
     notes.slice (1).forEach ((midi, i) => {
-      state.keys.triggerAttackRelease (
+      keys.triggerAttackRelease (
         midiToNoteName (midi), '4n', at + i * 0.01, 0.18 + Math.random() * 0.08);
     });
   }
@@ -45,10 +52,9 @@ export function playChord (state, time, chordSpec) {
 export function playBass (state, time, chordSpec) {
   const { bass, rootMidi, scale } = state;
   const [degree, quality] = chordSpec;
-  const notes = buildChord (rootMidi, scale, degree, quality, 60);
-
-  // Root two octaves down, then optionally the fifth on beat three.
-  const root = notes[0] - 24;
+  // The bass takes the chord's actual root, independent of how the keys are
+  // voiced — voice leading moves the upper parts, not the foundation.
+  const root = scaleDegreeToMidi (rootMidi, scale, degree) - 12;
   bass.triggerAttackRelease (midiToNoteName (root), '4n.', jitter (time, time, 0.012), 0.75);
 
   if (chance (0.55)) {

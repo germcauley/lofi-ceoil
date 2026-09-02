@@ -56,7 +56,10 @@ export function createEngine () {
     form: null,
     counterPlans: null,
 
-    progression: PROGRESSIONS.minor[0],
+    // Carried between bars so each chord can voice-lead from the last.
+    previousVoicing: null,
+
+    progression: PROGRESSIONS.dorian[0],
 
     barIndex: 0,
     running: false,
@@ -120,7 +123,7 @@ export function createEngine () {
     // Occasionally move to a different progression in the same mode, so a long
     // listen does not sit on one loop forever.
     if (state.barIndex > 0 && state.barIndex % 8 === 0 && Math.random() < 0.35) {
-      const set = PROGRESSIONS[state.scale === 'major' ? 'major' : 'minor'];
+      const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
       state.progression = set[Math.floor (Math.random() * set.length)];
     }
 
@@ -165,6 +168,7 @@ export function createEngine () {
     drone.triggerRelease();
 
     state.barIndex = 0;
+    state.previousVoicing = null;
     state.running = false;
   }
 
@@ -224,8 +228,12 @@ export function createEngine () {
 
     scale (name) {
       state.scale = name;
-      const set = PROGRESSIONS[name === 'major' || name === 'mixolydian' ? 'major' : 'minor'];
+
+      // Each mode has its own progressions, because the chords that define a
+      // mode only exist in that mode.
+      const set = PROGRESSIONS[name] ?? PROGRESSIONS.minor;
       state.progression = set[Math.floor (Math.random() * set.length)];
+      state.previousVoicing = null;
 
       // The note pool changed, so the current phrase no longer belongs to this
       // mode. Build a new one rather than transposing a tune into a scale it
