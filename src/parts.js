@@ -161,17 +161,25 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
   }
 }
 
-/** The counter line: an arpeggio of the current chord that fills the melody's
-    rests.
+/** The counter line. Three textures, chosen per phrase.
 
-    Two rules do all the work. Notes come from the chord, so it is always
-    consonant with the harmony rather than merely in key. And it plays where
-    the melody is silent — complementary rhythm is what makes two lines sound
-    like a duet instead of a pile. */
-export function playCounter (state, time, barInPhrase, chordSpec, plan) {
+    `figuration` arpeggiates the chord into the melody's rests — accompaniment.
+    The other two make it an actual voice: `imitation` plays the melody's own
+    material a bar late and an octave down, which is canon, and `heterophony`
+    plays the same tune thinned out, which is two fiddlers on one melody rather
+    than two melodies. Heterophony is the traditional Celtic texture and the one
+    almost nobody implements. */
+export function playCounter (state, time, barInPhrase, chordSpec, plan, phrase) {
+  if (! plan || state.counter <= 0.001) return;
+
+  if (plan.texture === 'imitation') return playImitation (state, time, barInPhrase, chordSpec, phrase);
+  if (plan.texture === 'heterophony') return playHeterophony (state, time, barInPhrase, chordSpec, phrase);
+
+  playFiguration (state, time, barInPhrase, chordSpec, plan);
+}
+
+function playFiguration (state, time, barInPhrase, chordSpec, plan) {
   const { pluck, rootMidi, scale, counter } = state;
-  if (! plan || counter <= 0.001) return;
-
   const [degree, quality] = chordSpec;
 
   // Sits below the melody and above the bass, so the three parts stay legible.
@@ -185,9 +193,6 @@ export function playCounter (state, time, barInPhrase, chordSpec, plan) {
     // The rest the melody leaves is where this part belongs.
     const free = ! busy[slot];
 
-    // Density rises with the knob; a few notes still sneak in under held
-    // melody notes at higher settings, which keeps it from sounding like a
-    // rigid alternation.
     const probability = free ? 0.55 + counter * 0.45 : counter * 0.18;
     if (! chance (probability)) continue;
 
@@ -202,6 +207,62 @@ export function playCounter (state, time, barInPhrase, chordSpec, plan) {
       jitter (time, time + slot * eighth, 0.012),
       free ? 0.5 : 0.3);
   }
+}
+
+/** Renders melody events an octave below the tune, fitted to the chord so the
+    echo stays consonant with harmony that has moved on since. */
+function renderEcho (state, time, events, chordSpec, offsetSeconds, velocity) {
+  const { pluck, rootMidi, scale } = state;
+  const [degree, quality] = chordSpec;
+
+  const pool = gappedPool (scale);
+  const base = rootMidi;                       // an octave under the melody
+  const chordTones = new Set (chordPitchClasses (rootMidi, scale, degree, quality));
+
+  const eighth = Tone.Time ('8n').toSeconds();
+  const gap = Math.min (0.08, eighth * 0.35);
+
+  for (const event of events) {
+    const poolIndex = Math.min (pool.length - 1, event.degree);
+    let midi = scaleDegreeToMidi (base, scale, pool[poolIndex]);
+
+    if (event.length >= 2) {
+      midi = fitToChordTone (midi, base, scale, poolIndex, pool, chordTones);
+    }
+
+    const slot = event.at % 8;
+    const start = jitter (time, time + slot * eighth + offsetSeconds, 0.012);
+
+    pluck.triggerAttackRelease (
+      midiToNoteName (midi),
+      Math.max (0.08, event.length * eighth - gap),
+      start,
+      velocity);
+  }
+}
+
+/** Canon: this bar answers with what the melody played in the previous one. */
+function playImitation (state, time, barInPhrase, chordSpec, phrase) {
+  if (! phrase) return;
+
+  // Bar 0 answers bar 3, so the canon carries across the phrase boundary
+  // instead of falling silent every four bars.
+  const source = (barInPhrase + 3) % 4;
+  const events = phrase.filter (e => Math.floor (e.at / 8) === source);
+
+  renderEcho (state, time, events, chordSpec, 0, 0.34 + state.counter * 0.16);
+}
+
+/** Heterophony: the same tune, thinned to its longer notes and nudged fractionally
+    late, the way a second player sits just behind the lead. */
+function playHeterophony (state, time, barInPhrase, chordSpec, phrase) {
+  if (! phrase) return;
+
+  const events = phrase
+    .filter (e => Math.floor (e.at / 8) === barInPhrase)
+    .filter (e => e.length >= 2);
+
+  renderEcho (state, time, events, chordSpec, 0.03, 0.3 + state.counter * 0.14);
 }
 
 /** A sustained fifth underneath, the way pipes hold a drone. Quiet enough to

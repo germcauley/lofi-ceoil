@@ -44,7 +44,24 @@ const RHYTHMS = [
   [1, 1, 2, 4]
 ];
 
-const CADENCE_RHYTHMS = [[4, 4], [6, 2], [8], [2, 2, 4]];
+// Stock closes. Trad tunes reuse the same handful constantly — that is a
+// feature, not a limitation, and it is what makes an ending sound idiomatic
+// rather than merely final.
+//
+//   full  comes to rest on the tonic, ending the sentence
+//   half  stops on an unstable degree — the fifth or the second — which is
+//         what turns the first two bars into a question
+const CADENCE_FORMULAS = {
+  full: [[2, 1, 0], [4, 2, 0], [1, 0], [2, 0], [0]],
+  half: [[0, 1, 4], [2, 4], [1, 4], [4]]
+};
+
+// Rhythms indexed by how many notes the formula needs.
+const CADENCE_RHYTHMS = {
+  1: [[8]],
+  2: [[4, 4], [6, 2], [2, 6]],
+  3: [[4, 2, 2], [2, 2, 4], [3, 3, 2]]
+};
 
 const pick = arr => arr[Math.floor (Math.random() * arr.length)];
 const chance = p => Math.random() < p;
@@ -190,30 +207,42 @@ function clampDegree (degree, poolSize) {
   return Math.max (0, Math.min (poolSize + 2, degree));
 }
 
-/** The closing bar. Comes to rest on the tonic, approached by step — that
-    approach is what makes an ending sound like an ending rather than a stop. */
-function renderCadence (bar, poolSize) {
-  const rhythm = pick (CADENCE_RHYTHMS);
+/** A cadence bar. A full cadence comes to rest on the tonic, approached by
+    step — that approach is what makes an ending sound like an ending rather
+    than a stop. A half cadence stops on the fifth or second instead, leaving
+    the phrase open. */
+function renderCadence (bar, poolSize, kind = 'full') {
+  const formula = pick (CADENCE_FORMULAS[kind]);
+  const rhythm = pick (CADENCE_RHYTHMS[formula.length] ?? CADENCE_RHYTHMS[2]);
   const events = [];
   let position = 0;
 
-  // Walk down to the tonic across whatever notes the cadence rhythm gives us.
-  const steps = rhythm.length;
-
-  for (let i = 0; i < steps; i++) {
-    const fromEnd = steps - 1 - i;
-    const degree = clampDegree (fromEnd === 0 ? 0 : fromEnd === 1 ? 1 : 2, poolSize);
-
+  for (let i = 0; i < formula.length; i++) {
     events.push ({
       at: bar * 8 + position,
       length: rhythm[i],
-      degree,
-      ornament: fromEnd > 0 && chance (0.2)
+      degree: clampDegree (formula[i], poolSize),
+      ornament: i < formula.length - 1 && chance (0.2)
     });
 
     position += rhythm[i];
   }
 
+  return events;
+}
+
+/** Turns the end of the antecedent into a question by landing it on an
+    unstable degree. Whichever of the fifth or second is nearer is used, so the
+    development keeps its shape and only its last note is redirected. */
+function applyHalfCadence (events, poolSize) {
+  if (! events.length) return events;
+
+  const last = events[events.length - 1];
+  const options = [4, 1];
+  const target = options.reduce ((best, option) =>
+    Math.abs (option - last.degree) < Math.abs (best - last.degree) ? option : best);
+
+  last.degree = clampDegree (target, poolSize);
   return events;
 }
 
@@ -264,20 +293,25 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28) {
   for (let attempt = 0; attempt < 12; attempt++) {
     const events = [
       ...renderCell (OPERATIONS.repeat (motif), 0, startDegree, poolSize, ornamentBias),
-      ...renderCell (OPERATIONS[pick (BAR_TWO_OPERATIONS)] (motif), 1, peak, poolSize, ornamentBias),
+      ...applyHalfCadence (
+        renderCell (OPERATIONS[pick (BAR_TWO_OPERATIONS)] (motif), 1, peak, poolSize, ornamentBias),
+        poolSize),
       ...renderCell (OPERATIONS[pick (BAR_THREE_OPERATIONS)] (motif), 2, startDegree, poolSize, ornamentBias),
-      ...renderCadence (3, poolSize)
+      ...renderCadence (3, poolSize, 'full')
     ];
 
     if (isSingable (events)) return events;
   }
 
-  // Nothing passed: fall back to the plainest possible reading of the motif.
+  // Nothing passed: fall back to the plainest possible reading of the motif,
+  // still shaped as a question and an answer.
   return [
     ...renderCell (OPERATIONS.repeat (motif), 0, startDegree, poolSize, ornamentBias),
-    ...renderCell (OPERATIONS.repeat (motif), 1, startDegree, poolSize, ornamentBias),
+    ...applyHalfCadence (
+      renderCell (OPERATIONS.repeat (motif), 1, startDegree, poolSize, ornamentBias),
+      poolSize),
     ...renderCell (OPERATIONS.repeat (motif), 2, startDegree, poolSize, ornamentBias),
-    ...renderCadence (3, poolSize)
+    ...renderCadence (3, poolSize, 'full')
   ];
 }
 
@@ -323,6 +357,15 @@ const ARP_NAMES = Object.keys (ARPEGGIOS);
     Direction is set against the melody's overall motion: contrary motion is
     the oldest trick there is for making two lines sound independent rather
     than doubled. */
+// How the second voice relates to the tune. Figuration is accompaniment;
+// the other two are ways of being a voice.
+//
+//   imitation    the melody's own material, a bar late and lower down. Canon.
+//   heterophony  the same tune, thinned out — two fiddlers playing one melody
+//                rather than two melodies. The traditional Celtic texture, and
+//                the one almost nobody implements.
+const TEXTURES = ['figuration', 'figuration', 'imitation', 'heterophony'];
+
 export function planCounter (phrase) {
   const name = ARP_NAMES[Math.floor (Math.random() * ARP_NAMES.length)];
 
@@ -331,6 +374,7 @@ export function planCounter (phrase) {
 
   return {
     name,
+    texture: pick (TEXTURES),
     pattern: rise > 0 ? [...pattern].reverse() : pattern,
     busy: busyMap (phrase)
   };

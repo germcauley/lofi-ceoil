@@ -27,7 +27,11 @@ The melodic grammar leans Celtic and folk:
 - **Arched contour.** Each phrase rises toward a peak bar and falls back, coming to rest on the tonic. That cadence is what makes a phrase sound finished.
 - **Cuts.** Fast grace notes flicked in above the main note. This single ornament does more for the folk character than any amount of note choice.
 
-There is a second line too — an arpeggiated counter-melody rather than static accompaniment. Three rules keep it musical instead of busy:
+Phrases are shaped as a **question and an answer**: bar 2 lands on the fifth or second — a half cadence, leaving it open — and bar 4 closes on the tonic using a stock formula. That is what makes four bars feel like a sentence rather than four bars.
+
+There is a second line too, in one of three **textures** chosen per phrase. *Figuration* arpeggiates the chord into the melody's rests. *Imitation* answers with the melody's previous bar an octave down — canon, carried across the phrase boundary so it never falls silent. *Heterophony* plays the same tune thinned to its longer notes and nudged fractionally late, the way a second player sits behind the lead; it is the traditional Celtic texture and the one almost nobody implements.
+
+Figuration follows three rules that keep it musical instead of busy:
 
 - **It arpeggiates the actual chord**, so it is consonant with the harmony rather than merely in key.
 - **One figure per phrase.** Six shapes — up, down, up-down, alberti, pendulum, rolling — chosen once and held for four bars. A repeating figure reads as accompaniment; a fresh note order every bar reads as fidgeting.

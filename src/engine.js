@@ -127,7 +127,7 @@ export function createEngine () {
     playDrums (state, time);
     playMelody (state, time, positionInForm % 4, phrase, chordSpec);
     playCounter (state, time, positionInForm % 4, chordSpec,
-                 state.counterPlans?.[Math.floor (positionInForm / 4)]);
+                 state.counterPlans?.[Math.floor (positionInForm / 4)], phrase);
     playDrone (state, time);
     playVinyl (state, time);
 
@@ -142,7 +142,9 @@ export function createEngine () {
     state.barIndex++;
 
     if (state.onBar) {
-      Tone.getDraw().schedule (() => state.onBar (bar, state.progression.name), time);
+      const texture = state.counterPlans?.[Math.floor (positionInForm / 4)]?.texture ?? '';
+      Tone.getDraw().schedule (
+        () => state.onBar (bar, state.progression.name + (texture ? ' · ' + texture : '')), time);
     }
   }
 

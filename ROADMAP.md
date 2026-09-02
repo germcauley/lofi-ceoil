@@ -21,8 +21,8 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **2. Per-mode progression sets, including the pop canon**
 - [x] **3. Motif and development**
 - [x] **4. Chord-aware melody**
-- [ ] **5. Cadences and question/answer**
-- [ ] **6. Counter-line textures: imitation and heterophony**
+- [x] **5. Cadences and question/answer**
+- [x] **6. Counter-line textures: imitation and heterophony**
 - [ ] **7. Eight-bar parts with a higher turn**
 - [ ] **8. Comping rhythms and harmonic rhythm**
 - [ ] **9. Long-form structure**
@@ -89,13 +89,17 @@ Measured over 400 phrases: exposed notes landing on chord tones rose from **46.6
 
 The generate-and-test rules landed with item 3.
 
-## 5. Cadences and question/answer
+## 5. Cadences and question/answer — done
 
 Bar 2 should close on an unstable degree — the 2nd or 5th, a half cadence. Bar 4 closes on the tonic. Currently only the final note is forced home, so phrases have an ending but no shape. Antecedent and consequent is what makes four bars feel like a sentence.
 
 Add three or four stock **cadence formulas** per mode. Trad tunes reuse the same closes constantly; it is a feature, not a limitation. Zero risk, instant idiom.
 
-## 6. Counter-line textures
+**As built.** Two formula sets — `full` closes on the tonic, `half` on the fifth or second. Bar 4 renders a full cadence outright. Bar 2 keeps its development and only its *final note* is redirected, to whichever of the fifth or second is nearer, so the sequence keeps its shape and just gains a question mark.
+
+Measured over 300 phrases: bar 4 lands on the tonic **300/300**, and bar 2 on the fifth or second **300/300** once the fallback path was taught to half-cadence too.
+
+## 6. Counter-line textures — done
 
 Currently the counter line is *figuration* — an arpeggio. It fills space intelligently but shares no material with the tune, so it can only be tasteful, never interesting.
 
@@ -103,7 +107,9 @@ Currently the counter line is *figuration* — an arpeggio. It fills space intel
 - **Heterophony.** The actual traditional Celtic texture, and almost nobody implements it: a second voice playing *the same tune*, simplified or ornamented differently. Two fiddlers playing one melody, not two melodies.
 - **Voice-leading constraints** against the melody: no parallel fifths or octaves, prefer contrary motion, stay within a tenth.
 
-Make these a **texture** selector — figuration, imitation, heterophony, drone-only — chosen per section rather than replacing what exists.
+**As built.** Chosen per phrase, weighted toward figuration so the others stay events rather than the norm. Imitation answers with the melody's previous bar an octave down — bar 0 answers bar 3, so the canon carries across the phrase boundary instead of falling silent every four bars. Heterophony plays the current bar thinned to its longer notes, nudged 30 ms late, the way a second player sits just behind the lead.
+
+Both echo textures are fitted to the current chord, since the harmony has moved on since the melody played that material. The active texture is shown next to the progression in the readout.
 
 ## 7. Eight-bar parts with a higher turn
 
