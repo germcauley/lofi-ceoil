@@ -36,7 +36,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **16. Radio mode — tracks that segue**
 - [ ] **17. Generated tune names**
 - [ ] **18. Save the current tune**
-- [ ] **19. Sheet music, as ABC**
+- [ ] **19. Notation of the current tune** *(backlog)*
 - [x] **20. Sampled whistle and harp** *(fiddle still synthesised — no CC0 violin found)*
 - [ ] **21. More styles, slowed + reverb type music, trance, minimalism
 - [ ] **22. Animated DJ that actually controls the mix, tempo etc
@@ -243,11 +243,17 @@ From a captured buffer, two output routes:
 
 Worth also writing the **seed** into the metadata — the key, mode, tempo, motifs and voices that produced the track. A saved file that records how to regenerate itself is a nicer artefact than a bare audio export, and it costs one JSON blob in a comment field.
 
-## 19. Sheet music, as ABC
+## 19. Notation of the current tune — backlog
 
 The generator already works in scale degrees and MIDI, so it holds everything notation needs. The question is only which format.
 
-**ABC is the obvious answer, and not only on technical grounds.** It is *the* notation Irish traditional music is written and shared in — plain text, tiny, and directly pasteable into thesession.org. `abcjs` renders it in the browser and can play it back. For a Celtic tune generator, exporting anything else would be slightly missing the point. MusicXML remains worth adding later for anyone importing into MuseScore or Sibelius.
+**The deliverable is a stave on screen** — the tune as written music, for whatever is playing right now. Not a text format for its own sake.
+
+Two ways to get there. `abcjs` takes ABC and renders it as ordinary notation in the browser, so ABC would be an internal representation rather than the output; that route also gives a copyable ABC string for free, which is how Irish tunes are shared. Or VexFlow draws staves directly from note data, skipping the intermediate format entirely.
+
+Either works. The choice only matters if a copyable text form is wanted alongside the picture. MusicXML remains worth adding later for anyone importing into MuseScore or Sibelius.
+
+A wrinkle worth noting now: what is playing is not fixed. Voices swap, the key moves and the form rebuilds every 32 bars, so "the current tune" needs a definition — most likely a snapshot of the turn in progress, captured the moment the button is pressed.
 
 Two things to decide:
 
