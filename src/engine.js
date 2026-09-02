@@ -124,7 +124,13 @@ export function createEngine () {
         // Pulling the drums before the end of the last part lets the turn
         // breathe instead of stopping dead.
         drumsUntil: last ? 6 : 8,
-        counter: ! (first && openBare)
+        counter: ! (first && openBare),
+
+        // A bar with no harmony at all, borrowed from jacbz/Lofi, where an
+        // empty chord also drops the drumbeat. The closing bar is the place
+        // for it: the tune lands on its cadence with everything else out of
+        // the way, which is a structural rest rather than a quiet moment.
+        emptyBar: Math.random() < 0.35 ? 7 : -1
       };
     });
   }
@@ -192,16 +198,20 @@ export function createEngine () {
     const barInPart = positionInForm % 8;
     const plan = state.arrangement?.[partIndex] ?? {};
 
-    if (barInPart >= (plan.chordsFrom ?? 0)) playChord (state, time, chordSpec);
-    if (plan.bass && plan.bass !== 'none') playBass (state, time, chordSpec, plan.bass);
+    // An empty bar drops everything but the tune, the drone and the surface
+    // noise — so the melody's cadence is heard on its own.
+    const empty = barInPart === plan.emptyBar;
 
-    if (barInPart >= (plan.drumsFrom ?? 0) && barInPart < (plan.drumsUntil ?? 8)) {
+    if (! empty && barInPart >= (plan.chordsFrom ?? 0)) playChord (state, time, chordSpec);
+    if (! empty && plan.bass && plan.bass !== 'none') playBass (state, time, chordSpec, plan.bass);
+
+    if (! empty && barInPart >= (plan.drumsFrom ?? 0) && barInPart < (plan.drumsUntil ?? 8)) {
       playDrums (state, time);
     }
 
     playMelody (state, time, barInPart, phrase, chordSpec);
 
-    if (plan.counter !== false) {
+    if (! empty && plan.counter !== false) {
       playCounter (state, time, barInPart, chordSpec, state.counterPlans?.[partIndex], phrase);
     }
 

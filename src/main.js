@@ -82,7 +82,7 @@ mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
 // Voices swap while it plays, so you can hear the difference in context rather
 // than having to restart to compare.
 mountChooser (document.getElementById ('leadVoiceRow'),
-  ['whistle', 'fiddle', 'harp'], 'whistle', 'seg',
+  ['whistle', 'fiddle', 'piano', 'harp'], 'whistle', 'seg',
   value => engine.controls.leadVoice (value));
 
 mountChooser (document.getElementById ('keysVoiceRow'),

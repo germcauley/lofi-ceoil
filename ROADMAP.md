@@ -28,7 +28,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **9. Long-form structure** — arrangement done; energy arc and modal shift remain
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
-- [ ] **11b. Anacrusis and empty bars**
+- [x] **11b. Anacrusis and empty bars**
 - [x] **12. Instrument voices**
 
 ---
@@ -153,10 +153,15 @@ Every bar was metrically sealed: notes fitted inside their bar and stopped at th
 
 Measured over 400 parts: **20.3% contain a tie**, averaging 0.42 tied notes each, with zero ties on cadence bars and zero collisions with a following attack.
 
-## 11b. Anacrusis and empty bars
+## 11b. Anacrusis and empty bars — done
 
-- **Anacrusis.** Irish tunes very often start on an upbeat — the last quaver or two of the preceding bar. Every phrase still starts on beat one of bar one. This needs phrase events with a negative position, rendered during the previous bar.
-- **Empty bars.** jacbz/Lofi lets a chord be *empty* and drops the drums when it is. A bar with no harmony at all is a structural rest, and there is nothing like it here.
+**Anacrusis.** Rather than events with negative positions — which would have needed cross-bar and cross-part coordination — the pickup goes into the *answering* sentence, which keeps it inside a single part. Bar 4's opening is approached from the tail of bar 3, shortening the half cadence by one or two quavers to make room. The pickup steps toward bar 4's first note so it leads somewhere rather than just filling the gap.
+
+Measured over 400 parts: **25% carry a pickup**, and **100% of them arrive a step from their target**, with no bar overruns and no events out of time order.
+
+**Empty bars.** A bar with no harmony, no bass, no drums and no counter — just the tune, the drone and the surface noise. The closing bar of a part is the place for it: the melody lands on its cadence with everything else out of the way, which is a structural rest rather than merely a quiet moment. Roughly a third of parts get one.
+
+## 12. Instrument voices — done
 
 ## 12. Instrument voices — done
 
@@ -164,7 +169,7 @@ Raw synth tones read as synthy very quickly. Three things fix most of it without
 
 Every voice is now built that way, and the two most exposed parts are **switchable while it plays**:
 
-- **Lead** — `whistle` (near-sine with vibrato, tin-whistle-ish), `fiddle` (bowed saw, slower attack, heavier vibrato), `harp` (Karplus-Strong pluck, a physical decay rather than an envelope)
+- **Lead** — `whistle` (near-sine with vibrato, tin-whistle-ish), `fiddle` (bowed saw, slower attack, heavier vibrato), `piano` (FM at a slightly inharmonic 3.01 ratio, which is what a real struck string has, with a fast modulation decay for the hammer knock), `harp` (Karplus-Strong pluck, a physical decay rather than an envelope)
 - **Keys** — `rhodes` (FM through chorus), `felt` (muted triangle, heavily rolled off), `pad` (detuned saws, long swell)
 
 Swapping disposes the old chain after a delay, so notes still ringing are not cut off mid-decay. Verified with six live swaps under playback and no scheduling failures.

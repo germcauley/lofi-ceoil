@@ -285,6 +285,54 @@ function addTies (events) {
   return events;
 }
 
+/** Adds a pickup into the second sentence.
+
+    Irish tunes very often begin on an upbeat rather than the downbeat, and
+    every phrase here started dead on beat one. The answering sentence is the
+    natural place for one: bar 4's opening is approached from the tail of bar
+    3, which means shortening the half cadence to make room.
+
+    The pickup steps toward bar 4's first note, so it leads somewhere rather
+    than merely filling the gap. */
+function addPickup (events, poolSize) {
+  const bar3 = events.filter (e => Math.floor (e.at / 8) === 3);
+  const bar4 = events.filter (e => Math.floor (e.at / 8) === 4);
+
+  if (! bar3.length || ! bar4.length) return events;
+
+  // Only worth doing when the answering sentence lands on the downbeat —
+  // otherwise there is already a rest there doing the same job.
+  if (bar4[0].at % 8 !== 0) return events;
+  if (! chance (0.4)) return events;
+
+  const last = bar3[bar3.length - 1];
+  const notes = chance (0.5) ? 1 : 2;
+
+  // Keep the cadence note audible as a cadence.
+  if (last.length <= notes) return events;
+
+  last.length -= notes;
+
+  const target = bar4[0].degree;
+  const startAt = (last.at % 8) + last.length;
+
+  for (let i = 0; i < notes; i++) {
+    // Approach from below or above, arriving a step away from the target.
+    const distance = notes - i;
+    const degree = clampDegree (target - distance * (target >= 2 ? 1 : -1), poolSize);
+
+    events.push ({
+      at: 3 * 8 + startAt + i,
+      length: 1,
+      degree,
+      ornament: false,
+      pickup: true
+    });
+  }
+
+  return events.sort ((a, b) => a.at - b.at);
+}
+
 /** Rejects phrases that would sound wrong regardless of how they were built.
     Cheap, and it is what lets the operations stay adventurous. */
 function isSingable (events) {
@@ -343,7 +391,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
 
   for (let attempt = 0; attempt < 12; attempt++) {
     const events = [...sentence (0, 'half'), ...sentence (4, 'full')];
-    if (isSingable (events)) return addTies (events);
+    if (isSingable (events)) return addPickup (addTies (events), poolSize);
   }
 
   // Nothing passed: the plainest possible reading of the motif, still shaped
@@ -355,7 +403,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
     ...renderCadence (offset + 3, poolSize, closing)
   ];
 
-  return addTies ([...plain (0, 'half'), ...plain (4, 'full')]);
+  return addPickup (addTies ([...plain (0, 'half'), ...plain (4, 'full')]), poolSize);
 }
 
 /** Convenience for callers that just want a phrase and do not care about

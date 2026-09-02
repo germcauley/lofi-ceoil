@@ -129,7 +129,29 @@ function harp () {
   return { voice, output: voice };
 }
 
-export const LEAD_VOICES = { whistle, fiddle, harp };
+/** Upright piano. FM with a slightly inharmonic ratio, which is what a real
+    struck string has — the partials are not exact multiples of the fundamental.
+    A fast modulation decay gives the bright knock of the hammer over a body
+    that darkens immediately, and the amplitude envelope has almost no sustain,
+    so notes ring and die rather than being held. */
+function piano () {
+  const voice = new Tone.FMSynth ({
+    harmonicity: 3.01,
+    modulationIndex: 6.5,
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.002, decay: 1.9, sustain: 0.02, release: 1.6 },
+    modulation: { type: 'sine' },
+    modulationEnvelope: { attack: 0.001, decay: 0.12, sustain: 0.006, release: 0.4 },
+    volume: -14
+  });
+
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 3800, rolloff: -12 });
+  voice.connect (tone);
+
+  return { voice, output: tone };
+}
+
+export const LEAD_VOICES = { whistle, fiddle, piano, harp };
 
 // ------------------------------------------------------------------ others
 
