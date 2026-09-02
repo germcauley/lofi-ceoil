@@ -32,6 +32,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **12. Instrument voices** *(now including a sampled piano)*
 - [x] **13. Voice changes driven by the arrangement**
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
+- [ ] **15. More bass voices**
 
 ---
 
@@ -187,6 +188,19 @@ Coming back from a drop is exactly where an arrangement wants a new colour: the 
 **As built.** A part following one that ended on an empty bar gets a *different* lead voice; otherwise the voice holds, because changing it every part would be a gimmick rather than an arrangement. Changes land on the part boundary, never mid-phrase.
 
 The lead selector gained an `auto` option that hands the choice to the arrangement. Picking a voice by hand pins it. Verified across 900 part-pairs: 300 correct changes after a drop, 600 correct holds, zero errors in either direction.
+
+## 15. More bass voices
+
+The bass has one timbre and seven patterns. The patterns changed how it *moves*; a voice selector would change what it *is*, and the low end is doing more work than any other single part.
+
+Worth having, in roughly the order they suit the material:
+
+- **Upright** — pizzicato double bass. The lofi default, and the one that would change the record most. Needs a short filtered noise transient for the finger, a fast decay and a touch of body resonance. A strong candidate for sampling rather than synthesis, for the same reason the piano was.
+- **Sub** — near-pure sine with a slow attack, felt rather than heard. Pairs well with the `sparse` and `held` patterns.
+- **Electric** — fingered bass guitar: filtered triangle with a slight pluck transient and a longer sustain than the upright.
+- **Moog** — resonant filtered saw with an envelope sweep. Modern, sits oddly against the trad melody, which may be exactly the point on some turns.
+
+Same shape as the lead and keys selectors, so the work is mostly voice design rather than plumbing. It should also join the `auto` arrangement logic once it exists: a bass voice change is another way to mark a section return.
 
 ## 14. The turntable — draggable vinyl that really scrubs
 
