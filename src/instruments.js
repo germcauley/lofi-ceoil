@@ -1,50 +1,166 @@
-// The voices. Everything here is synthesised so the project makes sound with
-// no downloads and no asset pipeline.
+// The voices.
 //
-// Each factory returns a Tone source exposing triggerAttackRelease, which is
-// also the Sampler interface — so swapping any of these for a real sampled
-// instrument (VCSL and friends) is a one-function change, not a refactor.
+// Everything is synthesised, so there is nothing to download and no asset
+// pipeline — but raw synth tones read as "synthy" very quickly. Three things
+// fix most of that without samples:
+//
+//   * a soft attack with a noise transient, so notes start rather than appear
+//   * slight detune or chorus, so a note is never one perfectly static pitch
+//   * a lowpass sitting below the brightness of the raw oscillator
+//
+// Each factory returns { voice, output }. `voice` is what gets triggered and
+// exposes triggerAttackRelease — which is also the Tone.Sampler interface, so
+// swapping any of these for real samples stays a one-function change. `output`
+// is what connects onward, which may be the end of a small effect chain.
 
 import * as Tone from 'tone';
 
-/** Electric-piano-ish. FM with a low modulation index gets most of the way to
-    a Rhodes: a bell-like attack over a sine body. */
-export function createKeys () {
-  return new Tone.PolySynth (Tone.FMSynth, {
+// ------------------------------------------------------------------- keys
+
+/** Electric-piano-ish. FM with a low modulation index gets close to a Rhodes:
+    a bell-like attack over a sine body. Chorus keeps it from sitting perfectly
+    still, which is most of what separates it from a plain FM patch. */
+function rhodes () {
+  const voice = new Tone.PolySynth (Tone.FMSynth, {
     maxPolyphony: 12,
     harmonicity: 2,
-    modulationIndex: 3.5,
+    modulationIndex: 2.6,
     oscillator: { type: 'sine' },
-    envelope: { attack: 0.012, decay: 1.6, sustain: 0.25, release: 2.4 },
+    envelope: { attack: 0.018, decay: 1.8, sustain: 0.22, release: 2.8 },
     modulation: { type: 'sine' },
-    modulationEnvelope: { attack: 0.004, decay: 0.35, sustain: 0.1, release: 0.6 },
-    volume: -14
+    modulationEnvelope: { attack: 0.006, decay: 0.4, sustain: 0.06, release: 0.8 },
+    volume: -15
   });
+
+  const chorus = new Tone.Chorus ({ frequency: 0.6, delayTime: 3.5, depth: 0.5, wet: 0.35 }).start();
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 3200, rolloff: -12 });
+
+  voice.connect (chorus);
+  chorus.connect (tone);
+
+  return { voice, output: tone };
 }
 
-/** Soft round bass. Triangle through its own filter so it stays under the
-    keys instead of fighting them. */
-export function createBass () {
-  return new Tone.MonoSynth ({
+/** Felt piano: hammers muted with cloth. A soft triangle body under a short
+    filtered noise thump for the hammer, heavily rolled off. */
+function felt () {
+  const voice = new Tone.PolySynth (Tone.Synth, {
+    maxPolyphony: 12,
     oscillator: { type: 'triangle' },
-    filter: { Q: 1, type: 'lowpass', rolloff: -24 },
-    envelope: { attack: 0.02, decay: 0.3, sustain: 0.7, release: 0.9 },
-    filterEnvelope: {
-      attack: 0.02, decay: 0.2, sustain: 0.4, release: 0.8,
-      baseFrequency: 90, octaves: 2.2
-    },
+    envelope: { attack: 0.03, decay: 2.4, sustain: 0.08, release: 2.6 },
+    volume: -13
+  });
+
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 1500, rolloff: -24 });
+  const chorus = new Tone.Chorus ({ frequency: 0.35, delayTime: 5, depth: 0.35, wet: 0.25 }).start();
+
+  voice.connect (tone);
+  tone.connect (chorus);
+
+  return { voice, output: chorus };
+}
+
+/** Slow strings. Detuned saws with a long swell — barely an attack at all, so
+    it sits behind everything as harmony rather than as a part. */
+function pad () {
+  const voice = new Tone.PolySynth (Tone.Synth, {
+    maxPolyphony: 12,
+    oscillator: { type: 'fatsawtooth', count: 3, spread: 22 },
+    envelope: { attack: 0.7, decay: 1.4, sustain: 0.5, release: 2.6 },
+    volume: -22
+  });
+
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 1100, rolloff: -24 });
+  voice.connect (tone);
+
+  return { voice, output: tone };
+}
+
+export const KEYS_VOICES = { rhodes, felt, pad };
+
+// ------------------------------------------------------------------- lead
+
+/** Tin whistle. Nearly a pure sine with a breath transient and a little
+    vibrato — the vibrato is what stops it reading as a test tone. */
+function whistle () {
+  const voice = new Tone.Synth ({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.045, decay: 0.3, sustain: 0.55, release: 0.7 },
+    volume: -16
+  });
+
+  const breath = new Tone.Vibrato ({ frequency: 5.2, depth: 0.06, type: 'sine' });
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 3400, rolloff: -12 });
+
+  voice.connect (breath);
+  breath.connect (tone);
+
+  return { voice, output: tone };
+}
+
+/** Fiddle. A filtered saw with a slower, bowed attack and heavier vibrato. */
+function fiddle () {
+  const voice = new Tone.Synth ({
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 0.08, decay: 0.35, sustain: 0.6, release: 0.9 },
+    volume: -22
+  });
+
+  const vibrato = new Tone.Vibrato ({ frequency: 5.8, depth: 0.1, type: 'sine' });
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 2200, rolloff: -24, Q: 1.6 });
+
+  voice.connect (vibrato);
+  vibrato.connect (tone);
+
+  return { voice, output: tone };
+}
+
+/** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
+    is a physical model rather than an envelope. */
+function harp () {
+  const voice = new Tone.PluckSynth ({
+    attackNoise: 0.6,
+    dampening: 3200,
+    resonance: 0.94,
+    release: 1.1,
     volume: -12
   });
+
+  return { voice, output: voice };
 }
 
-/** Sparse lead. Deliberately quiet — in lofi the melody sits behind the
-    chords, not on top of them. */
-export function createLead () {
-  return new Tone.Synth ({
+export const LEAD_VOICES = { whistle, fiddle, harp };
+
+// ------------------------------------------------------------------ others
+
+/** Soft round bass. Triangle plus a touch of sub, through its own filter so it
+    stays under the keys instead of fighting them. */
+export function createBass () {
+  const voice = new Tone.MonoSynth ({
     oscillator: { type: 'triangle' },
-    envelope: { attack: 0.03, decay: 0.4, sustain: 0.2, release: 1.4 },
-    volume: -20
+    filter: { Q: 1, type: 'lowpass', rolloff: -24 },
+    envelope: { attack: 0.028, decay: 0.35, sustain: 0.72, release: 1.1 },
+    filterEnvelope: {
+      attack: 0.02, decay: 0.25, sustain: 0.35, release: 0.9,
+      baseFrequency: 75, octaves: 2
+    },
+    volume: -11
   });
+
+  return { voice, output: voice };
+}
+
+/** The counter line's voice: a pluck, distinct from whichever lead is chosen. */
+export function createPluck () {
+  const voice = new Tone.PluckSynth ({
+    attackNoise: 0.7,
+    dampening: 2600,
+    resonance: 0.93,
+    release: 0.9,
+    volume: -17
+  });
+
+  return { voice, output: voice };
 }
 
 export function createDrums () {
@@ -56,7 +172,6 @@ export function createDrums () {
     volume: -6
   });
 
-  // Noise plus a short tonal body reads as a snare without a sample.
   const snare = new Tone.NoiseSynth ({
     noise: { type: 'white' },
     envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
@@ -67,9 +182,8 @@ export function createDrums () {
   snare.connect (snareFilter);
 
   // Ghost notes get their own voice. NoiseSynth wraps a single noise source,
-  // so sharing one with the backbeat means a ghost landing next to a snare
-  // hit fights it for the voice. A separate, duller voice also sounds more
-  // like the real thing.
+  // so sharing one with the backbeat means a ghost landing next to a snare hit
+  // fights it for the voice.
   const ghost = new Tone.NoiseSynth ({
     noise: { type: 'pink' },
     envelope: { attack: 0.001, decay: 0.09, sustain: 0 },
@@ -91,26 +205,10 @@ export function createDrums () {
   return { kick, snare, ghost, hat, outputs: [kick, snareFilter, ghostFilter, hatFilter] };
 }
 
-/** The counter line: a Karplus-Strong pluck, which lands somewhere between a
-    harp and a nylon guitar. Physical-model decay means notes ring into each
-    other without any reverb help, and it sits clearly apart from the keys.
-
-    Monophonic, which is correct here — the figure is one voice, and its notes
-    are laid out strictly in order. */
-export function createPluck () {
-  return new Tone.PluckSynth ({
-    attackNoise: 0.7,
-    dampening: 2600,
-    resonance: 0.93,
-    release: 0.9,
-    volume: -17
-  });
-}
-
 /** A pipe-like drone. Sawtooth through a low filter with a slow attack, so it
     swells rather than starts. Monophonic is right here — a drone is one note. */
 export function createDrone () {
-  return new Tone.MonoSynth ({
+  const voice = new Tone.MonoSynth ({
     oscillator: { type: 'sawtooth' },
     filter: { type: 'lowpass', rolloff: -24, Q: 2 },
     envelope: { attack: 0.9, decay: 0.4, sustain: 0.85, release: 1.8 },
@@ -120,6 +218,8 @@ export function createDrone () {
     },
     volume: -26
   });
+
+  return { voice, output: voice };
 }
 
 /** The crackle bed: continuous surface noise plus occasional pops, the way a

@@ -55,6 +55,10 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
+**Voices are switchable while it plays.** The lead can be a `whistle`, a `fiddle` or a `harp`; the keys a `rhodes`, a `felt` piano or a `pad`. Everything is still synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic.
+
+Notes can also **tie over the barline**, but only where the next bar starts with a rest, so a sustained note fills silence rather than colliding with the next attack. About a fifth of parts carry one.
+
 ## The controls
 
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.

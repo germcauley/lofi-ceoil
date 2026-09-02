@@ -251,6 +251,40 @@ function renderCadence (bar, poolSize, kind = 'full') {
   return events;
 }
 
+/** Lets a note sustain across a barline where the next bar leaves room.
+
+    Every bar was metrically sealed: notes fitted inside their bar and stopped
+    at the barline, so the phrase reset on every downbeat. A tie is the
+    strongest way out of that grid, and it is safe to add here because the rule
+    only fires where the following bar begins with a rest — so the sustained
+    note is filling silence, never colliding with the next attack. That matters
+    because the lead is a single monophonic voice. */
+function addTies (events) {
+  for (let bar = 0; bar < 7; bar++) {
+    const thisBar = events.filter (e => Math.floor (e.at / 8) === bar);
+    const nextBar = events.filter (e => Math.floor (e.at / 8) === bar + 1);
+
+    if (! thisBar.length || ! nextBar.length) continue;
+
+    const last = thisBar[thisBar.length - 1];
+    const endsAtBarline = (last.at % 8) + last.length === 8;
+    const roomInNext = nextBar[0].at % 8;
+
+    // Cadence bars stay put: an ending that spills over stops sounding final.
+    const isCadenceBar = bar === 3 || bar === 7;
+
+    if (! endsAtBarline || roomInNext === 0 || isCadenceBar) continue;
+    if (! chance (0.55)) continue;
+
+    last.length += roomInNext;
+    last.tied = true;
+    // An ornament on a note that is about to be held reads as a stumble.
+    last.ornament = false;
+  }
+
+  return events;
+}
+
 /** Rejects phrases that would sound wrong regardless of how they were built.
     Cheap, and it is what lets the operations stay adventurous. */
 function isSingable (events) {
@@ -309,7 +343,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
 
   for (let attempt = 0; attempt < 12; attempt++) {
     const events = [...sentence (0, 'half'), ...sentence (4, 'full')];
-    if (isSingable (events)) return events;
+    if (isSingable (events)) return addTies (events);
   }
 
   // Nothing passed: the plainest possible reading of the motif, still shaped
@@ -321,7 +355,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
     ...renderCadence (offset + 3, poolSize, closing)
   ];
 
-  return [...plain (0, 'half'), ...plain (4, 'full')];
+  return addTies ([...plain (0, 'half'), ...plain (4, 'full')]);
 }
 
 /** Convenience for callers that just want a phrase and do not care about

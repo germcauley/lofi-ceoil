@@ -2,7 +2,7 @@
 // the knobs write into, and drives the bar-by-bar scheduling.
 
 import * as Tone from 'tone';
-import { createKeys, createBass, createLead, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
+import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
@@ -21,9 +21,12 @@ export function createEngine () {
   const spectrum = new Tone.Analyser ({ type: 'fft', size: 256, smoothing: 0.72 });
   chain.master.connect (spectrum);
 
-  const keys = createKeys();
+  // Voices are swappable at runtime, so each one is held as { voice, output }
+  // and the output is what connects onward.
+  let keys = KEYS_VOICES.rhodes();
+  let lead = LEAD_VOICES.whistle();
+
   const bass = createBass();
-  const lead = createLead();
   const drums = createDrums();
   const drone = createDrone();
   const pluck = createPluck();
@@ -31,16 +34,24 @@ export function createEngine () {
 
   // Instruments run through the sidechain so the kick ducks them. The vinyl
   // bed deliberately does not — a record surface does not pump.
-  keys.connect (chain.input);
-  bass.connect (chain.input);
-  lead.connect (chain.input);
-  drone.connect (chain.input);
-  pluck.connect (chain.input);
+  keys.output.connect (chain.input);
+  lead.output.connect (chain.input);
+  bass.output.connect (chain.input);
+  drone.output.connect (chain.input);
+  pluck.output.connect (chain.input);
   drums.outputs.forEach (out => out.connect (chain.input));
   vinyl.level.connect (chain.master);
 
   const state = {
-    keys, bass, lead, drums, drone, pluck, vinyl, chain,
+    keys: keys.voice,
+    lead: lead.voice,
+    bass: bass.voice,
+    drone: drone.voice,
+    pluck: pluck.voice,
+    drums, vinyl, chain,
+
+    keysVoice: 'rhodes',
+    leadVoice: 'whistle',
 
     rootMidi: noteNameToMidi ('C3'),
     scale: 'dorian',
@@ -243,8 +254,8 @@ export function createEngine () {
     scheduleId = null;
 
     vinyl.hiss.stop();
-    keys.releaseAll();
-    drone.triggerRelease();
+    state.keys.releaseAll?.();
+    state.drone.triggerRelease?.();
 
     state.barIndex = 0;
     state.previousVoicing = null;
@@ -255,6 +266,40 @@ export function createEngine () {
   // Each setter maps one knob to whatever parameters it actually touches. A
   // knob is a musical idea, not a single node property — "dust" moves three
   // things at once because that is what makes it sound like one control.
+  /** Replaces a voice while the transport keeps running. The old chain is
+      disposed after a short delay so any notes still ringing are not cut off
+      mid-decay. */
+  function swapVoice (kind, name) {
+    const table = kind === 'keys' ? KEYS_VOICES : LEAD_VOICES;
+    const factory = table[name];
+    if (! factory) return;
+
+    const current = kind === 'keys' ? keys : lead;
+    const next = factory();
+
+    next.output.connect (chain.input);
+
+    if (kind === 'keys') {
+      keys = next;
+      state.keys = next.voice;
+      state.keysVoice = name;
+    } else {
+      lead = next;
+      state.lead = next.voice;
+      state.leadVoice = name;
+    }
+
+    setTimeout (() => {
+      try {
+        current.output.disconnect();
+        current.voice.dispose();
+        if (current.output !== current.voice) current.output.dispose();
+      } catch (error) {
+        // A voice that was already torn down is not worth reporting.
+      }
+    }, 3000);
+  }
+
   const controls = {
     tempo (value) {
       state.tempo = value;
@@ -331,6 +376,14 @@ export function createEngine () {
 
     counter (value) {
       state.counter = value;
+    },
+
+    keysVoice (name) {
+      swapVoice ('keys', name);
+    },
+
+    leadVoice (name) {
+      swapVoice ('lead', name);
     }
   };
 

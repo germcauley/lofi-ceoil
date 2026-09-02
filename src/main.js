@@ -79,6 +79,16 @@ mountChooser (document.getElementById ('keyRow'), NOTE_NAMES, 'C', 'key',
 mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
   value => engine.controls.scale (value));
 
+// Voices swap while it plays, so you can hear the difference in context rather
+// than having to restart to compare.
+mountChooser (document.getElementById ('leadVoiceRow'),
+  ['whistle', 'fiddle', 'harp'], 'whistle', 'seg',
+  value => engine.controls.leadVoice (value));
+
+mountChooser (document.getElementById ('keysVoiceRow'),
+  ['rhodes', 'felt', 'pad'], 'rhodes', 'seg',
+  value => engine.controls.keysVoice (value));
+
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
 

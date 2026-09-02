@@ -27,7 +27,9 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **8. Bass patterns and staged entrances** *(the comping-rhythm half remains)*
 - [ ] **9. Long-form structure** — arrangement done; energy arc and modal shift remain
 - [x] **10. Rests and phrasing**
-- [ ] **11. Anacrusis, ties and empty bars**
+- [x] **11a. Ties over the barline**
+- [ ] **11b. Anacrusis and empty bars**
+- [x] **12. Instrument voices**
 
 ---
 
@@ -143,13 +145,31 @@ Drums pull out before the end of the last part, so a turn breathes rather than s
 
 **Still to do:** comping rhythm patterns for the keys (bouzouki-style driving eighths, boom-chuck, sparse pad), inversions chosen for smooth bass motion, sus4 resolutions, and harmonic rhythm — two bars per chord in the A part against one in the B part.
 
-## 11. Anacrusis, ties and empty bars
+## 11a. Ties over the barline — done
 
-Three things that would push the rhythm further from the grid, none of them yet built.
+Every bar was metrically sealed: notes fitted inside their bar and stopped at the barline, so the phrase reset on every downbeat.
 
-- **Anacrusis.** Irish tunes very often start on an upbeat — the last quaver or two of the preceding bar. Every phrase here still starts on beat one of bar one. This needs phrase events with a negative position, rendered during the previous bar.
-- **Ties over the barline.** No note currently sustains across a barline, so every bar is metrically sealed. This is the single strongest remaining source of syncopation.
+**As built.** A tie is added only where the *following* bar begins with a rest, so the sustained note fills silence and can never collide with the next attack — which matters because the lead is a single monophonic voice. Cadence bars are excluded: an ending that spills over stops sounding final.
+
+Measured over 400 parts: **20.3% contain a tie**, averaging 0.42 tied notes each, with zero ties on cadence bars and zero collisions with a following attack.
+
+## 11b. Anacrusis and empty bars
+
+- **Anacrusis.** Irish tunes very often start on an upbeat — the last quaver or two of the preceding bar. Every phrase still starts on beat one of bar one. This needs phrase events with a negative position, rendered during the previous bar.
 - **Empty bars.** jacbz/Lofi lets a chord be *empty* and drops the drums when it is. A bar with no harmony at all is a structural rest, and there is nothing like it here.
+
+## 12. Instrument voices — done
+
+Raw synth tones read as synthy very quickly. Three things fix most of it without introducing samples: a soft attack so notes start rather than appear, slight detune or chorus so a note is never one perfectly static pitch, and a lowpass sitting below the brightness of the raw oscillator.
+
+Every voice is now built that way, and the two most exposed parts are **switchable while it plays**:
+
+- **Lead** — `whistle` (near-sine with vibrato, tin-whistle-ish), `fiddle` (bowed saw, slower attack, heavier vibrato), `harp` (Karplus-Strong pluck, a physical decay rather than an envelope)
+- **Keys** — `rhodes` (FM through chorus), `felt` (muted triangle, heavily rolled off), `pad` (detuned saws, long swell)
+
+Swapping disposes the old chain after a delay, so notes still ringing are not cut off mid-decay. Verified with six live swaps under playback and no scheduling failures.
+
+Samples remain the obvious next step if these are still not organic enough — every voice exposes `triggerAttackRelease`, which is the `Tone.Sampler` interface, so it stays a one-function change per voice. VCSL is CC0 and would suit.
 
 ## Original item 8 notes
 
