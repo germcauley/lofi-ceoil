@@ -191,6 +191,41 @@ export function voiceLead (previous, pitchClasses, targetMidi = 60, voices = 4) 
   return sorted;
 }
 
+/** Nudges a melody note onto a chord tone, but only ever by one scale step.
+
+    Melody notes are chosen from a gapped pool with no knowledge of the chord
+    underneath, so a held note can land a second away from every chord tone and
+    simply sit there. This fixes that without wrecking the tune: if a chord
+    tone is within one scale step it moves, and if it is further away the note
+    is left alone rather than distorting the motif's shape.
+
+    Returns the possibly-adjusted MIDI note. */
+export function fitToChordTone (midi, baseMidi, scale, poolDegree, pool, chordPitchClassSet) {
+  if (chordPitchClassSet.has (midi % 12)) return midi;
+
+  let best = null;
+  let bestDistance = Infinity;
+
+  for (const step of [1, -1]) {
+    const index = poolDegree + step;
+    if (index < 0 || index >= pool.length) continue;
+
+    const candidate = scaleDegreeToMidi (baseMidi, scale, pool[index]);
+    if (! chordPitchClassSet.has (candidate % 12)) continue;
+
+    const distance = Math.abs (candidate - midi);
+
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  // Only worth moving if it is genuinely a step away; anything larger would
+  // change the melody rather than correct it.
+  return best !== null && bestDistance <= 2 ? best : midi;
+}
+
 export function noteNameToMidi (name) {
   const match = /^([A-G]#?)(-?\d+)$/.exec (name);
   if (! match) return 60;

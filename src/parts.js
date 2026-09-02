@@ -5,7 +5,7 @@
 // reason about and easy to replace.
 
 import * as Tone from 'tone';
-import { buildChord, chordPitchClasses, voiceLead, scaleDegreeToMidi, midiToNoteName } from './theory.js';
+import { buildChord, chordPitchClasses, voiceLead, fitToChordTone, scaleDegreeToMidi, midiToNoteName } from './theory.js';
 import { gappedPool } from './melody.js';
 
 const chance = p => Math.random() < p;
@@ -110,7 +110,7 @@ export function playDrums (state, time) {
     Notes are laid end to end by construction, and each one is shortened
     slightly so the following cut has somewhere to sit — the lead is a single
     monophonic voice, so overlapping notes would fight over it. */
-export function playMelody (state, time, barInPhrase, phrase) {
+export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
   const { lead, rootMidi, scale, ornament } = state;
   if (! phrase) return;
 
@@ -121,6 +121,13 @@ export function playMelody (state, time, barInPhrase, phrase) {
   // Sits the line above the chords without straying into whistle register.
   const base = rootMidi + 12;
 
+  // Held notes on strong beats are where a clash with the harmony actually
+  // shows. Short notes passing between chord tones are dissonant by design and
+  // are left alone.
+  const chordTones = chordSpec
+    ? new Set (chordPitchClasses (rootMidi, scale, chordSpec[0], chordSpec[1]))
+    : null;
+
   for (const event of phrase) {
     if (Math.floor (event.at / 8) !== barInPhrase) continue;
 
@@ -128,14 +135,23 @@ export function playMelody (state, time, barInPhrase, phrase) {
     const start = jitter (time, time + offsetEighths * eighth, 0.014);
     const duration = Math.max (0.08, event.length * eighth - gap);
 
-    const degree = pool[Math.min (pool.length - 1, event.degree)];
-    const midi = scaleDegreeToMidi (base, scale, degree);
+    const poolIndex = Math.min (pool.length - 1, event.degree);
+    const degree = pool[poolIndex];
+    let midi = scaleDegreeToMidi (base, scale, degree);
+
+    // Accented, or simply long enough that a wrong note would be audible.
+    const onStrongBeat = offsetEighths === 0 || offsetEighths === 4;
+    const exposed = (onStrongBeat && event.length >= 2) || event.length >= 3;
+
+    if (chordTones && exposed) {
+      midi = fitToChordTone (midi, base, scale, poolIndex, pool, chordTones);
+    }
 
     // A cut: a very short note a scale step above, flicked in just before the
     // beat. This one ornament does more for the folk character than any
     // amount of note choice.
     if (event.ornament && chance (ornament)) {
-      const above = scaleDegreeToMidi (base, scale, degree + 1);
+      const above = midi + (scaleDegreeToMidi (base, scale, degree + 1) - scaleDegreeToMidi (base, scale, degree));
       lead.triggerAttackRelease (
         midiToNoteName (above), 0.03, Math.max (time, start - 0.038), 0.22);
     }

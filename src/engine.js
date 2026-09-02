@@ -125,7 +125,7 @@ export function createEngine () {
     playChord (state, time, chordSpec);
     playBass (state, time, chordSpec);
     playDrums (state, time);
-    playMelody (state, time, positionInForm % 4, phrase);
+    playMelody (state, time, positionInForm % 4, phrase, chordSpec);
     playCounter (state, time, positionInForm % 4, chordSpec,
                  state.counterPlans?.[Math.floor (positionInForm / 4)]);
     playDrone (state, time);
