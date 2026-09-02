@@ -34,6 +34,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
 - [x] **15. More bass voices**
 - [x] **16. Radio mode — tracks that segue**
+- [x] **31. A "new track" button**
 - [ ] **17. Generated tune names**
 - [ ] **18. Save the current tune — WAV download**
 - [ ] **19. Notation of the current tune** *(backlog)*
@@ -479,3 +480,15 @@ Worth starting with 1, since a listener hearing the machine drift toward their t
 **Note the honest limit:** liking a *track* labels every parameter it had, most of which were not why you liked it. Dozens of likes are needed before the signal separates from the noise, and with one listener that is a long evening. Liking specific *moments* — this texture, this progression — would learn far faster from far fewer clicks, and is probably the better design.
 
 Pairs naturally with item 17: a track with a name is much easier to like than one without.
+
+---
+
+## 31. A "new track" button — done
+
+Abandons the current track and starts a fresh one.
+
+**The timing is the whole design.** Instantly would mean cutting mid-bar, which sounds broken; waiting for the turn to end would mean up to thirty-two bars, which defeats the point of a skip. It lands on the **next bar** — measured at one to two bars in practice, which is how a skip should feel: immediate, but not damaged.
+
+Half the time the new track arrives in a new key, chosen from the same four moves as a set ending. Deliberately **without a pivot**: a skip is a cut, and smoothing the seam would be papering over the thing the listener just asked for.
+
+Everything else resets with it — motifs, arrangement, voicing, any modulation that was in flight — while the long energy arc carries on, since that is a separate dimension from which tune is playing.

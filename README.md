@@ -83,6 +83,8 @@ The arc reaches the arrangement, not only the levels. Low down, a turn is likeli
 
 ## The controls
 
+**New track** abandons whatever is playing and starts something fresh on the next bar — new motifs, new arrangement, and half the time a new key. No pivot: a skip is a cut, and smoothing it would paper over the thing you just asked for.
+
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.
 
 | Composition | |

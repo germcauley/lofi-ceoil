@@ -193,6 +193,16 @@ playButton.addEventListener ('click', async () => {
   }
 });
 
+const skipButton = document.getElementById ('skipButton');
+
+skipButton.addEventListener ('click', () => {
+  if (! engine.state.running) return;
+
+  engine.controls.skip();
+  status.textContent = 'new track';
+  setTimeout (() => { if (engine.state.running) status.textContent = 'running'; }, 1400);
+});
+
 // Space toggles transport, the way it does on anything that plays audio.
 document.addEventListener ('keydown', event => {
   if (event.code !== 'Space') return;

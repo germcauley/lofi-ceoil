@@ -74,6 +74,7 @@ export function createEngine () {
     // A track: one tune, held for several turns. Its motifs are its identity.
     track: null,
     trackNumber: 0,
+    skipRequested: false,
     // The user's settings, and the values actually in force. The energy arc
     // scales the user's numbers rather than replacing them, so a knob still
     // means what it says — it sets the centre the arc swings around.
@@ -530,6 +531,38 @@ export function createEngine () {
     }
 
     // Four eight-bar parts: A A B B, so a full turn of the tune is 32 bars.
+    // Skipping to a new track. The change lands on the next bar rather than
+    // instantly: a cut mid-bar sounds broken, and waiting for the turn to end
+    // would defeat the point of a skip button.
+    if (state.skipRequested) {
+      state.skipRequested = false;
+      state.track = null;
+      state.form = null;
+      state.pivot = null;
+      state.pendingKey = null;
+      state.endingSet = false;
+      state.previousVoicing = null;
+
+      // This bar becomes the start of a turn.
+      state.formOffset = state.barIndex;
+
+      // Half the time a fresh track is in a fresh key. No pivot — a skip is a
+      // cut, and a pivot would be smoothing over a seam the listener asked for.
+      if (Math.random() < 0.5) {
+        const target = chooseTargetKey();
+        state.rootMidi = target.root;
+        state.scale = target.scale;
+
+        const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
+        state.progression = set[Math.floor (Math.random() * set.length)];
+
+        if (state.onKey) {
+          const name = NOTE_NAMES[state.rootMidi % 12];
+          Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
+        }
+      }
+    }
+
     const positionInForm = (state.barIndex - state.formOffset) % 32;
 
     // A mid-flight modulation lands at the top of a turn, and must be applied
@@ -707,6 +740,7 @@ export function createEngine () {
     state.turnsSinceEnding = 0;
     state.track = null;
     state.trackNumber = 0;
+    state.skipRequested = false;
     state.pendingKey = null;
     state.pivot = null;
     state.running = false;
@@ -809,6 +843,11 @@ export function createEngine () {
 
     arc (value) {
       state.arcDepth = value;
+    },
+
+    /** Abandons the current track and starts a fresh one on the next bar. */
+    skip () {
+      state.skipRequested = true;
     },
 
     dust (value) {

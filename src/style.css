@@ -160,7 +160,7 @@ body.running .lamp {
 
 .transport-bay {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto auto 1fr auto auto;
   align-items: center;
   gap: clamp(1rem, 2.5vw, 1.75rem);
   padding: 1.25rem;
@@ -218,6 +218,26 @@ body.running .power-glyph {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.65; }
 }
+
+.skip {
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--font-panel);
+  font-size: 0.74rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 160ms ease, border-color 160ms ease, transform 90ms ease;
+}
+
+.skip:hover:not(:disabled) { color: var(--ink); border-color: rgba(255, 255, 255, 0.4); }
+.skip:active { transform: translateY(1px); }
+.skip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.skip:disabled { opacity: 0.35; cursor: default; }
 
 .tape { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
 
@@ -447,7 +467,7 @@ body.running .reel:last-child span { animation-duration: 3.1s; }
 .serial { font-family: var(--font-mono); letter-spacing: 0.08em; }
 
 @media (max-width: 640px) {
-  .transport-bay { grid-template-columns: auto 1fr; row-gap: 1.2rem; }
+  .transport-bay { grid-template-columns: auto auto; row-gap: 1.2rem; }
   .tape { display: none; }
   #meterSlot { grid-column: 1 / -1; justify-self: stretch; }
   .meter { width: 100%; }
