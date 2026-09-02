@@ -1,43 +1,36 @@
-/* Lofi Ceoil — a dark object floating on deep violet.
-   Palette: violet #320D6D, blush #FFBFB7, gold #FFD447.
-
-   Three colours, so the violet carries the whole field and the two warms do
-   every piece of signalling:
-     violet   the page, and the panel a few steps darker
-     blush    text, and the cool end of the meter
-     gold     anything live — knob arcs, values, the lamp, the meter's top */
+/* Lofi Ceoil — a dark object floating on hot colour.
+   Near-black maroon panel, generous radius, soft shadow, and a pink-to-coral
+   page behind it doing all the shouting. */
 
 :root {
   /* the page */
-  --page-top: #4a17a0;
-  --page-mid: #320d6d;
-  --page-bottom: #24084f;
+  --page-top: #f43ba6;
+  --page-mid: #f8446f;
+  --page-bottom: #fb5a3c;
 
   /* the panel */
-  --panel: #150430;
-  --panel-lift: #1e0842;
-  --panel-sunk: #0f0324;
+  --panel: #200a12;
+  --panel-lift: #2b0f19;
+  --panel-sunk: #170710;
   --panel-edge: rgba(255, 255, 255, 0.07);
 
   /* type */
-  --ink: #ffede9;
-  --ink-dim: #ffbfb7;
-  --ink-faint: #c2a0a4;
+  --ink: #f6e6ec;
+  --ink-dim: #c99aae;
+  --ink-faint: #8b5f74;
 
-  /* accents — gold is the live colour, blush the soft one */
-  --accent: #ffd447;
-  --accent-hot: #ffe375;
-  --accent-warm: #ffbfb7;
-  --accent-yellow: #ffd447;
-  --accent-glow: rgba(255, 212, 71, 0.4);
-  --warm-glow: rgba(255, 191, 183, 0.38);
+  /* accents */
+  --accent: #ff5fa2;
+  --accent-hot: #ff86bb;
+  --accent-warm: #ff8a5c;
+  --accent-glow: rgba(255, 95, 162, 0.45);
 
-  /* the meter runs blush at the bottom into gold at the top */
-  --led-low: #ffbfb7;
-  --led-high: #ffd447;
-  --led-off: rgba(255, 255, 255, 0.075);
+  /* the LED meter reads these */
+  --led-low: #ffa53d;
+  --led-high: #ff3d8e;
+  --led-off: rgba(255, 255, 255, 0.085);
 
-  --run: #ffd447;
+  --run: #4ddba4;
 
   --font-display: "Instrument Serif", Georgia, serif;
   --font-panel: "Barlow Condensed", "Arial Narrow", sans-serif;
@@ -86,8 +79,8 @@ body {
   position: relative;
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.05) inset,
-    0 40px 90px -24px rgba(18, 4, 48, 0.65),
-    0 12px 34px -12px rgba(30, 8, 70, 0.5);
+    0 40px 90px -24px rgba(90, 8, 34, 0.55),
+    0 12px 34px -12px rgba(120, 12, 44, 0.4);
   animation: settle 700ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
 
@@ -131,7 +124,7 @@ body {
   font-family: var(--font-display);
   font-style: italic;
   font-size: clamp(1.15rem, 3vw, 1.6rem);
-  background: linear-gradient(96deg, var(--accent-hot), var(--accent-yellow));
+  background: linear-gradient(96deg, var(--accent-hot), var(--accent-warm));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -151,7 +144,7 @@ body {
 
 body.running .lamp {
   background: var(--run);
-  box-shadow: 0 0 12px 2px var(--accent-glow);
+  box-shadow: 0 0 12px 2px rgba(77, 219, 164, 0.5);
 }
 
 .lamp-label, .model-plate {
@@ -184,15 +177,15 @@ body.running .lamp {
   padding: 0.9rem 1.9rem;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(96deg, var(--accent-warm), var(--accent-yellow));
-  color: #26073f;
+  background: linear-gradient(96deg, var(--accent), var(--accent-warm));
+  color: #2b0713;
   font-family: var(--font-panel);
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 8px 22px -8px var(--warm-glow);
+  box-shadow: 0 8px 22px -8px var(--accent-glow);
   transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 
@@ -211,7 +204,7 @@ body.running .power {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(38, 7, 63, 0.5);
+  background: rgba(43, 7, 19, 0.55);
   transition: background 200ms ease, box-shadow 200ms ease;
 }
 
@@ -354,11 +347,11 @@ body.running .reel:last-child span { animation-duration: 3.1s; }
 .key:hover, .seg:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.34); }
 
 .key[aria-checked="true"], .seg[aria-checked="true"] {
-  color: #26073f;
+  color: #2b0713;
   font-weight: 600;
   border-color: transparent;
-  background: linear-gradient(96deg, var(--accent-warm), var(--accent-yellow));
-  box-shadow: 0 6px 18px -8px var(--warm-glow);
+  background: linear-gradient(96deg, var(--accent), var(--accent-warm));
+  box-shadow: 0 6px 18px -8px var(--accent-glow);
 }
 
 .key:focus-visible, .seg:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

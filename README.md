@@ -93,7 +93,7 @@ Tone's monophonic voices — `MonoSynth`, `Synth`, `NoiseSynth` — reject event
 
 ## Design
 
-Three colours — violet `#320D6D`, blush `#FFBFB7`, gold `#FFD447` — with roles rather than decoration. Violet carries the whole field; the two warms do every piece of signalling. **Gold** marks anything live: knob arcs, values, the lamp, the top of the meter. **Blush** is text and the meter's cool end.
+A dark maroon panel floating on a hot pink to coral gradient, with a segmented LED meter running orange at the bottom into pink at the top.
 
 The whole palette lives in `:root` at the top of [`src/style.css`](src/style.css). Restyling is about fifteen values.
 
