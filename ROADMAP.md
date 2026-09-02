@@ -39,6 +39,10 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **19. Sheet music, as ABC**
 - [ ] **20. Sampled whistle, fiddle and harp**
 - [ ] **21. More styles, slowed + reverb type music, trance, minimalism
+- [ ] **22. Animated DJ that actually controls the mix, tempo etc
+- [ ] **23. add piano for chords too, have auto mode for chords that switched periodically like the melody. Make good, musical choices
+- [ ] **24. Sometimes we need to slow things down and end a tune, give some space before next tune start, let vinyl crackle continue, this can be a random thing that only happend every so often, like a DJ finsihing a set of songs, dont overuse it.
+- [ ] **25. We should be able to move between keys, major to minor relative is the easiest choice but we can also be adventurou if the theory makes sense. Changing key after a bunch of songs that are all similar might be the best choice. I'll leave the decision making up to you we can talk about this when implementing
 
 ---
 
