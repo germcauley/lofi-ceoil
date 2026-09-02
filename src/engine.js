@@ -69,7 +69,20 @@ export function createEngine () {
     rootMidi: noteNameToMidi ('C3'),
     scale: 'dorian',
     tempo: 72,
+    // The user's settings, and the values actually in force. The energy arc
+    // scales the user's numbers rather than replacing them, so a knob still
+    // means what it says — it sets the centre the arc swings around.
     density: 0.5,
+    densityUser: 0.5,
+    counterUser: 0.55,
+    brightnessUser: 0.29,
+
+    // Where we are in a long arc, and how far it is allowed to swing things.
+    energy: 0.5,
+    arcDepth: 0.5,
+    arcShape: 'swell',
+    arcLength: 8,
+    arcTurn: 0,
     pump: 0.35,
     dust: 0.3,
     ornament: 0.6,
@@ -138,20 +151,37 @@ export function createEngine () {
       entrances: a turn often opens with the tune almost alone, drums arrive
       partway through the first part, and they pull back before the end of the
       last one. */
+  // Backings sorted by how much they drive, so the arc can reach for a quiet
+  // one low down and a busy one at the peak.
+  const CALM_COMPS = ['sustain', 'stab', 'offbeat', 'suspension'];
+  const DRIVING_COMPS = ['bouzouki', 'boomChuck', 'anticipate', 'offbeat'];
+  const CALM_BASS = ['held', 'root', 'sparse'];
+  const DRIVING_BASS = ['walk', 'octave', 'anticipate', 'rootFifth'];
+
   function buildArrangement () {
-    // Open with the melody carrying it: no drums, no bass, chords held back a
-    // couple of bars so the motif is stated in the clear.
-    const openBare = Math.random() < 0.45;
+    // The arc reaches the arrangement, not only the knobs. A quiet stretch is
+    // quiet because parts are absent, not merely because they are turned down.
+    const energy = state.arcDepth > 0 ? state.energy : 0.5;
+
+    // Low down, a turn is much likelier to open with the tune alone.
+    const openBare = Math.random() < 0.45 + (0.5 - energy) * 0.5;
 
     return [0, 1, 2, 3].map (part => {
       const first = part === 0;
       const last = part === 3;
 
+      // At the bottom of an arc the drums can sit out a part entirely; at the
+      // top they are always there.
+      const drumsSitOut = Math.random() > 0.25 + energy * 0.8;
+
+      const bassPool = energy > 0.5 ? DRIVING_BASS : CALM_BASS;
+      const compPool = energy > 0.5 ? DRIVING_COMPS : CALM_COMPS;
+
       return {
-        bass: first && openBare ? 'none' : pickFrom (BASS_PATTERN_NAMES),
+        bass: first && openBare ? 'none' : pickFrom (bassPool),
         chordsFrom: first && openBare ? 2 : 0,
         // 8 means the layer never arrives in this part.
-        drumsFrom: first ? (openBare ? 8 : 4) : 0,
+        drumsFrom: (first && openBare) || drumsSitOut ? 8 : (first ? 4 : 0),
         // Pulling the drums before the end of the last part lets the turn
         // breathe instead of stopping dead.
         drumsUntil: last ? 6 : 8,
@@ -163,7 +193,7 @@ export function createEngine () {
         // the way, which is a structural rest rather than a quiet moment.
         emptyBar: Math.random() < 0.35 ? 7 : -1,
 
-        comp: pickFrom (COMP_PATTERN_NAMES),
+        comp: pickFrom (compPool),
 
         // Harmonic rhythm. The A part often holds each chord for two bars and
         // the B part moves every bar, so the turn speeds up as it goes.
@@ -302,6 +332,68 @@ export function createEngine () {
     }
   }
 
+  // Shapes an arc can take across several turns. A generative piece that holds
+  // one intensity forever is the long-form version of the random walk problem:
+  // nothing is being stated, so nothing develops. These are stated shapes.
+  const ARC_SHAPES = {
+    // Rise to a peak about two thirds through, then fall away. Written as two
+    // quarter-waves rather than one sine, so the tail descends across the last
+    // third instead of flattening to nothing early and staying there.
+    swell:   t => t < 0.68
+      ? Math.sin (Math.PI * 0.5 * (t / 0.68))
+      : Math.cos (Math.PI * 0.5 * ((t - 0.68) / 0.32)),
+    // Climb the whole way and end at the top.
+    build:   t => t,
+    // Begin high and recede.
+    ebb:     t => 1 - t,
+    // Rise, hold, release.
+    plateau: t => t < 0.3 ? t / 0.3 : t < 0.7 ? 1 : (1 - t) / 0.3
+  };
+
+  // Energy never reaches zero. At the very bottom the drums would sit out
+  // three parts in four and the density multiplier would collapse — a trough
+  // should be sparse, not absent.
+  const ENERGY_FLOOR = 0.12;
+
+  const ARC_SHAPE_NAMES = Object.keys (ARC_SHAPES);
+
+  function planArc () {
+    state.arcShape = pickFrom (ARC_SHAPE_NAMES);
+    // Six to eleven turns is roughly ten to twenty minutes, which is the scale
+    // at which a listener notices a piece going somewhere.
+    state.arcLength = 6 + Math.floor (Math.random() * 6);
+    state.arcTurn = 0;
+  }
+
+  /** Advances the arc by a turn and applies its energy.
+
+      Energy scales what the knobs are set to rather than overriding them: a
+      density of 0.5 becomes a journey between roughly 0.3 and 0.7 rather than
+      sitting at 0.5 forever. At arc depth zero nothing moves and the knobs mean
+      exactly what they say. */
+  function advanceArc () {
+    if (state.arcTurn >= state.arcLength) planArc();
+
+    const through = state.arcLength > 1 ? state.arcTurn / (state.arcLength - 1) : 0.5;
+    const shape = ARC_SHAPES[state.arcShape] ?? ARC_SHAPES.swell;
+
+    const raw = Math.max (0, Math.min (1, shape (Math.min (1, through))));
+    state.energy = ENERGY_FLOOR + raw * (1 - ENERGY_FLOOR);
+    state.arcTurn++;
+
+    const swing = (state.energy - 0.5) * 2 * state.arcDepth;
+
+    state.density = clamp01 (state.densityUser * (1 + swing * 0.5));
+    state.counter = clamp01 (state.counterUser * (1 + swing * 0.5));
+
+    // Brightness opens as the arc rises, which is most of why a build feels
+    // like a build.
+    const brightness = clamp01 (state.brightnessUser + swing * 0.22);
+    chain.tone.frequency.rampTo (400 + brightness * 7600, 2);
+  }
+
+  const clamp01 = value => Math.max (0, Math.min (1, value));
+
   function buildForm () {
     const size = gappedPool (state.scale).length;
 
@@ -347,6 +439,25 @@ export function createEngine () {
     state.form = phrases;
     state.arrangement = planVoices (buildArrangement());
     planSetEnding();
+    advanceArc();
+
+    // A modal shift keeps the tonic and changes only the mode. Nothing moves
+    // and everything recolours, which makes it the least disruptive way to
+    // change the light on a piece — and the only structural move available
+    // without ending the tune.
+    if (! state.endingSet && ! state.pendingKey && state.barIndex > 0 && Math.random() < 0.1) {
+      const others = MODES.filter (mode => mode !== state.scale);
+      state.scale = pickFrom (others);
+
+      const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
+      state.progression = set[Math.floor (Math.random() * set.length)];
+      state.previousVoicing = null;
+
+      if (state.onKey) {
+        const name = NOTE_NAMES[state.rootMidi % 12];
+        Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
+      }
+    }
     state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];
     state.counterPlans[1].pattern = planA.pattern;
     state.counterPlans[3].pattern = planB.pattern;
@@ -494,8 +605,13 @@ export function createEngine () {
 
     if (state.onBar) {
       const texture = state.counterPlans?.[partIndex]?.texture ?? '';
+      const arc = state.arcDepth > 0
+        ? ` · ${state.arcShape} ${Math.round (state.energy * 100)}%`
+        : '';
+
       Tone.getDraw().schedule (
-        () => state.onBar (bar, state.progression.name + (texture ? ' · ' + texture : '')), time);
+        () => state.onBar (bar, state.progression.name + (texture ? ' · ' + texture : '') + arc),
+        time);
     }
   }
 
@@ -636,12 +752,18 @@ export function createEngine () {
     },
 
     density (value) {
+      state.densityUser = value;
       state.density = value;
     },
 
     brightness (value) {
       // 400 Hz is muffled to the point of underwater, 8 kHz is nearly open.
+      state.brightnessUser = value;
       chain.tone.frequency.rampTo (400 + value * 7600, 0.25);
+    },
+
+    arc (value) {
+      state.arcDepth = value;
     },
 
     dust (value) {
@@ -700,6 +822,7 @@ export function createEngine () {
     },
 
     counter (value) {
+      state.counterUser = value;
       state.counter = value;
     },
 

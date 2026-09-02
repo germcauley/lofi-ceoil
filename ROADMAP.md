@@ -25,7 +25,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **6. Counter-line textures: imitation and heterophony**
 - [x] **7. Eight-bar parts with a higher turn**
 - [x] **8. Bass patterns, staged entrances, comping and harmonic rhythm**
-- [ ] **9. Long-form structure** — arrangement done; energy arc and modal shift remain
+- [x] **9. Long-form structure — the energy arc**
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
 - [x] **11b. Anacrusis and empty bars**
@@ -337,11 +337,23 @@ Worth building. It is the most distinctive thing on the list, and it is the only
 - **Suspensions**: sus4 resolving to the third is deeply Celtic and nearly free.
 - **Harmonic rhythm**: two bars per chord in the A part, one in the B part. Changing the *rate* of change is a structural device currently absent.
 
-## 9. Long-form structure
+## 9. Long-form structure — done
 
-- Section-level texture changes: drop the drums, bring in the drone.
-- An energy arc over minutes rather than bars.
-- Occasional modal shift at a section boundary.
+Every turn had roughly the same intensity, so a piece that ran for twenty minutes never went anywhere. Holding one level forever is the long-form version of the random walk problem: nothing is stated, so nothing develops.
+
+**A stated arc, not a drift.** Over six to eleven turns — roughly ten to twenty minutes, the scale at which a listener notices a piece going somewhere — energy follows one of four shapes: `swell` (rise to a peak two thirds through, then away), `build` (climb and end at the top), `ebb` (begin high and recede) and `plateau` (rise, hold, release). When one finishes another is planned.
+
+**It scales the knobs rather than overriding them.** A density of 0.5 becomes a journey between roughly 0.3 and 0.7 instead of sitting at 0.5 forever, and at arc depth zero nothing moves and every knob means exactly what it says. An `arc` knob sets how far it is allowed to swing.
+
+**And it reaches the arrangement, not only the levels.** A quiet stretch should be quiet because parts are *absent*, not merely turned down. Low energy makes a turn likelier to open with the tune alone, lets the drums sit out a whole part, and draws backings and bass patterns from the calm end — `sustain`, `stab`, `held`, `sparse`. High energy draws from the driving end — `bouzouki`, `boomChuck`, `walk`, `octave` — and the drums are always present.
+
+**Energy never reaches zero.** At the bottom the drums would sit out three parts in four; a trough should be sparse, not absent. The floor is 0.12, which still gives 65% of parts without drums at the very bottom against 0% at the peak.
+
+The `swell` shape is written as two quarter-waves rather than one sine, because a single sine scaled to peak at two thirds flattens to nothing early and stays there for the last three turns.
+
+**Modal shift** is in too: about one turn in ten keeps the tonic and changes only the mode. Nothing moves and everything recolours, which makes it the least disruptive structural move available without ending the tune.
+
+Verified live across eleven turns: a swell finishing 0.99 → 0.69 → 0.12, an ebb descending 1.0 → 0.82 → 0.65 → 0.47 → 0.30 → 0.12, a build starting up again, with density tracking from 0.63 at the peak to 0.41 at the trough, and no scheduling failures.
 
 ---
 

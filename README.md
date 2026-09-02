@@ -75,6 +75,10 @@ The melody is **phrased, not executed**. Each sentence has a dynamic arch that c
 
 The counter line picks a **feel** per phrase — even, sparse, running semiquavers, or pulsed — and sits an octave up a quarter of the time. The echo textures carry the melody's own phrasing with them.
 
+Across six to eleven turns — ten to twenty minutes — the piece follows an **energy arc**: a swell, a build, an ebb or a plateau. It scales what the knobs are set to rather than overriding them, so a density of 0.5 becomes a journey between roughly 0.3 and 0.7, and the `arc` knob sets how far it swings. At zero it is flat and every knob means exactly what it says.
+
+The arc reaches the arrangement, not only the levels. Low down, a turn is likelier to open with the tune alone, the drums can sit out a whole part, and the backings and bass patterns come from the calm end. High up they come from the driving end and the drums are always there — a quiet stretch is quiet because parts are *absent*, not merely turned down.
+
 ## The controls
 
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.
@@ -87,6 +91,7 @@ Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to 
 | **counter** | how much the arpeggiated second line plays |
 | **cuts** | how often notes get ornamented |
 | **drone** | the sustained fifth underneath |
+| **arc** | how far the long energy arc swings things; 0 is flat |
 
 | Tape path | |
 |---|---|
