@@ -55,7 +55,9 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
-**Voices are switchable while it plays.** The lead can be a `whistle`, a `fiddle`, a `piano` or a `harp`; the keys a `rhodes`, a `felt` piano or a `pad`. Everything is still synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic.
+**Voices are switchable while it plays.** The lead can be a `whistle`, a `fiddle`, a `piano` or a `harp`; the keys a `rhodes`, a `felt` piano or a `pad`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples load only when you choose it.
+
+Set the lead to `auto` and the **arrangement picks the voice**: a part that follows a drop comes back on a different instrument, which is what gives a section return its lift. Pick a voice by hand and it stays put.
 
 Phrases can begin with an **anacrusis** — a pickup into the answering sentence, stepping toward its first note, the way an Irish tune starts on an upbeat rather than the downbeat. And a part's closing bar is sometimes **empty**: no harmony, no bass, no drums, so the tune lands on its cadence alone.
 
@@ -128,3 +130,5 @@ The whole palette lives in `:root` at the top of [`src/style.css`](src/style.css
 ## Licence
 
 MIT. The code is original; nothing is derived from another generator.
+
+The piano samples are from the [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander Holm, CC-BY 3.0.

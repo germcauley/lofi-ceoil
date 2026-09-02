@@ -81,9 +81,19 @@ mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
 
 // Voices swap while it plays, so you can hear the difference in context rather
 // than having to restart to compare.
+// `auto` hands the choice to the arrangement, which changes voice coming back
+// from a drop. Picking a voice by hand pins it.
 mountChooser (document.getElementById ('leadVoiceRow'),
-  ['whistle', 'fiddle', 'piano', 'harp'], 'whistle', 'seg',
-  value => engine.controls.leadVoice (value));
+  ['auto', 'whistle', 'fiddle', 'piano', 'harp'], 'whistle', 'seg',
+  value => {
+    if (value === 'auto') {
+      engine.state.autoVoice = true;
+      return;
+    }
+
+    engine.state.autoVoice = false;
+    engine.controls.leadVoice (value);
+  });
 
 mountChooser (document.getElementById ('keysVoiceRow'),
   ['rhodes', 'felt', 'pad'], 'rhodes', 'seg',
@@ -104,6 +114,12 @@ const playText = playButton.querySelector ('.power-text');
 const status = document.getElementById ('status');
 const barReadout = document.getElementById ('barReadout');
 const progressionReadout = document.getElementById ('progressionReadout');
+
+// A sampled voice takes a moment to load; say so rather than going quiet.
+engine.state.onVoice = (kind, name, ready) => {
+  if (kind !== 'lead') return;
+  status.textContent = ready ? (engine.state.running ? 'running' : 'standby') : `loading ${name}`;
+};
 
 engine.state.onBar = (bar, progressionName) => {
   barReadout.textContent = String (bar + 1).padStart (3, '0');

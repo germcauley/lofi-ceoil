@@ -29,7 +29,9 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
 - [x] **11b. Anacrusis and empty bars**
-- [x] **12. Instrument voices**
+- [x] **12. Instrument voices** *(now including a sampled piano)*
+- [x] **13. Voice changes driven by the arrangement**
+- [ ] **14. The turntable — draggable vinyl that really scrubs**
 
 ---
 
@@ -174,7 +176,33 @@ Every voice is now built that way, and the two most exposed parts are **switchab
 
 Swapping disposes the old chain after a delay, so notes still ringing are not cut off mid-decay. Verified with six live swaps under playback and no scheduling failures.
 
-Samples remain the obvious next step if these are still not organic enough — every voice exposes `triggerAttackRelease`, which is the `Tone.Sampler` interface, so it stays a one-function change per voice. VCSL is CC0 and would suit.
+**The piano is sampled.** FM got as close to a piano as it usefully can, and a struck string with its own resonance and release noise is not something an oscillator reaches. It now uses nine notes from the Salamander Grand Piano set across three octaves, vendored into `public/samples/piano/` rather than fetched from someone else's host, and loaded only when the voice is chosen — 588 kB that nobody pays for unless they ask for a piano. It loads in about a tenth of a second locally, and the panel reads `loading piano` until it is ready rather than going quiet.
+
+Every other voice stays synthesised. The same route is open for any of them: `triggerAttackRelease` is the `Tone.Sampler` interface, so it is a one-function change each time.
+
+## 13. Voice changes driven by the arrangement — done
+
+Coming back from a drop is exactly where an arrangement wants a new colour: the accompaniment falls away, and what returns should not be identical to what left.
+
+**As built.** A part following one that ended on an empty bar gets a *different* lead voice; otherwise the voice holds, because changing it every part would be a gimmick rather than an arrangement. Changes land on the part boundary, never mid-phrase.
+
+The lead selector gained an `auto` option that hands the choice to the arrangement. Picking a voice by hand pins it. Verified across 900 part-pairs: 300 correct changes after a drop, 600 correct holds, zero errors in either direction.
+
+## 14. The turntable — draggable vinyl that really scrubs
+
+A spinning record on the panel that can be grabbed and dragged to rewind or fast-forward what is playing, with the pitch-bending scrub sound that goes with it.
+
+**The hard part, and it is worth stating plainly: there is nothing to scrub.** This is a generative instrument, not a track player. The music is composed a bar ahead of where it plays, so there is no audio timeline sitting behind the playhead to move through. Winding the transport backwards would not replay what you heard — it would re-run the scheduler over material that no longer exists.
+
+So the feature has a prerequisite, and the prerequisite *is* the feature:
+
+**Capture the output.** A worklet on the master writes continuously into a circular buffer — sixty seconds of stereo at 48 kHz is about 23 MB, which is nothing. That recording is the thing the record represents, and once it exists, scrubbing is real rather than an effect.
+
+**Then read it back under the drag.** An `AudioBufferSourceNode` cannot play backwards, so this needs a custom worklet reading the circular buffer at a signed, fractional rate with interpolation — the rate coming from the drag velocity. Negative rate gives genuine reverse; a rate above one gives fast-forward; the pitch shift falls out of the resampling for free, which is exactly the sound wanted.
+
+**Handing back to the live engine.** On release the playhead has to catch up to the present and cross back to the live signal, which wants a short crossfade rather than a hard switch. Dragging *forward* past the present is the interesting case — there is nothing recorded there yet, so the wind has to run out at the playhead rather than into silence.
+
+Worth building. It is the most distinctive thing on the list, and it is the only item that changes what the instrument *is* rather than what it plays.
 
 ## Original item 8 notes
 

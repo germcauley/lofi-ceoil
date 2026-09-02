@@ -3,6 +3,8 @@
 
 import * as Tone from 'tone';
 import { KEYS_VOICES, LEAD_VOICES, createBass, createDrums, createDrone, createPluck, createVinyl } from './instruments.js';
+
+const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 import { createChain } from './effects.js';
 import { PROGRESSIONS, noteNameToMidi } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
@@ -52,6 +54,12 @@ export function createEngine () {
 
     keysVoice: 'rhodes',
     leadVoice: 'whistle',
+
+    // When true, the arrangement chooses the lead voice itself.
+    autoVoice: false,
+
+    // Notified when a voice swap starts and when it is ready to play.
+    onVoice: null,
 
     rootMidi: noteNameToMidi ('C3'),
     scale: 'dorian',
@@ -135,6 +143,31 @@ export function createEngine () {
     });
   }
 
+  /** Assigns a lead voice to each part.
+
+      Coming back from a drop is exactly where an arrangement wants a new
+      colour: the accompaniment falls away, and what returns should not be
+      identical to what left. So a part following one that ended empty gets a
+      different voice, and otherwise the voice holds — changing it every part
+      would be a gimmick rather than an arrangement. */
+  function planVoices (arrangement) {
+    let current = state.leadVoice;
+
+    arrangement.forEach ((part, index) => {
+      const previous = arrangement[index - 1];
+      const followsADrop = previous && previous.emptyBar >= 0;
+
+      if (followsADrop) {
+        const others = LEAD_VOICE_NAMES.filter (name => name !== current);
+        current = pickFrom (others);
+      }
+
+      part.leadVoice = current;
+    });
+
+    return arrangement;
+  }
+
   function buildForm () {
     const size = gappedPool (state.scale).length;
 
@@ -178,7 +211,7 @@ export function createEngine () {
     const planB = planCounter (phrases[2]);
 
     state.form = phrases;
-    state.arrangement = buildArrangement();
+    state.arrangement = planVoices (buildArrangement());
     state.counterPlans = [planA, planCounter (phrases[1]), planB, planCounter (phrases[3])];
     state.counterPlans[1].pattern = planA.pattern;
     state.counterPlans[3].pattern = planB.pattern;
@@ -197,6 +230,11 @@ export function createEngine () {
     const partIndex = Math.floor (positionInForm / 8);
     const barInPart = positionInForm % 8;
     const plan = state.arrangement?.[partIndex] ?? {};
+
+    // Voice changes land on the part boundary, never mid-phrase.
+    if (state.autoVoice && barInPart === 0 && plan.leadVoice) {
+      swapVoice ('lead', plan.leadVoice);
+    }
 
     // An empty bar drops everything but the tune, the drone and the surface
     // noise — so the melody's cadence is heard on its own.
@@ -285,9 +323,19 @@ export function createEngine () {
     if (! factory) return;
 
     const current = kind === 'keys' ? keys : lead;
+    if (current.name === name) return;
+
     const next = factory();
+    next.name = name;
 
     next.output.connect (chain.input);
+
+    // A sampled voice has nothing to play until its files arrive, so the panel
+    // is told when the swap starts and again when it is ready.
+    if (state.onVoice) state.onVoice (kind, name, ! next.loading);
+    if (next.loading) {
+      Tone.loaded().then (() => { if (state.onVoice) state.onVoice (kind, name, true); });
+    }
 
     if (kind === 'keys') {
       keys = next;

@@ -129,26 +129,34 @@ function harp () {
   return { voice, output: voice };
 }
 
-/** Upright piano. FM with a slightly inharmonic ratio, which is what a real
-    struck string has — the partials are not exact multiples of the fundamental.
-    A fast modulation decay gives the bright knock of the hammer over a body
-    that darkens immediately, and the amplitude envelope has almost no sustain,
-    so notes ring and die rather than being held. */
+/** Real piano, from the Salamander Grand Piano set that Tone.js itself uses.
+    Nine samples across three octaves, pitch-shifted between — synthesis got as
+    close to a piano as FM usefully can, and a struck string with its own
+    resonance and release noise is not something an oscillator reaches.
+
+    The samples are vendored rather than fetched from someone else's host, and
+    loaded only when this voice is chosen, so nobody pays for them unless they
+    ask for a piano. */
 function piano () {
-  const voice = new Tone.FMSynth ({
-    harmonicity: 3.01,
-    modulationIndex: 6.5,
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.002, decay: 1.9, sustain: 0.02, release: 1.6 },
-    modulation: { type: 'sine' },
-    modulationEnvelope: { attack: 0.001, decay: 0.12, sustain: 0.006, release: 0.4 },
-    volume: -14
+  const base = `${import.meta.env.BASE_URL}samples/piano/`;
+
+  const voice = new Tone.Sampler ({
+    urls: {
+      C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
+      C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+      C5: 'C5.mp3', 'F#5': 'Fs5.mp3',
+      C6: 'C6.mp3'
+    },
+    baseUrl: base,
+    release: 1.2,
+    volume: -9
   });
 
-  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 3800, rolloff: -12 });
+  // Rolled off a little so it sits in the tape path rather than on top of it.
+  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 5200, rolloff: -12 });
   voice.connect (tone);
 
-  return { voice, output: tone };
+  return { voice, output: tone, loading: true };
 }
 
 export const LEAD_VOICES = { whistle, fiddle, piano, harp };
