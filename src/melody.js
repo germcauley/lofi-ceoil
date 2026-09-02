@@ -333,6 +333,79 @@ function addPickup (events, poolSize) {
   return events.sort ((a, b) => a.at - b.at);
 }
 
+/** Gives the phrase its playing, as distinct from its notes.
+
+    Velocity used to be random per note, which is the opposite of phrasing:
+    random dynamics are noise, and a listener hears them as a machine that
+    cannot decide how hard to hit anything. Real phrasing is *shape* — a line
+    swells toward its peak and eases into its cadence, strong beats carry more
+    weight than weak ones, stepwise notes are slurred while leaps are separated,
+    and a player breathes before starting a new sentence.
+
+    All of that is derivable from structure we already have, so none of it is
+    guesswork. Each event gets a dynamic, an articulation and a breath flag,
+    and the sound engine applies them. */
+function addPhrasing (events) {
+  for (const [firstBar, lastBar] of [[0, 3], [4, 7]]) {
+    const sentence = events.filter (e => {
+      const bar = Math.floor (e.at / 8);
+      return bar >= firstBar && bar <= lastBar;
+    });
+
+    if (! sentence.length) continue;
+
+    const startAt = firstBar * 8;
+    const span = (lastBar - firstBar + 1) * 8;
+    const peak = Math.max (...sentence.map (e => e.degree));
+
+    for (const event of sentence) {
+      const through = (event.at - startAt) / span;
+
+      // An arch that crests around two thirds of the way in, which is where a
+      // sung phrase puts its weight — not in the middle.
+      const arch = Math.sin (Math.PI * Math.min (1, through / 0.72));
+      let dynamic = 0.55 + 0.45 * arch;
+
+      // The highest note of the sentence is the one the phrase is aiming at.
+      if (event.degree === peak) dynamic += 0.15;
+
+      // Metrical weight: the downbeat carries, the offbeats give way.
+      const slot = event.at % 8;
+      if (slot === 0) dynamic *= 1.08;
+      else if (slot === 4) dynamic *= 1.03;
+      else if (slot % 2 === 1) dynamic *= 0.88;
+
+      event.dynamic = Math.max (0.25, Math.min (1.15, dynamic));
+    }
+
+    // A player breathes before beginning a sentence, and eases out of ending
+    // one. Both are tiny and both are what make a line sound played.
+    sentence[0].breath = true;
+
+    const closing = sentence[sentence.length - 1];
+    closing.dynamic *= 0.78;
+    closing.lift = true;
+
+    if (sentence.length > 1) sentence[sentence.length - 2].dynamic *= 0.9;
+  }
+
+  // Articulation comes from the interval to the next note: a step is slurred,
+  // a leap is separated. This is how a wind or bowed player actually phrases,
+  // and it is the difference between a line and a row of notes.
+  for (let i = 0; i < events.length - 1; i++) {
+    const current = events[i];
+    const next = events[i + 1];
+
+    const adjacent = next.at === current.at + current.length;
+    const interval = Math.abs (next.degree - current.degree);
+
+    current.slur = adjacent && interval <= 1;
+    if (adjacent && interval >= 3) current.lift = true;
+  }
+
+  return events;
+}
+
 /** Rejects phrases that would sound wrong regardless of how they were built.
     Cheap, and it is what lets the operations stay adventurous. */
 function isSingable (events) {
@@ -391,7 +464,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
 
   for (let attempt = 0; attempt < 12; attempt++) {
     const events = [...sentence (0, 'half'), ...sentence (4, 'full')];
-    if (isSingable (events)) return addPickup (addTies (events), poolSize);
+    if (isSingable (events)) return addPhrasing (addPickup (addTies (events), poolSize));
   }
 
   // Nothing passed: the plainest possible reading of the motif, still shaped
@@ -403,7 +476,7 @@ export function developPhrase (scale, poolSize, motif, ornamentBias = 0.28, regi
     ...renderCadence (offset + 3, poolSize, closing)
   ];
 
-  return addPickup (addTies ([...plain (0, 'half'), ...plain (4, 'full')]), poolSize);
+  return addPhrasing (addPickup (addTies ([...plain (0, 'half'), ...plain (4, 'full')]), poolSize));
 }
 
 /** Convenience for callers that just want a phrase and do not care about
@@ -457,6 +530,16 @@ const ARP_NAMES = Object.keys (ARPEGGIOS);
 //                the one almost nobody implements.
 const TEXTURES = ['figuration', 'figuration', 'imitation', 'heterophony'];
 
+// How the figuration sits against the beat. One fixed feel every phrase is
+// what makes an accompaniment sound mechanical — it is not that any one of
+// these is wrong, it is that hearing only one is.
+//
+//   even     a note per quaver, the plain reading
+//   sparse   half as many, leaving the melody more room
+//   double   semiquaver pairs, so the figure runs
+//   pulsed   quavers with every other one much lighter, which swings it
+const FIGURE_FEELS = ['even', 'even', 'sparse', 'double', 'pulsed'];
+
 export function planCounter (phrase) {
   const name = ARP_NAMES[Math.floor (Math.random() * ARP_NAMES.length)];
 
@@ -466,6 +549,10 @@ export function planCounter (phrase) {
   return {
     name,
     texture: pick (TEXTURES),
+    feel: pick (FIGURE_FEELS),
+    // Where the figure sits: occasionally an octave up, which changes its role
+    // from foundation to decoration without changing a note of it.
+    octave: chance (0.25) ? 1 : 0,
     pattern: rise > 0 ? [...pattern].reverse() : pattern,
     busy: busyMap (phrase)
   };

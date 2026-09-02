@@ -67,6 +67,10 @@ Every so often — no more than once in seven or eight turns — the tune **ends
 
 Keys move four ways: the relative major or minor, a fifth either way, up a tone, or modal interchange — same tonic, new mode. Where the two keys share a chord, that **pivot** carries the change, so the ear hears it in the old key and then finds it has been in the new one all along. Tunes occasionally modulate this way *without* stopping, which is rarer still. The panel's key and mode buttons follow it either way.
 
+The melody is **phrased, not executed**. Each sentence has a dynamic arch that crests about two thirds through, emphasises its peak note, and eases into its cadence; steps are slurred and leaps separated; and there is a breath before each new sentence. Velocity used to be random per note, which is not phrasing but noise.
+
+The counter line picks a **feel** per phrase — even, sparse, running semiquavers, or pulsed — and sits an octave up a quarter of the time. The echo textures carry the melody's own phrasing with them.
+
 ## The controls
 
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.

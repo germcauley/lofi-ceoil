@@ -43,6 +43,8 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **23. Piano for chords, with an auto mode**
 - [x] **24. Ending a set — wind down, leave space, let the crackle run**
 - [x] **25. Moving between keys, through a pivot chord**
+- [x] **26. Phrasing — the melody plays rather than executes**
+- [x] **27. Variety in the counter line**
 
 ---
 
@@ -364,3 +366,30 @@ Verified live: E♭ mixolydian to F mixolydian, up a tone, carried by a C minor 
 ### Still open
 
 - **Chromatic mediants** (C to A♭). Cinematic rather than folk. Probably wrong here, but striking, and the pivot machinery would find no shared chord so it would land as a hard change — which may be the point.
+
+---
+
+## 26. Phrasing — done
+
+The melodies were robotic, and there was a specific culprit: **velocity was `0.26 + random() * 0.16`, rolled fresh per note.** That is the same mistake as the old pitch random walk, one layer down. Random dynamics are not phrasing — a listener hears them as a machine that cannot decide how hard to hit anything.
+
+Phrasing is *shape*, and all of it is derivable from structure already present, so none of it is guesswork:
+
+- **A dynamic arch per sentence**, cresting around two thirds through rather than in the middle, which is where a sung phrase puts its weight.
+- **The peak note of each sentence is emphasised** — it is what the phrase is aiming at.
+- **Metrical weight**: the downbeat carries, the offbeats give way.
+- **The cadence eases off** — the closing note is the softest thing in the sentence.
+- **Articulation from the interval to the next note**: a step is slurred so the notes run together, a leap is separated. This is how a wind or bowed player actually phrases.
+- **A breath before each sentence**, about 22 ms.
+
+Measured over 7,910 notes: dynamics span **0.38 to 1.15**, the sentence peak averages **0.99**, the closing note **0.43**, and the shape runs 0.73 → 0.78 → 0.45 across each sentence. 49% of notes are slurred, 28% lifted. Live, the lead produced 44 distinct velocities across 47 notes where it used to produce noise.
+
+## 27. Variety in the counter line — done
+
+Same fault, and the same fix, plus the point that one fixed feel every phrase is what makes an accompaniment mechanical. It is not that any one feel is wrong; it is that hearing only one is.
+
+**Four figuration feels**, chosen per phrase: `even` (a note per quaver), `sparse` (half as many, leaving the melody more room), `double` (semiquaver pairs, so the figure runs) and `pulsed` (quavers with every other one much lighter, which swings it).
+
+The figure also sits **an octave up** a quarter of the time, which changes its role from foundation to decoration without changing a note of it. Its velocity follows an arch across the bar rather than sitting flat.
+
+And the two echo textures — imitation and heterophony — now **carry the melody's own phrasing**, dynamics and slurs included. An echo that ignored the shape of what it was echoing would give the game away immediately.

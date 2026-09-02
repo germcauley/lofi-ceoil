@@ -158,8 +158,17 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
     if (Math.floor (event.at / 8) !== barInPhrase) continue;
 
     const offsetEighths = event.at % 8;
-    const start = jitter (time, time + offsetEighths * eighth, 0.014);
-    const duration = Math.max (0.08, event.length * eighth - gap);
+
+    // Articulation. A slurred note runs almost into the next one; a lifted
+    // note is cut short so the line breathes. This is most of what separates
+    // a played line from a row of notes.
+    const articulationGap = event.slur ? gap * 0.25 : event.lift ? gap * 2.2 : gap;
+
+    // A player takes a moment before starting a new sentence.
+    const breath = event.breath ? 0.022 : 0;
+
+    const start = jitter (time, time + offsetEighths * eighth + breath, 0.014);
+    const duration = Math.max (0.08, event.length * eighth - articulationGap);
 
     const poolIndex = Math.min (pool.length - 1, event.degree);
     const degree = pool[poolIndex];
@@ -173,17 +182,23 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
       midi = fitToChordTone (midi, base, scale, poolIndex, pool, chordTones);
     }
 
+    // Velocity follows the phrase, not a dice roll: the line swells toward its
+    // peak and eases into its cadence. The random component is small, and only
+    // there so repeated notes are not identical.
+    const shape = event.dynamic ?? 0.8;
+    const velocity = Math.max (0.12, Math.min (0.85, shape * 0.42 + Math.random() * 0.05));
+
     // A cut: a very short note a scale step above, flicked in just before the
     // beat. This one ornament does more for the folk character than any
-    // amount of note choice.
+    // amount of note choice. It sits under the note it decorates.
     if (event.ornament && chance (ornament)) {
       const above = midi + (scaleDegreeToMidi (base, scale, degree + 1) - scaleDegreeToMidi (base, scale, degree));
       lead.triggerAttackRelease (
-        midiToNoteName (above), 0.03, Math.max (time, start - 0.038), 0.22);
+        midiToNoteName (above), 0.03, Math.max (time, start - 0.038),
+        Math.max (0.1, velocity * 0.7));
     }
 
-    lead.triggerAttackRelease (
-      midiToNoteName (midi), duration, start, 0.26 + Math.random() * 0.16);
+    lead.triggerAttackRelease (midiToNoteName (midi), duration, start, velocity);
   }
 }
 
@@ -209,17 +224,38 @@ function playFiguration (state, time, barInPhrase, chordSpec, plan) {
   const [degree, quality] = chordSpec;
 
   // Sits below the melody and above the bass, so the three parts stay legible.
-  const chord = buildChord (rootMidi, scale, degree, quality, 55);
+  const chord = buildChord (rootMidi, scale, degree, quality, 55 + (plan.octave ?? 0) * 12);
   const busy = plan.busy[barInPhrase] ?? new Array (8).fill (false);
 
   const eighth = Tone.Time ('8n').toSeconds();
+  const feel = plan.feel ?? 'even';
+
+  // Where in the bar this feel places notes, and how heavy each one is. A
+  // figure that always plays every quaver at the same weight is a sequencer;
+  // varying the grid and the accent is what makes it an accompaniment.
+  const grid = feel === 'double' ? 16 : 8;
+  const stepLength = feel === 'double' ? eighth / 2 : eighth;
+
   let step = 0;
 
-  for (let slot = 0; slot < 8; slot++) {
-    // The rest the melody leaves is where this part belongs.
-    const free = ! busy[slot];
+  for (let slot = 0; slot < grid; slot++) {
+    const eighthSlot = feel === 'double' ? Math.floor (slot / 2) : slot;
 
-    const probability = free ? 0.55 + counter * 0.45 : counter * 0.18;
+    // The rest the melody leaves is where this part belongs.
+    const free = ! busy[eighthSlot];
+
+    if (feel === 'sparse' && slot % 2 === 1) continue;
+
+    let weight = 1;
+    if (feel === 'pulsed' && slot % 2 === 1) weight = 0.45;
+    if (feel === 'double' && slot % 2 === 1) weight = 0.6;
+
+    // Density rises with the knob; a few notes still sneak in under held
+    // melody notes at higher settings, which keeps it from sounding like a
+    // rigid alternation.
+    const probability = (free ? 0.55 + counter * 0.45 : counter * 0.18)
+      * (feel === 'double' ? 0.75 : 1);
+
     if (! chance (probability)) continue;
 
     const index = plan.pattern[step % plan.pattern.length];
@@ -227,11 +263,16 @@ function playFiguration (state, time, barInPhrase, chordSpec, plan) {
 
     step++;
 
+    // The figure follows the melody's own shape rather than sitting flat: it
+    // leans into the middle of the bar and eases at the edges.
+    const arch = 0.82 + 0.18 * Math.sin (Math.PI * (slot / grid));
+    const velocity = (free ? 0.46 : 0.28) * weight * arch + Math.random() * 0.04;
+
     pluck.triggerAttackRelease (
       midiToNoteName (midi),
-      eighth * 0.9,
-      jitter (time, time + slot * eighth, 0.012),
-      free ? 0.5 : 0.3);
+      stepLength * (feel === 'sparse' ? 1.7 : 0.9),
+      jitter (time, time + slot * stepLength, 0.012),
+      Math.max (0.08, velocity));
   }
 }
 
@@ -259,11 +300,15 @@ function renderEcho (state, time, events, chordSpec, offsetSeconds, velocity) {
     const slot = event.at % 8;
     const start = jitter (time, time + slot * eighth + offsetSeconds, 0.012);
 
+    // Carries the melody's phrasing with it — an echo that ignored the shape
+    // of what it is echoing would give the game away immediately.
+    const shaped = velocity * (event.dynamic ?? 0.8);
+
     pluck.triggerAttackRelease (
       midiToNoteName (midi),
-      Math.max (0.08, event.length * eighth - gap),
+      Math.max (0.08, event.length * eighth - (event.slur ? gap * 0.3 : gap)),
       start,
-      velocity);
+      Math.max (0.08, shaped));
   }
 }
 
