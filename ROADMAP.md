@@ -38,6 +38,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [ ] **18. Save the current tune**
 - [ ] **19. Sheet music, as ABC**
 - [ ] **20. Sampled whistle, fiddle and harp**
+- [ ] **21. More styles, slowed + reverb type music, trance, minimalism
 
 ---
 
