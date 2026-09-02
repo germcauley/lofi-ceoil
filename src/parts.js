@@ -19,32 +19,58 @@ const humanise = (amount = 0.012) => (Math.random() - 0.5) * 2 * amount;
     would try to schedule into the past on the very first bar. */
 const jitter = (time, base, amount) => Math.max (time, base + humanise (amount));
 
-export function playChord (state, time, chordSpec) {
+// How the keys place a chord in the bar. One figure every bar — a hit on the
+// downbeat and a stab halfway — is a sequencer, not a player. These are the
+// backings a rhythm instrument actually uses, and one is chosen per part.
+//
+// `quality` on an event overrides the chord's own: a sus4 landing first and
+// resolving to the third is deeply Celtic and costs nothing.
+export const COMP_PATTERNS = {
+  // One chord, held. Lets everything else be heard.
+  sustain:    [{ at: 0, len: 8, velocity: 1 }],
+  // Short and out of the way.
+  stab:       [{ at: 0, len: 2, velocity: 1 }],
+  // The offbeats only, so the downbeat belongs to the bass.
+  offbeat:    [{ at: 2, len: 2, velocity: 0.85 }, { at: 6, len: 2, velocity: 0.75 }],
+  // Driving quavers, the bouzouki backing behind a session tune.
+  bouzouki:   [{ at: 0, len: 1, velocity: 1 }, { at: 2, len: 1, velocity: 0.65 },
+               { at: 4, len: 1, velocity: 0.85 }, { at: 6, len: 1, velocity: 0.65 }],
+  // Chord on the backbeat.
+  boomChuck:  [{ at: 2, len: 2, velocity: 0.9 }, { at: 6, len: 2, velocity: 0.8 }],
+  // Pushes into the next bar, so the change arrives early.
+  anticipate: [{ at: 0, len: 4, velocity: 1 }, { at: 7, len: 1, velocity: 0.6 }],
+  // Suspended fourth, resolving to the third halfway through.
+  suspension: [{ at: 0, len: 4, velocity: 1, quality: 'sus4' },
+               { at: 4, len: 4, velocity: 0.85 }]
+};
+
+export const COMP_PATTERN_NAMES = Object.keys (COMP_PATTERNS);
+
+export function playChord (state, time, chordSpec, compName = 'sustain') {
   const { keys, rootMidi, scale } = state;
   const [degree, quality] = chordSpec;
 
-  // Move each voice to the nearest tone of the new chord rather than rebuilding
-  // the voicing from scratch. Common tones stay put, which is what stops a
-  // progression sounding like a row of unrelated blocks.
-  const pitchClasses = chordPitchClasses (rootMidi, scale, degree, quality);
-  const notes = voiceLead (state.previousVoicing, pitchClasses, 60);
+  const pattern = COMP_PATTERNS[compName] ?? COMP_PATTERNS.sustain;
+  const eighth = Tone.Time ('8n').toSeconds();
 
-  state.previousVoicing = notes;
+  for (const hit of pattern) {
+    // Move each voice to the nearest tone of the new chord rather than
+    // rebuilding the voicing from scratch. Common tones stay put, which is what
+    // stops a progression sounding like a row of unrelated blocks.
+    const pitchClasses = chordPitchClasses (rootMidi, scale, degree, hit.quality ?? quality);
+    const notes = voiceLead (state.previousVoicing, pitchClasses, 60);
 
-  // Roll the voicing slightly rather than hitting all notes dead together.
-  notes.forEach ((midi, i) => {
-    const at = jitter (time, time + i * 0.012, 0.01);
-    const velocity = 0.32 + Math.random() * 0.12;
-    keys.triggerAttackRelease (midiToNoteName (midi), '2n.', at, velocity);
-  });
+    state.previousVoicing = notes;
 
-  // A second, quieter stab late in the bar keeps two-chord vamps from
-  // feeling static.
-  if (chance (0.4)) {
-    const at = jitter (time, time + Tone.Time ('2n').toSeconds(), 0.02);
-    notes.slice (1).forEach ((midi, i) => {
-      keys.triggerAttackRelease (
-        midiToNoteName (midi), '4n', at + i * 0.01, 0.18 + Math.random() * 0.08);
+    const at = time + hit.at * eighth;
+    const duration = Math.max (0.12, hit.len * eighth - 0.05);
+
+    // Roll the voicing slightly rather than hitting all notes dead together.
+    notes.forEach ((midi, i) => {
+      const start = jitter (time, at + i * 0.012, 0.01);
+      const velocity = (0.3 + Math.random() * 0.08) * hit.velocity;
+
+      keys.triggerAttackRelease (midiToNoteName (midi), duration, start, velocity);
     });
   }
 }

@@ -24,7 +24,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **5. Cadences and question/answer**
 - [x] **6. Counter-line textures: imitation and heterophony**
 - [x] **7. Eight-bar parts with a higher turn**
-- [x] **8. Bass patterns and staged entrances** *(the comping-rhythm half remains)*
+- [x] **8. Bass patterns, staged entrances, comping and harmonic rhythm**
 - [ ] **9. Long-form structure** — arrangement done; energy arc and modal shift remain
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
@@ -158,7 +158,11 @@ Measured over 2,400 bars: **21.8% now start off the downbeat**, 18.7% stop befor
 
 Drums pull out before the end of the last part, so a turn breathes rather than stopping dead. Borrowed from jacbz/Lofi's producer, which pads its sections the same way.
 
-**Still to do:** comping rhythm patterns for the keys (bouzouki-style driving eighths, boom-chuck, sparse pad), inversions chosen for smooth bass motion, sus4 resolutions, and harmonic rhythm — two bars per chord in the A part against one in the B part.
+**Comping.** One figure every bar — a hit on the downbeat and a stab halfway — is a sequencer, not a player. There are now seven backings, one chosen per part: `sustain`, `stab`, `offbeat` (leaving the downbeat to the bass), `bouzouki` (driving quavers, the backing behind a session tune), `boomChuck`, `anticipate` (pushing into the next bar so the change arrives early) and `suspension` — a sus4 landing first and resolving to the third halfway through, which is deeply Celtic and costs nothing. The resolution is free: voice leading moves the fourth down to the third by a step because that is the nearest tone.
+
+**Harmonic rhythm.** The A part often holds each chord for two bars while the B part moves every bar, so the turn speeds up as it goes. Changing the *rate* of harmonic change is a structural device the piece had none of. A chord held across bars is struck once at its start, and a progression of six chords or more is forced to move every bar — the canon is eight chords across eight bars and would otherwise never finish.
+
+**Still to do:** inversions chosen specifically for smooth bass motion. Voice leading already keeps the upper parts close; the bass still takes the root every time.
 
 ## 11a. Ties over the barline — done
 

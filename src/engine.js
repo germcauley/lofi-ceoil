@@ -9,7 +9,7 @@ const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 import { createChain } from './effects.js';
 import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi, findPivot } from './theory.js';
 import { createMotif, developPhrase, gappedPool, planCounter } from './melody.js';
-import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, BASS_PATTERN_NAMES } from './parts.js';
+import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, BASS_PATTERN_NAMES, COMP_PATTERN_NAMES } from './parts.js';
 
 export function createEngine () {
   const chain = createChain();
@@ -158,7 +158,15 @@ export function createEngine () {
         // empty chord also drops the drumbeat. The closing bar is the place
         // for it: the tune lands on its cadence with everything else out of
         // the way, which is a structural rest rather than a quiet moment.
-        emptyBar: Math.random() < 0.35 ? 7 : -1
+        emptyBar: Math.random() < 0.35 ? 7 : -1,
+
+        comp: pickFrom (COMP_PATTERN_NAMES),
+
+        // Harmonic rhythm. The A part often holds each chord for two bars and
+        // the B part moves every bar, so the turn speeds up as it goes.
+        // Changing the *rate* of harmonic change is a structural device, and
+        // one the piece had none of.
+        chordHold: part < 2 ? (Math.random() < 0.6 ? 2 : 1) : 1
       };
     });
   }
@@ -380,9 +388,14 @@ export function createEngine () {
     // begins on the progression's first chord.
     const chords = state.progression.chords;
 
+    // A long progression has to move every bar or it would never finish inside
+    // a part — the canon is eight chords across eight bars.
+    const hold = chords.length >= 6 ? 1 : (plan.chordHold ?? 1);
+    const chordIndex = Math.floor (barInPart / hold) % chords.length;
+
     // A pivot chord replaces the progression for the bars that carry a
     // modulation. It belongs to both keys, so it is the seam.
-    const chordSpec = state.pivot ?? chords[barInPart % chords.length];
+    const chordSpec = state.pivot ?? chords[chordIndex];
 
     // Voice changes land on the part boundary, never mid-phrase.
     if (barInPart === 0) {
@@ -429,7 +442,12 @@ export function createEngine () {
     const empty = barInPart === plan.emptyBar
       || (winding && barInPart === 7);
 
-    if (! empty && barInPart >= (plan.chordsFrom ?? 0)) playChord (state, time, chordSpec);
+    if (! empty && barInPart >= (plan.chordsFrom ?? 0)) {
+      // A chord being held across bars is struck once, at its start — striking
+      // it again each bar would undo the point of holding it.
+      const struckThisBar = hold === 1 || barInPart % hold === 0;
+      if (struckThisBar) playChord (state, time, chordSpec, plan.comp);
+    }
     const bassWound = winding && barInPart >= 6;
 
     if (! empty && ! bassWound && plan.bass && plan.bass !== 'none') {

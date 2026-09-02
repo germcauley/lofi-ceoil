@@ -53,6 +53,8 @@ Underneath, chords come from **per-mode progression sets** written in roman nume
 
 The chord cycle is indexed against position in the **part**, not the absolute bar count, so every part opens on the progression's first chord however many bars have gone by.
 
+The keys pick a **backing** per part — sustained, stabbed, offbeat, driving bouzouki quavers, boom-chuck, anticipated into the next bar, or a suspended fourth resolving to the third halfway through. And the **harmonic rhythm** changes across the turn: the A part often holds each chord two bars while the B part moves every bar, so the tune quickens as it goes.
+
 Chords **voice-lead**: each voice moves to the nearest tone of the next chord and common tones stay put, which averages a little over one semitone of movement per voice. Re-voicing each chord independently is what makes block chords sound blocky. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
