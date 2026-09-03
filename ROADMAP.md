@@ -36,41 +36,52 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 
 ## Status
 
-- [x] **34. Complete composition plans, reproducible scores and replay**
-
 - [x] **1. Chord voice leading**
-- [x] **2. Per-mode progression sets, including the pop canon**
+- [x] **2. Per-mode progression sets**
 - [x] **3. Motif and development**
 - [x] **4. Chord-aware melody**
 - [x] **5. Cadences and question/answer**
-- [x] **6. Counter-line textures: imitation and heterophony**
+- [x] **6. Counter-line textures**
 - [x] **7. Eight-bar parts with a higher turn**
-- [x] **8. Bass patterns, staged entrances, comping and harmonic rhythm**
-- [x] **32. Varied openings and recognizable tune/riff returns**
-- [ ] **33. Pixel-art piano-roll visualiser — instrument colours and switchable scrolling**
-- [x] **9. Long-form structure — the energy arc**
+- [x] **8. Bass patterns and staged entrances** *(partly done)*
+- [x] **9. Long-form structure**
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
 - [x] **11b. Anacrusis and empty bars**
-- [x] **12. Instrument voices** *(now including a sampled piano)*
+- [x] **12. Instrument voices**
 - [x] **13. Voice changes driven by the arrangement**
 - [ ] **14. The turntable — draggable vinyl that really scrubs**
 - [x] **15. More bass voices**
-- [x] **16. Radio mode — tracks that segue**
-- [x] **31. A "new track" button**
+- [x] **16. Radio mode**
 - [x] **17. Generated tune names**
-- [ ] **18. Save the current tune — WAV download**
+- [ ] **18. Save the current tune**
 - [ ] **19. Notation of the current tune** *(backlog)*
-- [x] **20. Sampled whistle and harp** *(fiddle still synthesised — no CC0 violin found)*
-- [ ] **21. More styles, slowed + reverb type music, trance, minimalism**
-- [ ] **22. Animated DJ that actually controls the mix, tempo etc**
-- [ ] **30. Liking a track, and learning from it**
+- [x] **20. Sampled whistle and harp**
+- [ ] **21. More styles — slowed and reverb, trance, minimalism**
+- [ ] **22. An animated DJ that controls the mix**
 - [x] **23. Piano for chords, with an auto mode**
-- [x] **24. Ending a set — wind down, leave space, let the crackle run**
-- [x] **25. Moving between keys, through a pivot chord**
-- [x] **26. Phrasing — the melody plays rather than executes**
+- [x] **24. Ending a set**
+- [x] **25. Moving between keys**
+- [x] **26. Phrasing**
 - [x] **27. Variety in the counter line**
-
+- [x] **28. Harmony aligned to the form**
+- [x] **29. The pop and rock canon**
+- [ ] **30. Liking a track, and learning from it**
+- [x] **31. A "new track" button**
+- [x] **32. Varied openings and recognizable returns**
+- [ ] **33. Pixel-art piano-roll visualiser**
+- [x] **34. Complete composition plans, reproducible scores and replay**
+- [x] **35. A random opening key**
+- [x] **36. Levelling the voices**
+- [x] **37. Kalimba replaces the whistle**
+- [x] **38. The supporting line**
+- [ ] **39. Replay should queue, not interrupt**
+- [ ] **40. Irish forms with a hip-hop backing**
+- [ ] **41. Filter sweeps across a section boundary**
+- [ ] **42. More of the effects palette**
+- [x] **43. Mix corrections**
+- [ ] **44. The piano roll** *(built, currently hidden)*
+- [x] **45. New lead voices**
 ---
 
 ## 1. Chord voice leading — done
@@ -204,8 +215,6 @@ Measured over 400 parts: **20.3% contain a tie**, averaging 0.42 tied notes each
 Measured over 400 parts: **25% carry a pickup**, and **100% of them arrive a step from their target**, with no bar overruns and no events out of time order.
 
 **Empty bars.** A bar with no harmony, no bass, no drums and no counter — just the tune, the drone and the surface noise. The closing bar of a part is the place for it: the melody lands on its cadence with everything else out of the way, which is a structural rest rather than merely a quiet moment. Roughly a third of parts get one.
-
-## 12. Instrument voices — done
 
 ## 12. Instrument voices — done
 
@@ -599,7 +608,7 @@ Validation covers deterministic generation, all four modes and supported track l
 
 ---
 
-## 32. Mix corrections — done
+## 43. Mix corrections — done
 
 Three complaints after a long listen, all of them regressions from recent work.
 
@@ -611,13 +620,13 @@ Two changes. The threshold moved to `0.55 + energy * 0.45`, so the peak of an ar
 
 **The drone was too present.** A sustained sawtooth never stops, so it never stops being noticed. Its voice went from −26 to −34, the default level from 0.25 to 0.14, its per-track variation from ±0.225 to ±0.10, and the velocity it is played at from half to a third.
 
-## 33. The piano roll — hidden for now
+## 44. The piano roll — hidden for now
 
 Left in place and fully wired; the section simply carries `hidden`. Removing that attribute brings it back without touching anything else.
 
 ---
 
-## 34. New lead voices — done
+## 45. New lead voices — done
 
 The fiddle and whistle leads were not liked, and both were the synthesised ones. That is the same line the piano ran into: an oscillator can suggest a *struck* or *plucked* string, because the interesting part is the decay, but a **bowed or blown** instrument gives itself away immediately — the sound is continuous, so there is nowhere for the imitation to hide.
 
@@ -672,24 +681,38 @@ Saved recipes also gained a compatibility fix: a setting that did not exist when
 
 ---
 
-## Ideas not yet built
-
-### 39. Replay should queue, not interrupt
+## 39. Replay should queue, not interrupt
 
 "Replay tune" restarts immediately. It should **line up** — finish the tune that is playing and repeat from its start — the way a repeat is a musical instruction rather than a rewind.
 
-### 40. Irish forms with a hip-hop backing
+## 40. Irish forms with a hip-hop backing
 
 **6/8 and 3/4** as well as 4/4, and the dance forms that live there: **jigs** (6/8), **slip jigs** (9/8), **reels** (4/4 driving), **polkas** (2/4), **hornpipes** (dotted 4/4). Each has its own rhythmic cell and its own melodic habits, so this reaches the rhythm vocabulary and the motif grammar, not only the time signature.
 
 Underneath them, a **hip-hop drum and bass backing** — which is exactly the collision the project is named for. The engine currently assumes eight quaver slots in a bar everywhere; 6/8 and 3/4 mean that assumption has to become a parameter.
 
-### 41. Filter sweeps across a section boundary
+## 41. Filter sweeps across a section boundary
 
 A slow filter creep that builds or releases tension into the next section — the cutoff moving gradually across several bars so the arrival is *prepared* rather than merely happening.
 
 The arc already moves brightness, but it moves it *within* a section and at the pace of turns. This is a different gesture: aimed at a boundary, timed to land on it, and steeper. Both a lowpass climb (building) and a highpass climb (thinning everything out before a drop) are worth having, and the machinery for the boundary already exists in the arrangement.
 
-### 42. More of the effects palette
+## 42. More of the effects palette
 
 Delay, phaser, chorus as a send rather than baked into individual voices, and reverb with more than one character. Currently the tape path is fixed: saturation, bitcrush, wobble, lowpass, one reverb. A **tape delay** in particular is close to the genre's centre, and a send-and-return structure would let parts sit at different depths rather than sharing one setting.
+
+## 21. More styles — slowed and reverb, trance, minimalism
+
+Beyond lofi: the same generative machinery pointed at other genres.
+
+The open question is what a "style" actually parameterises. Tempo, swing, the note pools and the effects chain are obvious. Less obvious, and more important: **slowed-and-reverb** wants extreme tempo reduction with a long reverb and no swing, and would suit the stretching work this project originally grew out of. **Trance** wants a fixed 16th-note pulse, long builds and a completely different harmonic rhythm. **Minimalism** wants phase relationships between repeating cells — which the motif machinery could express well, since it already thinks in cells and transformations.
+
+Each is really a preset over the parameters that already exist, plus the one or two that do not. Worth doing after the time-signature work in item 40, since that is the parameter most of them need.
+
+## 22. An animated DJ that controls the mix
+
+A figure on the panel who is visibly doing what the machine is doing — reaching for the filter as it sweeps, riding the fader as a part drops out, cueing the next track.
+
+The value is not decoration. Everything the generator decides is currently invisible unless you read the readout: which texture is playing, where the energy arc has got to, that a set ending is coming. A DJ makes those legible without a single label, because a gesture reads faster than text.
+
+It needs the arrangement to expose its intentions slightly ahead of time — which the composed score already does, since bars are written before they are played.
