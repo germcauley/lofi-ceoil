@@ -1,3 +1,5 @@
+import { TUNE_STATS } from './data/tune-stats.js';
+
 // Melody generation with a Celtic/folk grammar.
 //
 // The central idea is the motif. An earlier version picked every note by
@@ -80,20 +82,40 @@ const CADENCE_RHYTHMS = {
   3: [[4, 2, 2], [2, 2, 4], [3, 3, 2]]
 };
 
-export function createMelodyGenerator (random = () => Math.random()) {
+// A jig and a reel do not move the same way, so the meter decides which
+// repertoire the melodic grammar is drawn from.
+const TUNE_TYPE = { '6/8': 'jig', '9/8': 'slip jig', '3/4': 'waltz', '2/4': 'polka' };
+
+/** Cumulative interval table for a meter, as [step, runningTotal] pairs. */
+function intervalTable (meter) {
+  const type = TUNE_TYPE[meter] ?? 'reel';
+  const weights = (TUNE_STATS.types[type] ?? TUNE_STATS.types.reel).intervals;
+  let running = 0;
+  return Object.entries (weights)
+    .map (([step, weight]) => [Number (step), running += weight]);
+}
+
+export function createMelodyGenerator (random = () => Math.random(), meter = '4/4') {
   const pick = arr => arr[Math.floor (random() * arr.length)];
   const chance = p => random() < p;
+  const intervals = intervalTable (meter);
 
-  /** Weighted melodic interval in scale steps. Folk melody is overwhelmingly
-      stepwise; leaps happen, but they are events, not the default. */
+  /** Weighted melodic interval in scale steps, measured from real tunes
+      rather than tuned by ear.
+
+      What the ear got right: folk melody is overwhelmingly stepwise, and
+      about half of all movement is a single step either way. What it got
+      wrong, against 1.5 million intervals of jigs and reels: notes were
+      repeated nearly twice as often as they are in the repertoire, thirds
+      were under-used by a third, and every interval was a coin flip on
+      direction when real tunes fall more than they rise — a third down is
+      over one and a half times as common as a third up. Nothing wider than
+      a fifth could occur at all, so the tunes could never make the big skip
+      that gives a jig its lift. */
   function nextInterval () {
     const roll = random();
-
-    if (roll < 0.46) return chance (0.5) ? 1 : -1;      // step
-    if (roll < 0.66) return 0;                          // repeat the note
-    if (roll < 0.82) return chance (0.5) ? 2 : -2;      // third
-    if (roll < 0.94) return chance (0.55) ? 3 : -3;     // fourth
-    return chance (0.5) ? 4 : -4;                       // fifth
+    for (const [step, cumulative] of intervals) if (roll < cumulative) return step;
+    return 0;
   }
 
   // --------------------------------------------------------------------- motif

@@ -136,7 +136,7 @@ export function composeTrack (input) {
   if (! Number.isInteger (recipe.turns) || recipe.turns < 2 || recipe.turns > 4) throw new Error ('A track needs two to four turns');
   const random = seededRandom (recipe.seed);
   const pick = options => options[Math.floor (random() * options.length)];
-  const melody = createMelodyGenerator (random);
+  const melody = createMelodyGenerator (random, recipe.structure.meter);
   const arc = { ...recipe.arc };
   const structured = recipe.structure.style !== 'drift';
   const score = { version: COMPOSITION_VERSION, recipe, beatsPerBar: meterInfo (recipe.structure.meter).beats, turns: [], bars: [] };
