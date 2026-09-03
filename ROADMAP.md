@@ -93,6 +93,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **54. Arpeggiated chord accompaniment**
 - [x] **55. Sampled nylon-string guitar**
 - [x] **56. 6/8 jig feel — first pass**
+- [ ] **57. Learn the harmony from a corpus of real tunes**
 ---
 
 ## 1. Chord voice leading — done
@@ -829,3 +830,47 @@ The existing melodic contour is rephrased onto six integer quaver slots, grouped
 Playback counts quavers between bar callbacks so skips, natural track boundaries and repeats can change meter. Meter changes update the underlying quarter-note tempo at the boundary. Track timing, note highlighting, vinyl duration and section sweep lengths follow the meter. The piano roll remains hidden as before.
 
 Validation covers reproducible jig scores and revisions across 20 seeds, note bounds for every role, snare placement, phrase returns, playhead endings, and browser playback at both meters with skips and repeat. Further work: native jig-specific motif selection, a manual meter choice, 3/4 and 9/8, and more dance-specific accompaniment.
+
+## 57. Learn the harmony from a corpus of real tunes
+
+Right now every chord progression is hand-written. A corpus would let the
+generator weight its choices on what real tunes actually do — which chord
+tends to follow which, how often a phrase cadences, where a modal tune
+borrows from outside the mode.
+
+**Hooktheory / TheoryTab** is the obvious candidate, and it is the wrong
+corpus for this project on two counts.
+
+The first is fit. TheoryTab is Western pop and rock. Its statistics would
+pull the harmony toward pop cadences and away from the modal movement —
+the flat seventh, the double-tonic shuttle, the absent leading note — that
+makes these tunes sound Irish rather than generically pleasant. We would
+be spending real effort to make the generator sound less like itself.
+
+The second is licensing. Hooktheory's terms prohibit scraping,
+bulk-downloading and redistributing the TheoryTab database. There is a
+Trends API exposing next-chord probabilities, but it needs an account, and
+baking its numbers into a table in a public repository is arguably
+redistributing the derived database. Not a fight worth having for a corpus
+we do not want.
+
+**The Session** is the corpus we actually want. Around 50,000 settings of
+Irish traditional tunes in ABC notation, with weekly data dumps in CSV,
+JSON and SQLite at `github.com/adactio/TheSession-data`. The tunes
+themselves are traditional and long out of copyright. The database is
+licensed **ODbL**, which asks for an attribution notice and share-alike on
+derivative *databases* — a produced work, such as generated audio, carries
+the notice but is not itself forced open. That fits a public repository
+cleanly.
+
+What we would take from it: chord and interval transition weights per
+mode, phrase-length and cadence distributions, and a sense of how often
+tunes move between the relative major and minor. Melodic shape is worth
+studying but not copying — the motif grammar is the part of this
+generator with a voice of its own, and a corpus should inform its
+harmonic choices rather than replace its melodic ones.
+
+Open question before starting: derive the tables offline and commit them
+(small, fast, reproducible, needs the ODbL notice and an alterations
+file), or ship the ABC parser and derive at build time. Offline looks
+right.
