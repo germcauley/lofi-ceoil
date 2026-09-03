@@ -41,22 +41,22 @@ const CHORD_SHAPES = {
 // material, which is why one four-chord loop underpins hundreds of hit songs.
 export const PROGRESSIONS = {
   major: [
-    { name: 'I-V-vi-IV',    chords: [[0, 'maj9'], [4, 'dom7'], [5, 'min7'], [3, 'maj7']] },
-    { name: 'vi-IV-I-V',    chords: [[5, 'min7'], [3, 'maj7'], [0, 'maj9'], [4, 'dom7']] },
-    { name: 'I-vi-IV-V',    chords: [[0, 'maj7'], [5, 'min7'], [3, 'maj7'], [4, 'dom7']] },
-    { name: 'I-iii-IV-V',   chords: [[0, 'maj7'], [2, 'min7'], [3, 'maj7'], [4, 'dom7']] },
-    { name: 'ii-V-I',       chords: [[1, 'min9'], [4, 'dom9'], [0, 'maj9'], [0, 'maj7']] },
+    { name: 'I-V-vi-IV',    chords: [[0, 'maj9'], [4, 'dom7'], [5, 'min7'], [3, 'maj7']], for: 'pop'  },
+    { name: 'vi-IV-I-V',    chords: [[5, 'min7'], [3, 'maj7'], [0, 'maj9'], [4, 'dom7']], for: 'pop'  },
+    { name: 'I-vi-IV-V',    chords: [[0, 'maj7'], [5, 'min7'], [3, 'maj7'], [4, 'dom7']], for: 'pop'  },
+    { name: 'I-iii-IV-V',   chords: [[0, 'maj7'], [2, 'min7'], [3, 'maj7'], [4, 'dom7']], for: 'pop'  },
+    { name: 'ii-V-I',       chords: [[1, 'min9'], [4, 'dom9'], [0, 'maj9'], [0, 'maj7']], for: 'pop'  },
     // The three-chord backbone of most rock ever written.
     { name: 'I-IV-V',       chords: [[0, 'maj'], [3, 'maj'], [4, 'dom7']] },
     { name: 'I-V-IV',       chords: [[0, 'maj9'], [4, 'dom7'], [3, 'maj7']] },
     // Doo-wop's other half, and the front of rhythm changes.
-    { name: 'I-vi-ii-V',    chords: [[0, 'maj7'], [5, 'min7'], [1, 'min7'], [4, 'dom7']] },
+    { name: 'I-vi-ii-V',    chords: [[0, 'maj7'], [5, 'min7'], [1, 'min7'], [4, 'dom7']], for: 'pop'  },
     // Round the circle of fifths and home.
-    { name: 'vi-ii-V-I',    chords: [[5, 'min7'], [1, 'min9'], [4, 'dom9'], [0, 'maj9']] },
-    { name: 'I-iii-vi-IV',  chords: [[0, 'maj7'], [2, 'min7'], [5, 'min7'], [3, 'maj7']] },
+    { name: 'vi-ii-V-I',    chords: [[5, 'min7'], [1, 'min9'], [4, 'dom9'], [0, 'maj9']], for: 'pop'  },
+    { name: 'I-iii-vi-IV',  chords: [[0, 'maj7'], [2, 'min7'], [5, 'min7'], [3, 'maj7']], for: 'pop'  },
     // The "royal road" — everywhere in Japanese pop, and it lands beautifully
     // under a modal tune.
-    { name: 'IV-V-iii-vi',  chords: [[3, 'maj7'], [4, 'dom7'], [2, 'min7'], [5, 'min7']] },
+    { name: 'IV-V-iii-vi',  chords: [[3, 'maj7'], [4, 'dom7'], [2, 'min7'], [5, 'min7']], for: 'pop'  },
     // Pachelbel, one chord a bar across an eight-bar part.
     { name: 'canon',        chords: [[0, 'maj'], [4, 'maj'], [5, 'min'], [2, 'min'],
                                      [3, 'maj'], [0, 'maj'], [3, 'maj'], [4, 'dom7']] },
@@ -68,7 +68,7 @@ export const PROGRESSIONS = {
     { name: 'i-VII-VI-VII', chords: [[0, 'min9'], [6, 'dom7'], [5, 'maj7'], [6, 'dom7']] },
     { name: 'i-iv',         chords: [[0, 'min9'], [3, 'min7']] },
     { name: 'i-VII-iv-i',   chords: [[0, 'min7'], [6, 'maj7'], [3, 'min7'], [0, 'min9']] },
-    { name: 'i-ii°-V',      chords: [[0, 'min7'], [1, 'min7b5'], [4, 'min7'], [0, 'min9']] },
+    { name: 'i-ii°-V',      chords: [[0, 'min7'], [1, 'min7b5'], [4, 'min7'], [0, 'min9']], for: 'pop'  },
     { name: 'i-iv-VII-III',  chords: [[0, 'min9'], [3, 'min7'], [6, 'dom7'], [2, 'maj7']] },
     { name: 'i-VI-VII',      chords: [[0, 'min9'], [5, 'maj7'], [6, 'dom7']] },
     { name: 'i-VII-VI-v',    chords: [[0, 'min9'], [6, 'maj7'], [5, 'maj7'], [4, 'min7']] }
@@ -258,7 +258,7 @@ function sameNotes (a, b) {
     ambiguous chord there is, and ambiguity is the whole mechanism. Returns
     null when the keys share nothing, which is the signal to fall back to a
     plain change. */
-export function findPivot (fromRoot, fromScale, toRoot, toScale) {
+export function findPivot (fromRoot, fromScale, toRoot, toScale, random = Math.random) {
   const from = diatonicTriads (fromRoot, fromScale);
   const to = diatonicTriads (toRoot, toScale);
 
@@ -281,7 +281,7 @@ export function findPivot (fromRoot, fromScale, toRoot, toScale) {
   const strong = options.filter (o => o.toDegree === 3 || o.toDegree === 4);
   const pool = strong.length ? strong : options;
 
-  return pool[Math.floor (Math.random() * pool.length)];
+  return pool[Math.floor (random() * pool.length)];
 }
 
 /** Nudges a melody note onto a chord tone, but only ever by one scale step.

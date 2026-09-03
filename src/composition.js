@@ -5,10 +5,16 @@ import { meterInfo, jigPhrase } from './musical-meter.js';
 import { clampTempo } from './track-tempo.js';
 import { coordinateBassWithKick, makeRoomForMelody, addTransitionFill } from './ensemble.js';
 import { openingPlan } from './track-structure.js';
-import { PROGRESSIONS, noteNameToMidi, findPivot } from './theory.js';
+import { noteNameToMidi, findPivot } from './theory.js';
+import { DEFAULT_TRADITION, modesFor, progressionsFor, traditionName } from './tradition.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, durationSeconds, ARP_PATTERNS } from './parts.js';
 
-export const COMPOSITION_VERSION = 1;
+export const COMPOSITION_VERSION = 2;
+
+// Version 1 recipes predate traditions. Those tracks were Irish, so they are
+// read rather than rejected: a saved score should not stop replaying because
+// the generator learned a second accent.
+const SUPPORTED_VERSIONS = [1, 2];
 export function seededRandom (seed) {
   let value = seed >>> 0;
   return () => {
@@ -73,14 +79,15 @@ function nextEnergy (arc, random) {
   return 0.12 + clamp ((shapes[arc.shape] ?? shapes.swell) (t)) * 0.88;
 }
 
-function targetKey (root, scale, random) {
+function targetKey (root, scale, random, tradition = DEFAULT_TRADITION) {
   const relative = { minor: 'major', dorian: 'mixolydian', major: 'minor', mixolydian: 'dorian' };
   const roll = random();
   if (roll < 0.3) { root += ['major', 'mixolydian'].includes (scale) ? -3 : 3; scale = relative[scale]; }
   else if (roll < 0.6) root += random() < 0.5 ? 5 : -5;
   else if (roll < 0.8) root += 2;
   else {
-    const modes = Object.keys (PROGRESSIONS).filter (name => name !== scale);
+    const modes = modesFor (tradition).filter (name => name !== scale);
+    if (! modes.length) return { root: 48 + ((root - 48) % 12 + 12) % 12, scale };
     scale = modes[Math.floor (random() * modes.length)];
   }
   return { root: 48 + ((root - 48) % 12 + 12) % 12, scale };
@@ -132,7 +139,9 @@ export function writeBarNotes (bar, context, random) {
 
 export function composeTrack (input) {
   const recipe = structuredClone (input);
-  if (recipe.version !== COMPOSITION_VERSION) throw new Error ('Unsupported composition version');
+  if (! SUPPORTED_VERSIONS.includes (recipe.version)) throw new Error ('Unsupported composition version');
+  recipe.version = COMPOSITION_VERSION;
+  recipe.tradition = traditionName (recipe.tradition);
   if (! Number.isInteger (recipe.turns) || recipe.turns < 2 || recipe.turns > 4) throw new Error ('A track needs two to four turns');
   const random = seededRandom (recipe.seed);
   const pick = options => options[Math.floor (random() * options.length)];
@@ -150,10 +159,11 @@ export function composeTrack (input) {
   for (let turnIndex = 0; turnIndex < recipe.turns; turnIndex++) {
     if (pendingKey) {
       rootMidi = pendingKey.root; scale = pendingKey.scale; pendingKey = null;
-      progression = pick (PROGRESSIONS[scale]); saved = null; context.previousVoicing = null;
+      progression = pick (progressionsFor (recipe.tradition, scale)); saved = null; context.previousVoicing = null;
     } else if (! structured && turnIndex > 0 && random() < 0.1) {
-      scale = pick (Object.keys (PROGRESSIONS).filter (name => name !== scale));
-      progression = pick (PROGRESSIONS[scale]); context.previousVoicing = null;
+      const modes = modesFor (recipe.tradition).filter (name => name !== scale);
+      if (modes.length) scale = pick (modes);
+      progression = pick (progressionsFor (recipe.tradition, scale)); context.previousVoicing = null;
     }
     const energy = nextEnergy (arc, random);
     const settings = compositionSettings (recipe, energy);
@@ -220,12 +230,12 @@ export function composeTrack (input) {
       const part = Math.floor (position / 8), barInPart = position % 8, plan = plans[part];
       const winding = ending && turnIndex === recipe.turns - 1 && part === 3;
       if (winding && barInPart === 4) {
-        pendingKey = targetKey (rootMidi, scale, random);
-        const found = findPivot (rootMidi, scale, pendingKey.root, pendingKey.scale);
+        pendingKey = targetKey (rootMidi, scale, random, recipe.tradition);
+        const found = findPivot (rootMidi, scale, pendingKey.root, pendingKey.scale, random);
         pivot = found ? [found.fromDegree, found.quality] : null;
       } else if (! winding && position === 31 && recipe.turnsSinceEnding + turnIndex >= 2 && random() < 0.12) {
-        const target = targetKey (rootMidi, scale, random);
-        const found = findPivot (rootMidi, scale, target.root, target.scale);
+        const target = targetKey (rootMidi, scale, random, recipe.tradition);
+        const found = findPivot (rootMidi, scale, target.root, target.scale, random);
         if (found) { pendingKey = target; pivot = [found.fromDegree, found.quality]; }
       }
       const hold = progression.chords.length >= 6 ? 1 : plan.chordHold;
@@ -238,7 +248,7 @@ export function composeTrack (input) {
         voicingBefore: context.previousVoicing ? [...context.previousVoicing] : null };
       bar.notes = writeBarNotes (bar, context, seededRandom (bar.noteSeed));
       score.bars.push (bar);
-      if (! structured && position > 0 && position % 8 === 0 && random() < 0.35) progression = pick (PROGRESSIONS[scale]);
+      if (! structured && position > 0 && position % 8 === 0 && random() < 0.35) progression = pick (progressionsFor (recipe.tradition, scale));
     }
   }
   score.barCount = score.bars.length;

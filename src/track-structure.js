@@ -1,5 +1,7 @@
 // Choose entrances without letting a run of random draws sound like one preset.
 // These plans belong to a track; its intro happens once, not on every turn.
+import { DEFAULT_TRADITION, traditionOf } from './tradition.js';
+
 const OPENINGS = ['melody', 'chords', 'layered', 'rhythm', 'full'];
 const FORMS = {
   tune: ['A', 'A', 'B', 'A'],
@@ -24,10 +26,18 @@ function bagPicker (values) {
   };
 }
 
-export function createStructurePicker () {
+/** A picker for one tradition. Meters and forms come from the tradition; the
+    opening does not, because how a tune lets its parts in is a lofi habit
+    rather than something either tradition owns.
+
+    Keep one picker per tradition rather than one shared picker. The bags are
+    what stop a run of draws sounding like a preset, and a shared bag would
+    let a switch of tradition reset that memory. */
+export function createStructurePicker (tradition = DEFAULT_TRADITION) {
+  const { meters, forms } = traditionOf (tradition);
   const opening = bagPicker (OPENINGS);
-  const meter = bagPicker (['4/4', '4/4', '6/8']);
-  const style = bagPicker (Object.keys (FORMS));
+  const meter = bagPicker (meters);
+  const style = bagPicker (forms.filter (name => FORMS[name]));
   return () => {
     const kind = style();
     return { meter: meter(), opening: opening(), style: kind, sections: [...FORMS[kind]], chordHold: Math.random() < 0.6 ? 2 : 1 };

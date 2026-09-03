@@ -147,3 +147,14 @@ test ('live playback starts with a complete score, replays it and keeps edits af
   await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
   await page.evaluate (async () => { window.lofi.stop(); await window.lofi.chain.input.context.close(); });
 });
+
+test ('a drifting, modulating recipe is deterministic despite global randomness', () => {
+  // Drift wanders between keys, and choosing a pivot chord used to read the
+  // global generator — so these scores replayed differently every time while
+  // the structured ones above stayed put.
+  const drifting = { ...recipe, turns: 4,
+    structure: { ...recipe.structure, style: 'drift', sections: ['A', 'A', 'B', 'B'] } };
+  const first = composeTrack (drifting);
+  for (let i = 0; i < 1000; i++) Math.random();
+  expect (composeTrack (JSON.parse (JSON.stringify (drifting))).bars).toEqual (first.bars);
+});
