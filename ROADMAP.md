@@ -614,3 +614,24 @@ Two changes. The threshold moved to `0.55 + energy * 0.45`, so the peak of an ar
 ## 33. The piano roll — hidden for now
 
 Left in place and fully wired; the section simply carries `hidden`. Removing that attribute brings it back without touching anything else.
+
+---
+
+## 34. New lead voices — done
+
+The fiddle and whistle leads were not liked, and both were the synthesised ones. That is the same line the piano ran into: an oscillator can suggest a *struck* or *plucked* string, because the interesting part is the decay, but a **bowed or blown** instrument gives itself away immediately — the sound is continuous, so there is nowhere for the imitation to hide.
+
+Both are removed. In their place, two more CC0 instruments from VCSL:
+
+- **Vibraphone**, soft mallets — the signature lofi mallet sound, and exactly the case for sampling: the shimmer of the metal bar and its long unforced decay are not things an oscillator arrives at.
+- **Marimba** — wooden and dry where the vibraphone is metallic and ringing, so the two do not compete for the same job.
+
+The lead is now `vibraphone`, `marimba`, `piano`, `harp`, `harp (synth)` and `whistle` — five sampled instruments and one synth kept deliberately, because its Karplus-Strong character is a different instrument rather than a worse one.
+
+VCSL's octave convention was verified again by spectrum for both: a file named `C3` in the vibraphone folder sounds 261.8 Hz, MIDI 60, which is scientific C4. Same one-octave offset as the harp and recorder, so each sample is filed under the note it actually sounds.
+
+One download trap worth recording: two vibraphone notes exist only as `rr2` takes, and the fallback for a missing `rr1` tested whether the downloaded file was *non-empty* — which a 404 body is. Fetching by HTTP status rather than file size fixed it, and every sample is now checked with `ffprobe` before use.
+
+### Still open
+
+An intermittent `Start time must be strictly greater than previous start time` was seen twice during rapid voice swapping and could not be reproduced afterwards under deliberate stress — six swaps interleaved with skips produced none. It is the same monophonic-voice ordering family as the two bugs already fixed in the drums and the vinyl pops. Not chased further because it will not reproduce; worth catching if it recurs.

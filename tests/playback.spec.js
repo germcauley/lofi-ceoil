@@ -35,7 +35,7 @@ test ('rapid skips replace queued audio, including during a set rest', async ({ 
   await page.evaluate (() => {
     const e = window.lofi;
     e.state.autoVoice = e.state.autoKeysVoice = e.state.autoBassVoice = false;
-    e.controls.leadVoice ('whistle (synth)');
+    e.controls.leadVoice ('harp (synth)');
   });
   await page.click ('#playButton');
   await page.waitForFunction (() => window.lofi.state.barIndex > 0);
@@ -93,10 +93,10 @@ test ('simultaneous voice loads are independent and latest choice wins', async (
   })).toEqual (['harp', 'piano', 'upright']);
   await page.evaluate (() => {
     window.lofi.controls.leadVoice ('piano');
-    window.lofi.controls.leadVoice ('fiddle');
+    window.lofi.controls.leadVoice ('marimba');
   });
   await page.waitForTimeout (500);
-  expect (await page.evaluate (() => window.lofi.state.leadVoice)).toBe ('fiddle');
+  expect (await page.evaluate (() => window.lofi.state.leadVoice)).toBe ('marimba');
   expect (failures).toEqual ([]);
 });
 

@@ -23,7 +23,9 @@ const SAMPLE_MAPS = {
   harp: {
     C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
     C5: 'C5.mp3', E5: 'E5.mp3', 'G#5': 'Gs5.mp3', C6: 'C6.mp3'
-  }
+  },
+  vibraphone: { A5: 'A5.mp3', B4: 'B4.mp3', C4: 'C4.mp3', C6: 'C6.mp3', D5: 'D5.mp3', E4: 'E4.mp3', F5: 'F5.mp3', G4: 'G4.mp3' },
+  marimba: { B5: 'B5.mp3', C5: 'C5.mp3', F4: 'F4.mp3', F6: 'F6.mp3', G3: 'G3.mp3', G5: 'G5.mp3' }
 };
 
 // Cache decoded AudioBuffers, not voices: a skip needs fresh scheduling
@@ -154,40 +156,7 @@ export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, pad };
 
 // ------------------------------------------------------------------- lead
 
-/** Tin whistle. Nearly a pure sine with a breath transient and a little
-    vibrato — the vibrato is what stops it reading as a test tone. */
-function whistle () {
-  const voice = new Tone.Synth ({
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.045, decay: 0.3, sustain: 0.55, release: 0.7 },
-    volume: -16
-  });
 
-  const breath = new Tone.Vibrato ({ frequency: 5.2, depth: 0.06, type: 'sine' });
-  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 3400, rolloff: -12 });
-
-  voice.connect (breath);
-  breath.connect (tone);
-
-  return instrument (voice, breath, tone);
-}
-
-/** Fiddle. A filtered saw with a slower, bowed attack and heavier vibrato. */
-function fiddle () {
-  const voice = new Tone.Synth ({
-    oscillator: { type: 'sawtooth' },
-    envelope: { attack: 0.08, decay: 0.35, sustain: 0.6, release: 0.9 },
-    volume: -22
-  });
-
-  const vibrato = new Tone.Vibrato ({ frequency: 5.8, depth: 0.1, type: 'sine' });
-  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 2200, rolloff: -24, Q: 1.6 });
-
-  voice.connect (vibrato);
-  vibrato.connect (tone);
-
-  return instrument (voice, vibrato, tone);
-}
 
 /** Baroque soprano recorder, standing in for a tin whistle — the nearest thing
     in a CC0 library, and the same family of edge-blown pipe.
@@ -197,6 +166,19 @@ function fiddle () {
     named after and the voice transposes up for free. */
 function whistleSampled () {
   return sampled ('recorder', { volume: -14, release: 0.6, cutoff: 5200 });
+}
+
+/** Vibraphone, soft mallets. The signature lofi mallet sound, and the reason
+    to reach for samples rather than synthesis: the metal bar's shimmer and the
+    long unforced decay are not things an oscillator arrives at. */
+function vibraphone () {
+  return sampled ('vibraphone', { volume: -11, release: 1.6, cutoff: 6200 });
+}
+
+/** Marimba. Wooden and dry where the vibraphone is metallic and ringing, so
+    the two do not compete for the same job. */
+function marimba () {
+  return sampled ('marimba', { volume: -10, release: 0.9, cutoff: 5400 });
 }
 
 /** A real folk harp — the instrument this music actually belongs to. */
@@ -232,13 +214,17 @@ function piano () {
   return sampled ('piano', { volume: -9, release: 1.2, cutoff: 5200 });
 }
 
+// The two synthesised acoustic imitations — a sawtooth fiddle and a sine
+// whistle — are gone. Both were the wrong side of the line samples drew: an
+// oscillator can suggest a struck or plucked string, but a bowed or blown one
+// gives itself away immediately.
 export const LEAD_VOICES = {
-  whistle: whistleSampled,
-  'whistle (synth)': whistle,
-  fiddle,
+  vibraphone,
+  marimba,
   piano,
   harp: harpSampled,
-  'harp (synth)': harpSynth
+  'harp (synth)': harpSynth,
+  whistle: whistleSampled
 };
 
 // ------------------------------------------------------------------ others

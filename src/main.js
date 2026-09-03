@@ -124,7 +124,7 @@ function mountVoiceChooser (id, names, initial, apply, autoFlag) {
 }
 
 mountVoiceChooser ('leadVoiceRow',
-  ['whistle', 'whistle (synth)', 'fiddle', 'piano', 'harp', 'harp (synth)'],
+  ['vibraphone', 'marimba', 'piano', 'harp', 'harp (synth)', 'whistle'],
   'auto', value => engine.controls.leadVoice (value), 'autoVoice');
 
 mountVoiceChooser ('keysVoiceRow',
