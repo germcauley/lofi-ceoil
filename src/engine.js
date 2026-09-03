@@ -168,6 +168,10 @@ export function createEngine () {
     pendingKey: null,
     pivot: null,
 
+    // How many tracks the current mode has lasted, so it cannot sit still
+    // through a long run of them.
+    tracksInMode: 0,
+
     // Notified when the key moves on its own, so the panel can follow.
     onKey: null,
 
@@ -240,9 +244,29 @@ export function createEngine () {
       note with where we are. A tone up is the lift a trad set uses. Modal
       interchange keeps the tonic and changes only the mode, which is the
       subtlest of the four — nothing moves, everything recolours. */
-  function chooseTargetKey () {
+  /** Where the music moves next.
+
+      `forceMode` restricts the choice to the two moves that actually change
+      the mode. A fifth or a tone shifts the tonic and leaves the mode where
+      it was, so left purely to chance the mode can sit still through a long
+      run of tracks. */
+  function chooseTargetKey (forceMode = false) {
     let root = state.rootMidi;
     let scale = state.scale;
+
+    if (forceMode) {
+      if (Math.random() < 0.5) {
+        const goingMinor = scale === 'major' || scale === 'mixolydian';
+        root += goingMinor ? -3 : 3;
+        scale = RELATIVE_OF[scale] ?? scale;
+      } else {
+        scale = pickFrom (MODES.filter (mode => mode !== scale));
+      }
+      while (root < 48) root += 12;
+      while (root >= 60) root -= 12;
+      return { root, scale };
+    }
+
     const roll = Math.random();
 
     if (roll < 0.3) {
@@ -271,8 +295,10 @@ export function createEngine () {
   function applyPendingKey () {
     if (! state.pendingKey) return;
 
+    const previousScale = state.scale;
     state.rootMidi = state.pendingKey.root;
     state.scale = state.pendingKey.scale;
+    state.tracksInMode = state.pendingKey.scale === previousScale ? state.tracksInMode + 1 : 0;
     state.pendingKey = null;
     state.pivot = null;
 
@@ -556,12 +582,19 @@ export function createEngine () {
       // This bar becomes the start of a turn.
       state.formOffset = state.barIndex;
 
-      // Half the time a fresh track is in a fresh key. No pivot — a skip is a
-      // cut, and a pivot would be smoothing over a seam the listener asked for.
-      if (! replayPending && Math.random() < 0.5) {
-        const target = chooseTargetKey();
+      // Pressing new track is an explicit request for something else, so it
+      // always moves the key. No pivot — a skip is a cut, and a pivot would be
+      // smoothing over a seam the listener asked for.
+      //
+      // The mode needs its own guarantee. Only two of the four moves change it
+      // at all, so it used to survive three skips out of four and could sit in
+      // one mode for many tracks running.
+      if (! replayPending) {
+        const previousScale = state.scale;
+        const target = chooseTargetKey (state.tracksInMode >= 2);
         state.rootMidi = target.root;
         state.scale = target.scale;
+        state.tracksInMode = target.scale === previousScale ? state.tracksInMode + 1 : 0;
 
         const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
         state.progression = set[Math.floor (Math.random() * set.length)];

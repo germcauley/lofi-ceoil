@@ -68,3 +68,37 @@ test ('the derived table carries distributions and no corpus material', () => {
   }
   expect (text).not.toMatch (/abc|[A-G][,']?\d\|/);
 });
+
+test ('a motif means the same thing in every mode', () => {
+  // renderCell places a motif at round (poolSize * 0.35) and clamps to
+  // poolSize + 2, and the gapped pool is 10 notes in major but 14 in dorian.
+  // An offset that clamps in one mode and not another makes the same motif
+  // render two different ways, so a track that changed key stopped being the
+  // tune it was — and the wider intervals measured from real jigs reach those
+  // bounds where the old hand-tuned ones never did.
+  const generator = createMelodyGenerator (seeded (99), '6/8');
+  for (let i = 0; i < 500; i++) {
+    for (const offset of generator.createMotif().offsets) {
+      expect (offset).toBeGreaterThanOrEqual (-4);
+      expect (offset).toBeLessThanOrEqual (8);
+    }
+  }
+
+  // The hook — bar zero, the part a track returns to — must keep its shape in
+  // every mode. Cadences are deliberately not included: renderCadence takes
+  // the pool size because a cadence targets the tonic of the actual scale,
+  // so it is allowed to differ between a ten-note and a fourteen-note pool.
+  for (const seed of [5, 17, 42]) {
+    const motif = createMelodyGenerator (seeded (seed), '6/8').createMotif();
+    const hookIn = scale => {
+      const melody = createMelodyGenerator (seeded (31), '6/8');
+      const hook = melody.developPhrase (scale, melody.gappedPool (scale).length, motif)
+        .filter (event => event.at < 8);
+      return hook.map (event => event.degree - hook[0].degree);
+    };
+
+    const major = hookIn ('major');
+    expect (major.length).toBeGreaterThan (2);
+    for (const scale of ['minor', 'dorian', 'mixolydian']) expect (hookIn (scale)).toEqual (major);
+  }
+});

@@ -95,6 +95,28 @@ function intervalTable (meter) {
     .map (([step, weight]) => [Number (step), running += weight]);
 }
 
+// A motif has to mean the same thing in every mode. renderCell places it at
+// `round (poolSize * 0.35)` and clamps to `poolSize + 2`, and the gapped pool
+// is 10 notes in major and minor but 14 in dorian — so an offset that clamps
+// in one mode and not another makes the same motif render two different ways,
+// and a tune that changes key stops being the tune it was.
+//
+// These are the bounds inside which no mode clamps: the lowest start is 4, so
+// -4 still reaches degree 0, and the smallest ceiling is 12, so +8 fits under
+// it. The hand-tuned grammar never reached them; the measured one does.
+const MOTIF_LOW = -4, MOTIF_HIGH = 8;
+
+/** Add an interval, turning back at the edge of the motif's range rather than
+    flattening against it. A tune near the top of its compass turns around,
+    which keeps the leap a leap — clamping would silently repeat a note. */
+function stepWithin (from, interval) {
+  const forward = from + interval;
+  if (forward >= MOTIF_LOW && forward <= MOTIF_HIGH) return forward;
+  const back = from - interval;
+  if (back >= MOTIF_LOW && back <= MOTIF_HIGH) return back;
+  return Math.max (MOTIF_LOW, Math.min (MOTIF_HIGH, forward));
+}
+
 export function createMelodyGenerator (random = () => Math.random(), meter = '4/4') {
   const pick = arr => arr[Math.floor (random() * arr.length)];
   const chance = p => random() < p;
@@ -132,7 +154,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       const offsets = [0];
 
       for (let i = 1; i < cell.lengths.length; i++) {
-        offsets.push (offsets[i - 1] + nextInterval());
+        offsets.push (stepWithin (offsets[i - 1], nextInterval()));
       }
 
       if (isGoodMotif (offsets)) {
@@ -208,7 +230,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       while (total < budget) {
         const length = Math.min (budget - total, pick ([1, 2, 2, 3]));
         rhythm.push (length);
-        offsets.push (offsets[offsets.length - 1] + nextInterval());
+        offsets.push (stepWithin (offsets[offsets.length - 1], nextInterval()));
         total += length;
       }
 
