@@ -13,7 +13,6 @@ import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
 import { createTrackMaterialPicker } from './track-material.js';
 import { createStructurePicker } from './track-structure.js';
-import { DEFAULT_TRADITION, TRADITION_NAMES, modesFor, progressionsFor, traditionOf, traditionName } from './tradition.js';
 import { composeTrack, reviseComposition, COMPOSITION_VERSION } from './composition.js';
 import { playScoreBar } from './score-player.js';
 import { createPlaybackTimeline } from './playback-timeline.js';
@@ -26,15 +25,7 @@ export function createEngine () {
   const chain = createChain();
   const nextTrackTitle = createTrackNamer();
   const nextTrackMaterial = createTrackMaterialPicker();
-  const structurePickers = new Map();
-  function nextStructure (tradition) {
-    const key = traditionName (tradition);
-    if (! structurePickers.has (key)) structurePickers.set (key, createStructurePicker (key));
-    return structurePickers.get (key)();
-  }
-
-  // Weighted towards the accent this thing is named for. Pop is the guest.
-  const traditionBag = ['irish', 'irish', 'pop'];
+  const nextStructure = createStructurePicker();
   let previousOpeningProgression = null;
   let previousTempoOffset = null;
   let announcedTrack = null;
@@ -115,10 +106,7 @@ export function createEngine () {
     // this music lives, so major stays the exception rather than a quarter of
     // all openings.
     rootMidi: noteNameToMidi (NOTE_NAMES[Math.floor (Math.random() * 12)] + '3'),
-    scale: (modes => modes[Math.floor (Math.random() * modes.length)])
-      (traditionOf (DEFAULT_TRADITION).modes),
-    tradition: DEFAULT_TRADITION,
-    autoTradition: true,
+    scale: ['dorian', 'dorian', 'dorian', 'minor', 'minor', 'mixolydian', 'major'][Math.floor (Math.random() * 7)],
     tempo: DEFAULT_TEMPO,
     tempoUser: DEFAULT_TEMPO,
 
@@ -288,7 +276,7 @@ export function createEngine () {
     state.pendingKey = null;
     state.pivot = null;
 
-    const set = progressionsFor (state.tradition, state.scale);
+    const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
     state.progression = set[Math.floor (Math.random() * set.length)];
     state.previousVoicing = null;
     state.form = null;
@@ -387,28 +375,9 @@ export function createEngine () {
     const size = gappedPool (state.scale).length;
 
     state.trackNumber++;
-    // A new tune is the place a tradition changes: mid-track would mean the
-    // form and the meter disagreeing with the tune already playing.
-    if (state.autoTradition) {
-      state.tradition = traditionBag[Math.floor (Math.random() * traditionBag.length)];
-    }
-
-    // Follow the tradition into a mode it actually uses. Without this a track
-    // could switch to pop and stay in mixolydian, which is the mode it just
-    // came from — the label would change and nothing else would.
-    const modes = modesFor (state.tradition);
-    if (! modes.includes (state.scale)) {
-      state.scale = modes[Math.floor (Math.random() * modes.length)];
-      state.previousVoicing = null;
-      if (state.onKey) {
-        const name = NOTE_NAMES[state.rootMidi % 12];
-        Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
-      }
-    }
     state.track = {
       ...nextTrackTitle(),
-      tradition: state.tradition,
-      structure: nextStructure (state.tradition),
+      structure: nextStructure(),
       turn: 0,
       ...nextTrackMaterial(),
       // Distinct neighbouring tempos around the knob's base value. Drift
@@ -436,7 +405,7 @@ export function createEngine () {
 
     // Give the new tune its own harmonic opening too, even if it stays in
     // the same key. Both the outgoing harmony and last opening are avoided.
-    const progressions = progressionsFor (state.tradition, state.scale);
+    const progressions = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
     const choices = progressions.filter (progression =>
       progression.name !== state.progression.name && progression.name !== previousOpeningProgression);
     state.progression = pickFrom (choices.length ? choices : progressions);
@@ -451,7 +420,7 @@ export function createEngine () {
     const recipe = {
       version: COMPOSITION_VERSION, seed: Math.floor (Math.random() * 4294967296),
       title: track.title, titleEnglish: track.titleEnglish, titleLanguage: track.titleLanguage,
-      rootMidi: state.rootMidi, scale: state.scale, tradition: state.tradition,
+      rootMidi: state.rootMidi, scale: state.scale,
       structure: track.structure, motifA: track.motifA, motifB: track.motifB,
       progression: state.progression, turns: track.turnsLeft,
       variation: track.variation, user: { ...state.user }, tempoUser: state.tempoUser,
@@ -594,7 +563,7 @@ export function createEngine () {
         state.rootMidi = target.root;
         state.scale = target.scale;
 
-        const set = progressionsFor (state.tradition, state.scale);
+        const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
         state.progression = set[Math.floor (Math.random() * set.length)];
 
         if (state.onKey) {
@@ -905,7 +874,7 @@ export function createEngine () {
 
       // Each mode has its own progressions, because the chords that define a
       // mode only exist in that mode.
-      const set = progressionsFor (state.tradition, name);
+      const set = PROGRESSIONS[name] ?? PROGRESSIONS.minor;
       state.progression = set[Math.floor (Math.random() * set.length)];
       state.previousVoicing = null;
       if (state.track) {
