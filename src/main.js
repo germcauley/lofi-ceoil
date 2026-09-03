@@ -83,10 +83,15 @@ function mountChooser (container, options, initial, className, onSelect) {
   };
 }
 
-const keyChooser = mountChooser (document.getElementById ('keyRow'), NOTE_NAMES, 'C', 'key',
+// The engine picks where to open, so the panel has to follow it rather than
+// assert C — otherwise the buttons would disagree with what is playing.
+const startingKey = NOTE_NAMES[engine.state.rootMidi % 12];
+const startingMode = engine.state.scale;
+
+const keyChooser = mountChooser (document.getElementById ('keyRow'), NOTE_NAMES, startingKey, 'key',
   value => engine.controls.key (value));
 
-const scaleChooser = mountChooser (document.getElementById ('scaleRow'), MODES, 'dorian', 'seg',
+const scaleChooser = mountChooser (document.getElementById ('scaleRow'), MODES, startingMode, 'seg',
   value => engine.controls.scale (value));
 
 // Between tunes the engine can move to a related key. The panel has to follow

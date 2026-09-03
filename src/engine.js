@@ -84,8 +84,14 @@ export function createEngine () {
     // Notified when a voice swap starts and when it is ready to play.
     onVoice: null,
 
-    rootMidi: noteNameToMidi ('C3'),
-    scale: 'dorian',
+    // Every session opens somewhere different. Starting in C dorian every time
+    // made the machine sound like it had one tune in it.
+    //
+    // The mode is weighted rather than uniform: dorian and minor are where
+    // this music lives, so major stays the exception rather than a quarter of
+    // all openings.
+    rootMidi: noteNameToMidi (NOTE_NAMES[Math.floor (Math.random() * 12)] + '3'),
+    scale: ['dorian', 'dorian', 'dorian', 'minor', 'minor', 'mixolydian', 'major'][Math.floor (Math.random() * 7)],
     tempo: 72,
     tempoUser: 72,
 

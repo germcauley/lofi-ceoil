@@ -635,3 +635,11 @@ One download trap worth recording: two vibraphone notes exist only as `rr2` take
 ### Still open
 
 An intermittent `Start time must be strictly greater than previous start time` was seen twice during rapid voice swapping and could not be reproduced afterwards under deliberate stress — six swaps interleaved with skips produced none. It is the same monophonic-voice ordering family as the two bugs already fixed in the drums and the vinyl pops. Not chased further because it will not reproduce; worth catching if it recurs.
+
+## 35. A random opening key — done
+
+Every session began in C dorian, which made the machine sound like it had one tune in it before a note was played.
+
+The key is now drawn from all twelve. The **mode is weighted rather than uniform** — dorian 43%, minor 29%, mixolydian 15%, major 14% — because dorian and minor are where this music lives, and a flat quarter-share each would have made major the opening one time in four.
+
+The panel reads its initial selection from the engine rather than asserting C, or the buttons would disagree with what is playing from the first bar.
