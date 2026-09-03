@@ -103,6 +103,9 @@ export function createEngine () {
     track: null,
     trackNumber: 0,
     skipRequested: false,
+
+    // A filter sweep aimed at the next section boundary.
+    sweep: null,
     // The user's settings, and the values actually in force. The energy arc
     // scales the user's numbers rather than replacing them, so a knob still
     // means what it says — it sets the centre the arc swings around.
@@ -347,7 +350,12 @@ export function createEngine () {
       ...nextTrackMaterial(),
       // Each track sits a few beats either side of where the tempo knob is
       // set, so a set does not run at one speed all night.
-      tempoOffset: Math.round ((Math.random() - 0.5) * 8),
+      // Every tune used to run at nearly the same speed. The range was four
+      // beats either way and then multiplied by drift, so the default of 0.5
+      // turned it into two — not a tempo change anyone notices. Widened to
+      // seven either way, which at the default gives a real spread while
+      // arc 0 still means every knob is exact.
+      tempoOffset: Math.round ((Math.random() - 0.5) * 14),
 
       // How this track differs from where the knobs are set. Signed offsets,
       // scaled by the arc knob when they are applied.
@@ -430,6 +438,32 @@ export function createEngine () {
     }
   }
 
+  /** Decides whether a sweep runs this turn, and where it lands.
+
+      Only the boundaries worth preparing: the move into the B part halfway
+      through, and the end of the turn. A sweep into an arbitrary bar is a
+      filter wobbling — the gesture means something only if what it arrives at
+      is a change.
+
+      Roughly a third of turns. A build that happens every time builds nothing. */
+  function planSweep () {
+    state.sweep = null;
+    if (Math.random() > 0.34) return;
+
+    const lands = Math.random() < 0.5 ? 16 : 32;   // top of the B part, or the next turn
+    const bars = 2 + Math.floor (Math.random() * 3);
+
+    state.sweep = {
+      startBar: lands - bars,
+      bars,
+      // Falling into a set ending, since that is a release rather than a
+      // build; otherwise rising when there is energy to build on.
+      kind: state.endingSet && lands === 32 ? 'fall'
+        : state.energy > 0.55 ? 'rise' : (Math.random() < 0.6 ? 'rise' : 'fall'),
+      depth: 0.5 + state.energy * 0.5
+    };
+  }
+
   function buildForm () {
     if (! state.track || state.track.turnsLeft <= 0
         || state.track.turn >= state.track.composition.turns.length) startTrack();
@@ -447,6 +481,7 @@ export function createEngine () {
     state.turnsSinceEnding++;
     state.endingSet = track.composition.ending && track.turn === track.composition.turns.length;
     if (state.endingSet) state.turnsSinceEnding = 0;
+    planSweep();
     applySettings();
   }
 
@@ -478,6 +513,8 @@ export function createEngine () {
     // A skip restarts the transport on a fresh bar with fresh voice timelines.
     if (state.skipRequested) {
       state.skipRequested = false;
+      state.sweep = null;
+      chain.clearSweep();
       state.resting = 0;
       state.track = null;
       state.form = null;
@@ -507,6 +544,13 @@ export function createEngine () {
     }
 
     const positionInForm = (state.barIndex - state.formOffset) % 32;
+
+    // Start a planned sweep so that it finishes exactly on the boundary.
+    if (state.sweep && positionInForm === state.sweep.startBar) {
+      const barSeconds = (60 / state.tempo) * 4;
+      chain.sweep (state.sweep.kind, time, state.sweep.bars * barSeconds, state.sweep.depth);
+      state.sweep = null;
+    }
 
     // Select the already-written turn before handing its notes to playback.
     if (! state.form || positionInForm === 0) buildForm();

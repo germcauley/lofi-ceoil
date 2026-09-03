@@ -89,6 +89,8 @@ Across six to eleven turns — ten to twenty minutes — the piece follows an **
 
 The arc reaches the arrangement, not only the levels. Low down, a turn is likelier to open with the tune alone, the drums can sit out a whole part, and the backings and bass patterns come from the calm end. High up they come from the driving end and the drums are always there — a quiet stretch is quiet because parts are *absent*, not merely turned down.
 
+About a third of turns carry a **filter sweep** into the next section — a highpass climbing to thin everything out, or a lowpass closing to darken it — timed to land exactly on the boundary and release there, so the arrival is prepared rather than merely arriving.
+
 ## The controls
 
 **New track** starts a fresh tune after a short fade, without waiting for the bar to finish. It replaces the old queued notes with new motifs, a new arrangement, and half the time a new key. It also works during the pause between sets.

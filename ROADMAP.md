@@ -77,11 +77,12 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **38. The supporting line**
 - [ ] **39. Replay should queue, not interrupt**
 - [ ] **40. Irish forms with a hip-hop backing**
-- [ ] **41. Filter sweeps across a section boundary**
+- [x] **41. Filter sweeps across a section boundary**
 - [ ] **42. More of the effects palette**
 - [x] **43. Mix corrections**
 - [ ] **44. The piano roll** *(built, currently hidden)*
 - [x] **45. New lead voices**
+- [x] **46. Tempo actually varies per tune**
 ---
 
 ## 1. Chord voice leading — done
@@ -691,11 +692,21 @@ Saved recipes also gained a compatibility fix: a setting that did not exist when
 
 Underneath them, a **hip-hop drum and bass backing** — which is exactly the collision the project is named for. The engine currently assumes eight quaver slots in a bar everywhere; 6/8 and 3/4 mean that assumption has to become a parameter.
 
-## 41. Filter sweeps across a section boundary
+## 41. Filter sweeps across a section boundary — done
 
 A slow filter creep that builds or releases tension into the next section — the cutoff moving gradually across several bars so the arrival is *prepared* rather than merely happening.
 
-The arc already moves brightness, but it moves it *within* a section and at the pace of turns. This is a different gesture: aimed at a boundary, timed to land on it, and steeper. Both a lowpass climb (building) and a highpass climb (thinning everything out before a drop) are worth having, and the machinery for the boundary already exists in the arrangement.
+The arc already moves brightness, but it moves it *within* a section and at the pace of turns. This is a different gesture: aimed at a boundary, timed to land on it, and steeper.
+
+**As built.** Two gestures. `rise` climbs a highpass from 20 Hz to as much as 1 kHz, thinning everything from the bottom up — tension. `fall` closes a lowpass from wide open down towards 600 Hz, darkening from the top down — release. Both are **exponential**, because filter frequency is heard logarithmically and a linear ramp does almost nothing and then everything at once.
+
+The gesture is timed to **finish exactly on the boundary** and then returns to transparent over a fraction of a beat, which is what makes the arrival feel like a release rather than a change that merely happened.
+
+It uses **its own pair of filters**, not the existing `tone`. That one is the brightness knob plus the energy arc and is rewritten whenever any setting changes — a sweep writing to it would be overwritten mid-gesture. The pair sits transparent when unused, so it costs nothing.
+
+Only two boundaries are eligible: the move into the B part, and the end of the turn. A sweep into an arbitrary bar is a filter wobbling; the gesture means something only if what it arrives at is a change. It runs on roughly a third of turns — a build that happens every time builds nothing — and falls rather than rises into a set ending, since that is a release.
+
+Verified: a rise traced 20 → 53 → 199 → 768 Hz and snapped back to 20; a fall traced 20000 → 6229 → 1917 → 710 Hz and returned to 20000.
 
 ## 42. More of the effects palette
 
@@ -716,3 +727,11 @@ A figure on the panel who is visibly doing what the machine is doing — reachin
 The value is not decoration. Everything the generator decides is currently invisible unless you read the readout: which texture is playing, where the energy arc has got to, that a set ending is coming. A DJ makes those legible without a single label, because a gesture reads faster than text.
 
 It needs the arrangement to expose its intentions slightly ahead of time — which the composed score already does, since bars are written before they are played.
+
+## 46. Tempo actually varies per tune — done
+
+Every tune ran at nearly the same speed. A track did carry its own tempo offset, but the range was four beats either way and it was then multiplied by the drift knob, so the default of 0.5 turned it into **two beats** — not a tempo change anyone notices.
+
+The range is now seven either way. At the default that gives roughly 68 to 76 bpm around a knob set to 72, and at full drift 65 to 79.
+
+The first attempt removed the drift multiplication entirely, on the argument that a tune's tempo is part of its identity like its key. A test rejected it: **at arc 0 every knob must mean exactly what it says**, and that contract is worth more than the argument. Widening the range satisfies both.
