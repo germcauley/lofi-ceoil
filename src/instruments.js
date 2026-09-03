@@ -2,6 +2,32 @@
 
 import * as Tone from 'tone';
 
+/** PluckSynth is Karplus-Strong: a single noise burst into a delay line. That
+    noise source keeps a state timeline, and it throws outright if a trigger
+    lands at or before the previous one — "The time must be greater than or
+    equal to the last scheduled time".
+
+    Two notes an instant apart is not exotic here: the counter line, a grace
+    note, or a voice swap mid-bar can all produce it, which is why this
+    surfaced as an intermittent failure that would not reproduce on demand.
+
+    So every trigger is nudged to sit strictly after the last one. A note moved
+    by a millisecond is inaudible; a bar that throws is not. */
+function monotonic (voice) {
+  const original = voice.triggerAttackRelease.bind (voice);
+  let last = -Infinity;
+
+  voice.triggerAttackRelease = (note, duration, time, velocity) => {
+    const requested = time ?? Tone.now();
+    const safe = requested > last ? requested : last + 0.001;
+
+    last = safe;
+    return original (note, duration, safe, velocity);
+  };
+
+  return voice;
+}
+
 function instrument (voice, ...effects) {
   return {
     voice,
@@ -25,6 +51,8 @@ const SAMPLE_MAPS = {
     C5: 'C5.mp3', E5: 'E5.mp3', 'G#5': 'Gs5.mp3', C6: 'C6.mp3'
   },
   vibraphone: { A5: 'A5.mp3', B4: 'B4.mp3', C4: 'C4.mp3', C6: 'C6.mp3', D5: 'D5.mp3', E4: 'E4.mp3', F5: 'F5.mp3', G4: 'G4.mp3' },
+  kalimba: { 'A#4': 'As4.mp3', 'A#5': 'As5.mp3', 'C#4': 'Cs4.mp3', 'C#5': 'Cs5.mp3', 'C#6': 'Cs6.mp3', F4: 'F4.mp3', F5: 'F5.mp3' },
+  glockenspiel: { C6: 'C6.mp3', C7: 'C7.mp3', C8: 'C8.mp3', G5: 'G5.mp3', G6: 'G6.mp3', G7: 'G7.mp3' },
   marimba: { B5: 'B5.mp3', C5: 'C5.mp3', F4: 'F4.mp3', F6: 'F6.mp3', G3: 'G3.mp3', G5: 'G5.mp3' }
 };
 
@@ -165,14 +193,14 @@ export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, pad };
     an octave low; the two cancel, so each file is filed under the note it is
     named after and the voice transposes up for free. */
 function whistleSampled () {
-  return sampled ('recorder', { volume: -14, release: 0.6, cutoff: 5200 });
+  return sampled ('recorder', { volume: -12, release: 0.6, cutoff: 5200 });
 }
 
 /** Vibraphone, soft mallets. The signature lofi mallet sound, and the reason
     to reach for samples rather than synthesis: the metal bar's shimmer and the
     long unforced decay are not things an oscillator arrives at. */
 function vibraphone () {
-  return sampled ('vibraphone', { volume: -11, release: 1.6, cutoff: 6200 });
+  return sampled ('vibraphone', { volume: -10, release: 1.6, cutoff: 6200 });
 }
 
 /** Marimba. Wooden and dry where the vibraphone is metallic and ringing, so
@@ -181,9 +209,25 @@ function marimba () {
   return sampled ('marimba', { volume: -10, release: 0.9, cutoff: 5400 });
 }
 
+/** Kalimba. A thumb piano: plucked metal tines, warm and slightly detuned by
+    nature. One of the most recognisable lofi timbres, and it replaces the
+    recorder, which was only ever a stand-in for a whistle nobody sampled. */
+function kalimba () {
+  return sampled ('kalimba', { volume: -10, release: 1.1, cutoff: 6000 });
+}
+
+/** Glockenspiel, soft mallets — the supporting voice.
+
+    Its lowest sample already sounds well above where the tune sits, so it can
+    only ever decorate. That is the point: it is not a second melody, it is a
+    highlight on the first. */
+function glockenspiel () {
+  return sampled ('glockenspiel', { volume: -14, release: 1.8, cutoff: 8000 });
+}
+
 /** A real folk harp — the instrument this music actually belongs to. */
 function harpSampled () {
-  return sampled ('harp', { volume: -8, release: 1.4, cutoff: 6500 });
+  return sampled ('harp', { volume: -10, release: 1.4, cutoff: 6500 });
 }
 
 /** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
@@ -192,13 +236,13 @@ function harpSampled () {
     Kept alongside the sampled harp rather than replaced by it: its retro
     character is a different instrument, not a worse one. */
 function harpSynth () {
-  const voice = new Tone.PluckSynth ({
+  const voice = monotonic (new Tone.PluckSynth ({
     attackNoise: 0.6,
     dampening: 3200,
     resonance: 0.94,
     release: 1.1,
-    volume: -12
-  });
+    volume: -5
+  }));
 
   return instrument (voice);
 }
@@ -211,7 +255,7 @@ function harpSynth () {
     The samples are vendored rather than fetched from someone else's host, and
     cached before playback so a new track can use them immediately. */
 function piano () {
-  return sampled ('piano', { volume: -9, release: 1.2, cutoff: 5200 });
+  return sampled ('piano', { volume: -10, release: 1.2, cutoff: 5200 });
 }
 
 // The two synthesised acoustic imitations — a sawtooth fiddle and a sine
@@ -221,11 +265,15 @@ function piano () {
 export const LEAD_VOICES = {
   vibraphone,
   marimba,
+  kalimba,
   piano,
   harp: harpSampled,
-  'harp (synth)': harpSynth,
-  whistle: whistleSampled
+  'harp (synth)': harpSynth
 };
+
+/** Voices for the supporting line. Anything that can decorate without
+    competing — bright, short, and happy to sit above the tune. */
+export const SUPPORT_VOICES = { glockenspiel, vibraphone, kalimba, marimba };
 
 // ------------------------------------------------------------------ others
 
@@ -315,13 +363,13 @@ export const BASS_VOICES = {
 
 /** The counter line's voice: a pluck, distinct from whichever lead is chosen. */
 export function createPluck () {
-  const voice = new Tone.PluckSynth ({
+  const voice = monotonic (new Tone.PluckSynth ({
     attackNoise: 0.7,
     dampening: 2600,
     resonance: 0.93,
     release: 0.9,
     volume: -17
-  });
+  }));
 
   return instrument (voice);
 }

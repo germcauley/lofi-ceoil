@@ -643,3 +643,53 @@ Every session began in C dorian, which made the machine sound like it had one tu
 The key is now drawn from all twelve. The **mode is weighted rather than uniform** — dorian 43%, minor 29%, mixolydian 15%, major 14% — because dorian and minor are where this music lives, and a flat quarter-share each would have made major the opening one time in four.
 
 The panel reads its initial selection from the engine rather than asserting C, or the buttons would disagree with what is playing from the first bar.
+
+---
+
+## 36. Levelling the voices — done
+
+The voices were badly out of balance, and the cause was underneath the code: **the sample files themselves were recorded at wildly different levels**. Measured peaks per set — piano −10 dBFS, harp −15, recorder −27, vibraphone −34, marimba −39. A 30 dB spread between instruments, and up to **17 dB within one instrument** — the recorder's own notes varied that much between each other.
+
+No amount of tuning `volume` numbers fixes that, because the within-set variation would remain. Every sample is now **peak-normalised to −6 dBFS**, which brought every set flat to within 0.2 dB. With the files equal, the `volume` settings can do purely musical balancing, and sampled voices at the same number now produce the same level by construction.
+
+A note on method: the first three attempts at measuring this chased noise. `getLevel()` is a *smoothed* RMS sampled on animation frames, and the energy arc moves the filter and dust between runs, so nothing was comparable. Pinning the tape path and reading true peak from a dedicated analyser gave stable numbers — and showed the spread was 23 dB, not the 8 dB the first measurement suggested.
+
+## 37. Kalimba replaces the whistle — done
+
+The recorder was only ever a stand-in for a tin whistle nobody has sampled under CC0, and it did not convince. **Kalimba** takes its place: plucked metal tines, warm and naturally a little detuned, and one of the most recognisable lofi timbres. It spans the melody's range properly, where the recorder sat awkwardly above it.
+
+## 38. The supporting line — done
+
+A second voice that does the opposite of the counter line. Where the counter fills the tune's *rests*, this lands **on** the notes that matter and is silent everywhere else — a highlight on someone else's phrase rather than an answer to it.
+
+It takes its moments from the phrasing already computed: the note a sentence is aiming at, and the note it comes to rest on. So it never has to guess what is worth supporting. It doubles a third above where the chord allows and the octave otherwise, which is the plainest harmony available and the least likely to fight the tune.
+
+**Glockenspiel** carries it by default. Its lowest sample already sounds well above where the tune sits, so it can only ever decorate — which is the point. A `support` knob sets how often it appears; measured over 128 bars it played 46 notes against the lead's 426, about one in nine.
+
+Two traps, both silent. The composition layer *records* notes rather than sounding them, and registers recorder stubs for a fixed list of roles — a part not on that list writes into nothing. And Codex's refactor changed the helper signatures to take state first for the injectable RNG, so calling the old `chance (p)` compared against `undefined` and was **always false**, with no error to show for it.
+
+Saved recipes also gained a compatibility fix: a setting that did not exist when a score was saved now defaults instead of producing `NaN`, which JSON writes as `null` and which would have made older saved scores come back subtly broken.
+
+---
+
+## Ideas not yet built
+
+### 39. Replay should queue, not interrupt
+
+"Replay tune" restarts immediately. It should **line up** — finish the tune that is playing and repeat from its start — the way a repeat is a musical instruction rather than a rewind.
+
+### 40. Irish forms with a hip-hop backing
+
+**6/8 and 3/4** as well as 4/4, and the dance forms that live there: **jigs** (6/8), **slip jigs** (9/8), **reels** (4/4 driving), **polkas** (2/4), **hornpipes** (dotted 4/4). Each has its own rhythmic cell and its own melodic habits, so this reaches the rhythm vocabulary and the motif grammar, not only the time signature.
+
+Underneath them, a **hip-hop drum and bass backing** — which is exactly the collision the project is named for. The engine currently assumes eight quaver slots in a bar everywhere; 6/8 and 3/4 mean that assumption has to become a parameter.
+
+### 41. Filter sweeps across a section boundary
+
+A slow filter creep that builds or releases tension into the next section — the cutoff moving gradually across several bars so the arrival is *prepared* rather than merely happening.
+
+The arc already moves brightness, but it moves it *within* a section and at the pace of turns. This is a different gesture: aimed at a boundary, timed to land on it, and steeper. Both a lowpass climb (building) and a highpass climb (thinning everything out before a drop) are worth having, and the machinery for the boundary already exists in the arrangement.
+
+### 42. More of the effects palette
+
+Delay, phaser, chorus as a send rather than baked into individual voices, and reverb with more than one character. Currently the tape path is fixed: saturation, bitcrush, wobble, lowpass, one reverb. A **tape delay** in particular is close to the genre's centre, and a send-and-return structure would let parts sit at different depths rather than sharing one setting.

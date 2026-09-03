@@ -3,7 +3,7 @@
 import { createMelodyGenerator } from './melody.js';
 import { openingPlan } from './track-structure.js';
 import { PROGRESSIONS, noteNameToMidi, findPivot } from './theory.js';
-import { playChord, playBass, playDrums, playMelody, playCounter, playDrone, playVinyl, durationSeconds } from './parts.js';
+import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, playVinyl, durationSeconds } from './parts.js';
 
 export const COMPOSITION_VERSION = 1;
 export function seededRandom (seed) {
@@ -20,11 +20,17 @@ const clamp = n => Math.max (0, Math.min (1, n));
 export function compositionSettings (recipe, energy) {
   const drift = recipe.arcDepth;
   const swing = (energy - 0.5) * 2 * drift;
-  const value = (key, weight = 0) => clamp (recipe.user[key]
-    + (recipe.variation[key] ?? 0) * drift + swing * weight * recipe.user[key]);
+  // A recipe saved before a setting existed simply has no value for it. Left
+  // alone that yields NaN, which JSON writes as null — so an older saved score
+  // would come back subtly broken rather than merely missing a part.
+  const value = (key, weight = 0) => {
+    const user = recipe.user[key] ?? 0;
+    return clamp (user + (recipe.variation[key] ?? 0) * drift + swing * weight * user);
+  };
   return {
     density: value ('density', 0.5), counter: value ('counter', 0.5),
     ornament: value ('ornament'), droneLevel: value ('drone'), dust: value ('dust'),
+    supportLevel: value ('support'),
     swing: value ('swing'),
     tempo: Math.max (50, Math.min (100, recipe.tempoUser + recipe.tempoOffset * drift))
   };
@@ -90,7 +96,7 @@ export function writeBarNotes (bar, context, random) {
     notes.push ({ role, midi: pitch === null ? null : noteNameToMidi (pitch),
       at: at / secondsPerBeat, duration: durationSeconds (state, length) / secondsPerBeat, velocity });
   } });
-  for (const role of ['keys', 'bass', 'lead', 'drone', 'pluck']) state[role] = record (role, true);
+  for (const role of ['keys', 'bass', 'lead', 'drone', 'pluck', 'support']) state[role] = record (role, true);
   state.drums = Object.fromEntries (['kick', 'snare', 'ghost', 'hat'].map (role => [role, record (role, role === 'kick')]));
   state.vinyl = { pops: record ('vinyl', false) };
   state.chain = { duck () {} };
@@ -109,6 +115,8 @@ export function writeBarNotes (bar, context, random) {
   if (! empty && ! (bar.winding && b >= 6) && plan.counter !== false && b >= (plan.counterFrom ?? 0)) {
     playCounter (state, 0, b, bar.chord, bar.counterPlan, bar.phrase);
   }
+  // The supporting line follows the tune, so it plays wherever the lead does.
+  if (! empty) playSupport (state, 0, b, bar.phrase, bar.chord);
   if (b >= (plan.droneFrom ?? 0)) playDrone (state, 0);
   playVinyl (state, 0);
   context.previousVoicing = state.previousVoicing;

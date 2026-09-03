@@ -2,11 +2,12 @@
 // the knobs write into, and drives the bar-by-bar scheduling.
 
 import * as Tone from 'tone';
-import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, createDrums, createDrone, createPluck, createVinyl, preloadSamples } from './instruments.js';
+import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, SUPPORT_VOICES, createDrums, createDrone, createPluck, createVinyl, preloadSamples } from './instruments.js';
 
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 const BASS_VOICE_NAMES = Object.keys (BASS_VOICES);
+const SUPPORT_VOICE_NAMES = Object.keys (SUPPORT_VOICES);
 import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
 import { createTrackMaterialPicker } from './track-material.js';
@@ -44,11 +45,12 @@ export function createEngine () {
   // Voices are swappable at runtime, so each one is held as { voice, output }
   // and the output is what connects onward.
   let keys = { ...KEYS_VOICES.rhodes(), name: 'rhodes' };
-  let lead = { ...LEAD_VOICES.whistle(), name: 'whistle' };
+  let lead = { ...LEAD_VOICES.vibraphone(), name: 'vibraphone' };
 
   let bass = { ...BASS_VOICES.round(), name: 'round' };
   let drums = createDrums();
   let drone = createDrone();
+  let support = { ...SUPPORT_VOICES.glockenspiel(), name: 'glockenspiel' };
   let pluck = createPluck();
   let vinyl = createVinyl();
 
@@ -56,7 +58,7 @@ export function createEngine () {
   // bed deliberately does not — a record surface does not pump.
   let instrumentBus = new Tone.Gain (1).connect (chain.input);
   function connectInstruments () {
-    [keys, lead, bass, drone, pluck].forEach (part => part.output.connect (instrumentBus));
+    [keys, lead, bass, drone, pluck, support].forEach (part => part.output.connect (instrumentBus));
     drums.outputs.forEach (out => out.connect (instrumentBus));
     vinyl.level.connect (chain.master);
   }
@@ -67,11 +69,13 @@ export function createEngine () {
     lead: lead.voice,
     bass: bass.voice,
     drone: drone.voice,
+    support: support.voice,
+    supportVoice: 'glockenspiel',
     pluck: pluck.voice,
     drums, vinyl, chain,
 
     keysVoice: 'rhodes',
-    leadVoice: 'whistle',
+    leadVoice: 'vibraphone',
     bassVoice: 'round',
 
     // On by default. A set that plays every track on the same three
@@ -109,7 +113,7 @@ export function createEngine () {
     // swing, dust and ornament sounds like one long tune.
     user: {
       density: 0.5, counter: 0.55, brightness: 0.29, swing: 0.28,
-      ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27,
+      ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27, support: 0.5,
       drive: 0.3, space: 0.28, pump: 0.35
     },
 
@@ -279,6 +283,7 @@ export function createEngine () {
     state.counter = value ('counter', 0.5);
     state.ornament = value ('ornament');
     state.droneLevel = value ('drone');
+    state.supportLevel = value ('support');
     state.pump = value ('pump');
     state.dust = value ('dust');
 
@@ -673,7 +678,7 @@ export function createEngine () {
       events already handed to those sources. Fresh nodes can start now while
       the old bank fades out; decoded samples are shared between both. */
   function replaceInstruments (time) {
-    const outgoing = [keys, lead, bass, drums, drone, pluck, vinyl];
+    const outgoing = [keys, lead, bass, drums, drone, pluck, support, vinyl];
     const oldBus = instrumentBus;
     const oldVinyl = vinyl;
     for (const kind of Object.keys (pendingVoices)) {
@@ -696,13 +701,14 @@ export function createEngine () {
     bass = { ...BASS_VOICES[state.bassVoice](), name: state.bassVoice };
     drums = createDrums();
     drone = createDrone();
+    support = { ...SUPPORT_VOICES.glockenspiel(), name: 'glockenspiel' };
     pluck = createPluck();
     vinyl = createVinyl();
     instrumentBus = new Tone.Gain (1).connect (chain.input);
     connectInstruments();
     Object.assign (state, {
       keys: keys.voice, lead: lead.voice, bass: bass.voice,
-      drums, drone: drone.voice, pluck: pluck.voice, vinyl
+      drums, drone: drone.voice, support: support.voice, pluck: pluck.voice, vinyl
     });
     chain.sidechain.gain.cancelScheduledValues (time);
     chain.sidechain.gain.setValueAtTime (1, time + 0.04);
@@ -722,6 +728,7 @@ export function createEngine () {
     counter (value) { state.user.counter = value; scoreDirty = true; applySettings(); },
     ornament (value) { state.user.ornament = value; scoreDirty = true; applySettings(); },
     drone (value) { state.user.drone = value; scoreDirty = true; applySettings(); },
+    support (value) { state.user.support = value; scoreDirty = true; applySettings(); },
     brightness (value) { state.user.brightness = value; applySettings(); },
     dust (value) { state.user.dust = value; scoreDirty = true; applySettings(); },
     wobble (value) { state.user.wobble = value; applySettings(); },

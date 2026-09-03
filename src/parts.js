@@ -372,6 +372,65 @@ function playHeterophony (state, time, barInPhrase, chordSpec, phrase) {
   renderEcho (state, time, events, chordSpec, 0.03, 0.3 + state.counter * 0.14);
 }
 
+/** The supporting line.
+
+    Not a second melody and not the counter line, which fills the tune's rests.
+    This does the opposite: it lands *on* the notes that matter and is silent
+    everywhere else, the way a player adds a highlight to someone else's phrase
+    rather than answering it.
+
+    It picks the moments from the phrasing already computed — the note a
+    sentence is aiming at, and the note it comes to rest on — so it never has
+    to guess what is worth supporting. It doubles a third above where the chord
+    allows, and the octave otherwise, which is the plainest harmony there is
+    and the least likely to fight the tune. */
+export function playSupport (state, time, barInPhrase, phrase, chordSpec) {
+  const { support, rootMidi, scale, supportLevel } = state;
+  if (! support || ! phrase || supportLevel <= 0.001) return;
+
+  const pool = gappedPool (scale);
+  const base = rootMidi + 12;
+  const chordTones = new Set (chordPitchClasses (rootMidi, scale, chordSpec[0], chordSpec[1]));
+
+  const eighth = durationSeconds (state, '8n');
+
+  // The sentence this bar belongs to, so "the peak" means the peak of a
+  // phrase rather than of the whole part.
+  const sentence = phrase.filter (e => {
+    const bar = Math.floor (e.at / 8);
+    return barInPhrase < 4 ? bar < 4 : bar >= 4;
+  });
+
+  if (! sentence.length) return;
+
+  const peak = Math.max (...sentence.map (e => e.degree));
+  const closing = sentence[sentence.length - 1];
+
+  for (const event of phrase) {
+    if (Math.floor (event.at / 8) !== barInPhrase) continue;
+
+    // Only the moments worth underlining, and only sometimes even then.
+    const isPeak = event.degree === peak;
+    const isCadence = event === closing;
+    if (! isPeak && ! isCadence) continue;
+    if (! chance (state, supportLevel * (isCadence ? 0.7 : 0.9))) continue;
+
+    const poolIndex = Math.min (pool.length - 1, event.degree);
+    const root = scaleDegreeToMidi (base, scale, pool[poolIndex]);
+
+    // A third above if it belongs to the chord, otherwise the octave.
+    const thirdIndex = Math.min (pool.length - 1, poolIndex + 2);
+    const third = scaleDegreeToMidi (base, scale, pool[thirdIndex]);
+    const midi = chordTones.has (third % 12) ? third : root + 12;
+
+    support.triggerAttackRelease (
+      midiToNoteName (midi),
+      Math.max (0.3, event.length * eighth),
+      jitter (state, time, time + (event.at % 8) * eighth, 0.012),
+      Math.max (0.06, (event.dynamic ?? 0.8) * 0.26 * supportLevel));
+  }
+}
+
 /** A sustained fifth underneath, the way pipes hold a drone. Quiet enough to
     read as atmosphere rather than a part. */
 export function playDrone (state, time) {

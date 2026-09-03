@@ -21,7 +21,8 @@ const MUSIC_KNOBS = [
   { id: 'density', label: 'density', min: 0, max: 1, step: 0.01, value: 0.5 },
   { id: 'counter', label: 'counter', min: 0, max: 1, step: 0.01, value: 0.55 },
   { id: 'ornament', label: 'cuts', min: 0, max: 1, step: 0.01, value: 0.6 },
-  { id: 'drone', label: 'drone', min: 0, max: 1, step: 0.01, value: 0.25 },
+  { id: 'drone', label: 'drone', min: 0, max: 1, step: 0.01, value: 0.14 },
+  { id: 'support', label: 'support', min: 0, max: 1, step: 0.01, value: 0.5 },
   { id: 'arc', label: 'arc', min: 0, max: 1, step: 0.01, value: 0.5 }
 ];
 
@@ -129,7 +130,7 @@ function mountVoiceChooser (id, names, initial, apply, autoFlag) {
 }
 
 mountVoiceChooser ('leadVoiceRow',
-  ['vibraphone', 'marimba', 'piano', 'harp', 'harp (synth)', 'whistle'],
+  ['vibraphone', 'marimba', 'kalimba', 'piano', 'harp', 'harp (synth)'],
   'auto', value => engine.controls.leadVoice (value), 'autoVoice');
 
 mountVoiceChooser ('keysVoiceRow',

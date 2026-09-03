@@ -69,7 +69,7 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
-**Voices are switchable while it plays.** The lead can be a `vibraphone`, a `marimba`, a `piano`, a `harp` or a `whistle`, with a synthesised harp kept alongside the sampled one; the keys a `rhodes`, a `felt` piano, a `piano` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples share the cache used by the whistle and harp.
+**Voices are switchable while it plays.** The lead can be a `vibraphone`, a `marimba`, a `kalimba`, a `piano` or a `harp`, with a synthesised harp kept alongside the sampled one; the keys a `rhodes`, a `felt` piano, a `piano` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples share the cache used by the whistle and harp.
 
 All three rows default to `auto`, choosing fresh instruments for each track. A dot shows which instrument is playing. The **arrangement also picks the voice**: a part that follows a drop comes back on a different instrument, which is what gives a section return its lift. The chord voice changes less often than the lead, because if both change at once nothing carries across the seam, and the bass least often of all — it is the foundation. Pick a voice by hand and it stays put.
 
@@ -105,6 +105,7 @@ Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to 
 | **counter** | how much the arpeggiated second line plays |
 | **cuts** | how often notes get ornamented |
 | **drone** | the sustained fifth underneath |
+| **support** | how often the supporting line underlines the tune |
 | **arc** | depth of track variation and the long energy arc; 0 uses your exact knob settings |
 
 | Tape path | |

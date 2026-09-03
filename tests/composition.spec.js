@@ -12,10 +12,10 @@ const recipe = {
   progression: PROGRESSIONS.dorian[0], turns: 3, turnsSinceEnding: 0,
   variation: {}, tempoOffset: 0, tempoUser: 72, arcDepth: 0.5,
   arc: { shape: 'swell', length: 8, turn: 0 },
-  user: { density: 0.5, counter: 0.55, ornament: 0.6, drone: 0.25, dust: 0.3, swing: 0.28 },
-  voices: { lead: 'whistle', keys: 'rhodes', bass: 'round' },
+  user: { density: 0.5, counter: 0.55, ornament: 0.6, support: 0.5, drone: 0.25, dust: 0.3, swing: 0.28 },
+  voices: { lead: 'vibraphone', keys: 'rhodes', bass: 'round' },
   auto: { lead: true, keys: true, bass: true },
-  voiceOptions: { lead: ['whistle', 'harp'], keys: ['rhodes', 'felt'], bass: ['round', 'upright'] }
+  voiceOptions: { lead: ['vibraphone', 'harp'], keys: ['rhodes', 'felt'], bass: ['round', 'upright'] }
 };
 
 test ('a recipe produces the full same score independent of global randomness', () => {
