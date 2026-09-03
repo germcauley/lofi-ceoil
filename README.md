@@ -16,6 +16,8 @@ Most generative lofi toys roll new random notes every bar, which produces noodli
 
 It plays in **tracks**. Each track holds its material for two to four turns — a tune played several times through, as a set does — then a new one begins, at its own tempo. Underneath, the arrangement, the energy arc, the voices and the counter textures keep moving.
 
+**Rhythm varies between tracks:** two 4/4 tracks and one 6/8 jig-feel track per shuffled group. Jigs have six-quaver melody and backing patterns, with tempo counted as two main pulses per bar (minimum 74 BPM). The score summary shows the meter.
+
 Every track has a **wistful title** — *the light you left on*, *we took the long way home*, *an evening i wish i could post to you*. The panel and browser tab follow the current track. A pool of 256 complete titles ships with the app, with no repeats until the whole pool has played and no runtime API calls.
 
 **New tracks are checked against recent music.** The generator remembers the last 128 motif pairs in this browser, rejects recent reused openings, and spaces out matching rhythms and melodic contours. Changing key or swapping the A and B parts does not make an old tune count as new. Each track also chooses a different opening progression, alongside its own voices and settings. If browser storage is unavailable, the memory lasts for the current session.
@@ -181,3 +183,5 @@ MIT. The code is original; nothing is derived from another generator.
 The piano samples are from the [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander Holm, CC-BY 3.0.
 
 The whistle and harp samples are from the [Versilian Community Sample Library](https://github.com/sgossner/VCSL) by Versilian Studios, CC0.
+
+The nylon-string guitar recordings are by [quartertone](https://freesound.org/people/quartertone/packs/11573/), distributed and prepared by [Nicholaus P. Brosowsky / tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Ten selected notes were level-adjusted and re-encoded locally; full provenance is in `public/samples/guitar/ATTRIBUTION.md`. Select **guitar** in the lead or chord voice row; it is also included in auto selection and works with arpeggiated accompaniment.

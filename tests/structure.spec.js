@@ -97,7 +97,8 @@ test ('a track retains its tune across turns and opens only once', async ({ page
     return result;
   });
   expect (next.title).toBe (first.title);
-  expect (next.form).toEqual (first.form);
+  // Development may change the middle bars, but the hook stays recognisable.
+  expect (next.form[0].filter (note => note.at < 8)).toEqual (first.form[0].filter (note => note.at < 8));
   expect (next.bassFrom).toBe (0);
   await page.evaluate (() => window.lofi.chain.input.context.close());
 });

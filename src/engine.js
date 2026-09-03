@@ -1,3 +1,4 @@
+import { meterInfo } from './musical-meter.js';
 // Ties the pieces together: builds the audio graph, holds the live state that
 // the knobs write into, and drives the bar-by-bar scheduling.
 
@@ -18,6 +19,7 @@ import { createPlaybackTimeline } from './playback-timeline.js';
 import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi, findPivot } from './theory.js';
 import { gappedPool } from './melody.js';
 import { playVinyl } from './parts.js';
+import { chooseTempoOffset, clampTempo, DEFAULT_TEMPO } from './track-tempo.js';
 
 export function createEngine () {
   const chain = createChain();
@@ -25,12 +27,18 @@ export function createEngine () {
   const nextTrackMaterial = createTrackMaterialPicker();
   const nextStructure = createStructurePicker();
   let previousOpeningProgression = null;
+  let previousTempoOffset = null;
   let announcedTrack = null;
   const playbackTimeline = createPlaybackTimeline();
   let lastComposition = null;
   let replayPending = null;
   let scoreDirty = false;
   let scoreEdits = {};
+
+  function setReplayPending (composition) {
+    replayPending = composition;
+    state.onReplayQueue?.(Boolean (composition));
+  }
 
   // Feeds the VU meter. Tapped off the master so it reads what you actually
   // hear, including the vinyl bed.
@@ -60,7 +68,10 @@ export function createEngine () {
   function connectInstruments () {
     [keys, lead, bass, drone, pluck, support].forEach (part => part.output.connect (instrumentBus));
     drums.outputs.forEach (out => out.connect (instrumentBus));
-    vinyl.level.connect (chain.master);
+    // Into the limiter, not past it. The surface stays outside the sidechain
+    // and the tape path — a record does not pump and is not the tape — but it
+    // must not be the one thing that can spike above everything else.
+    vinyl.level.connect (chain.limiter);
   }
   connectInstruments();
 
@@ -96,8 +107,8 @@ export function createEngine () {
     // all openings.
     rootMidi: noteNameToMidi (NOTE_NAMES[Math.floor (Math.random() * 12)] + '3'),
     scale: ['dorian', 'dorian', 'dorian', 'minor', 'minor', 'mixolydian', 'major'][Math.floor (Math.random() * 7)],
-    tempo: 72,
-    tempoUser: 72,
+    tempo: DEFAULT_TEMPO,
+    tempoUser: DEFAULT_TEMPO,
 
     // A track: one tune, held for several turns. Its motifs are its identity.
     track: null,
@@ -168,7 +179,9 @@ export function createEngine () {
     // Set by the UI so the display can follow what is actually playing.
     onBar: null,
     // Fired at the audible start of a track, not when its plan is prepared.
-    onTrack: null
+    onTrack: null,
+    // Queue changes happen immediately, without disturbing playback.
+    onReplayQueue: null
   };
 
   Tone.getTransport().bpm.value = state.tempo;
@@ -177,28 +190,40 @@ export function createEngine () {
 
   let scheduledTempo = state.tempo;
   let restartTime = null;
+  let barTime = null;
+  let scheduledPulse = 1;
 
   function setTempo (value, duration) {
+    const pulse = meterInfo (state.track?.structure?.meter).pulseBeats;
+    value = clampTempo (value) * pulse;
     const bpm = Tone.getTransport().bpm;
     if (restartTime !== null) {
       // A skip is a cut to a new track. Finish tempo automation at the cut
       // rather than repeatedly replacing ramps while the clock is restarting.
       bpm.cancelScheduledValues (restartTime);
       bpm.setValueAtTime (value, restartTime);
+    } else if (pulse !== scheduledPulse) {
+      const boundary = barTime ?? Tone.now();
+      bpm.cancelScheduledValues (boundary);
+      bpm.setValueAtTime (value, boundary);
     } else if (value !== scheduledTempo) {
       bpm.rampTo (value, duration);
     }
     scheduledTempo = value;
+    scheduledPulse = pulse;
   }
 
 
   /** Called once per bar, slightly ahead of when the audio is needed. */
   function onBar (time) {
     try {
+      barTime = time;
       scheduleBar (time);
     } catch (error) {
       // One bad bar must not tear down the repeat and stop the music.
       console.error ('bar failed', error);
+    } finally {
+      barTime = null;
     }
   }
 
@@ -293,13 +318,16 @@ export function createEngine () {
     const brightness = value ('brightness', 0.4);
     const dust = state.dust;
 
-    Tone.getTransport().swing = value ('swing');
-    state.tempo = Math.max (50, Math.min (100, state.tempoUser + (state.track?.tempoOffset ?? 0) * drift));
+    state.meter = state.track?.structure?.meter ?? '4/4';
+    Tone.getTransport().swing = state.meter === '6/8' ? 0 : value ('swing');
+    state.tempo = clampTempo (state.tempoUser + (state.track?.tempoOffset ?? 0) * drift);
     if (! state.endingSet && ! state.resting) setTempo (state.tempo, 0.4);
 
     chain.tone.frequency.rampTo (400 + brightness * 7600, 2);
     chain.crusherMix.fade.rampTo (dust * 0.65, 1);
     chain.crusher.bits.value = Math.round (12 - dust * 8);
+    // Calibrate the voices themselves; dust controls their shared level and
+    // reaches silence at zero. New banks fade in from zero after a skip.
     vinyl.level.gain.rampTo (dust * 1.1, 1.5);
 
     chain.wobble.depth.rampTo (value ('wobble') * 0.22, 1);
@@ -319,15 +347,19 @@ export function createEngine () {
   function startTrack () {
     if (replayPending) {
       const composition = replayPending;
-      replayPending = null;
+      setReplayPending (null);
       const recipe = composition.recipe;
+      previousTempoOffset = recipe.tempoOffset;
       state.trackNumber++;
-      state.track = { title: recipe.title, structure: recipe.structure, motifA: recipe.motifA,
+      state.track = { title: recipe.title, titleEnglish: recipe.titleEnglish ?? null,
+        titleLanguage: recipe.titleLanguage ?? 'en', structure: recipe.structure, motifA: recipe.motifA,
         motifB: recipe.motifB, variation: recipe.variation, tempoOffset: recipe.tempoOffset,
         size: gappedPool (recipe.scale).length, turn: 0, turnsLeft: recipe.turns,
         progression: recipe.progression, composition };
       state.rootMidi = recipe.rootMidi;
       state.scale = recipe.scale;
+      state.pendingKey = null;
+      state.previousVoicing = null;
       Tone.getDraw().schedule (() => state.onKey?.(NOTE_NAMES[recipe.rootMidi % 12], recipe.scale), Tone.now());
       for (const role of ['lead', 'keys', 'bass']) {
         if (state[role === 'lead' ? 'autoVoice' : role === 'keys' ? 'autoKeysVoice' : 'autoBassVoice']) {
@@ -344,18 +376,13 @@ export function createEngine () {
 
     state.trackNumber++;
     state.track = {
-      title: nextTrackTitle(),
+      ...nextTrackTitle(),
       structure: nextStructure(),
       turn: 0,
       ...nextTrackMaterial(),
-      // Each track sits a few beats either side of where the tempo knob is
-      // set, so a set does not run at one speed all night.
-      // Every tune used to run at nearly the same speed. The range was four
-      // beats either way and then multiplied by drift, so the default of 0.5
-      // turned it into two — not a tempo change anyone notices. Widened to
-      // seven either way, which at the default gives a real spread while
-      // arc 0 still means every knob is exact.
-      tempoOffset: Math.round ((Math.random() - 0.5) * 14),
+      // Distinct neighbouring tempos around the knob's base value. Drift
+      // controls the spread; at zero the knob remains exact.
+      tempoOffset: chooseTempoOffset (previousTempoOffset, state.tempoUser, state.arcDepth),
 
       // How this track differs from where the knobs are set. Signed offsets,
       // scaled by the arc knob when they are applied.
@@ -389,9 +416,11 @@ export function createEngine () {
     chooseTrackVoices();
     applySettings();
     const track = state.track;
+    previousTempoOffset = track.tempoOffset;
     const recipe = {
       version: COMPOSITION_VERSION, seed: Math.floor (Math.random() * 4294967296),
-      title: track.title, rootMidi: state.rootMidi, scale: state.scale,
+      title: track.title, titleEnglish: track.titleEnglish, titleLanguage: track.titleLanguage,
+      rootMidi: state.rootMidi, scale: state.scale,
       structure: track.structure, motifA: track.motifA, motifB: track.motifB,
       progression: state.progression, turns: track.turnsLeft,
       variation: track.variation, user: { ...state.user }, tempoUser: state.tempoUser,
@@ -489,7 +518,8 @@ export function createEngine () {
     // Between tunes: nothing but the record surface. The bar count keeps
     // running so the transport never stops, but the form is held.
     if (state.resting > 0 && ! state.skipRequested) {
-      playVinyl (state, time);
+      playbackTimeline.endTrack (time);
+      playVinyl ({ ...state, tempo: state.tempo * meterInfo (state.meter).pulseBeats }, time);
       state.resting--;
 
       if (state.resting === 0) {
@@ -547,7 +577,7 @@ export function createEngine () {
 
     // Start a planned sweep so that it finishes exactly on the boundary.
     if (state.sweep && positionInForm === state.sweep.startBar) {
-      const barSeconds = (60 / state.tempo) * 4;
+      const barSeconds = (60 / state.tempo) * meterInfo (state.meter).beats / meterInfo (state.meter).pulseBeats;
       chain.sweep (state.sweep.kind, time, state.sweep.bars * barSeconds, state.sweep.depth);
       state.sweep = null;
     }
@@ -557,7 +587,8 @@ export function createEngine () {
 
     if (state.track !== announcedTrack) {
       announcedTrack = state.track;
-      const track = { title: state.track.title, number: state.trackNumber };
+      const track = { title: state.track.title, titleEnglish: state.track.titleEnglish,
+        titleLanguage: state.track.titleLanguage, number: state.trackNumber };
       Tone.getDraw().schedule (() => state.onTrack?.(track), time);
     }
 
@@ -587,10 +618,14 @@ export function createEngine () {
       if (state.autoBassVoice) swapVoice ('bass', plan.bassVoice);
     }
     if (writtenBar.winding && barInPart === 4) {
-      setTempo (state.tempo * 0.82, (60 / state.tempo) * 16);
+      setTempo (state.tempo * 0.82, (60 / state.tempo) * 4 * meterInfo (state.meter).beats / meterInfo (state.meter).pulseBeats);
     }
-    const secondsPerBeat = Tone.Time ('4n').toSeconds();
+    const secondsPerBeat = 60 / Tone.getTransport().bpm.getValueAtTime (time);
     playScoreBar (state, writtenBar, time, secondsPerBeat);
+
+    // The record surface is generated at playback rather than composed, so it
+    // is never the same twice and never bloats a saved score.
+    playVinyl ({ ...state, tempo: state.tempo * meterInfo (state.meter).pulseBeats }, time);
     playbackTimeline.schedule ({ score: track.composition, track, barIndex: scoreIndex, time, secondsPerBeat,
       voices: { lead: state.leadVoice, keys: state.keysVoice, bass: state.bassVoice } });
     if (scoreIndex === track.composition.barCount - 1) {
@@ -618,6 +653,12 @@ export function createEngine () {
   }
 
   let scheduleId = null;
+  let eighthsUntilBar = 0;
+  function onEighth (time) {
+    if (eighthsUntilBar > 0) { eighthsUntilBar--; return; }
+    onBar (time);
+    eighthsUntilBar = meterInfo (state.meter).eighths - 1;
+  }
 
   async function start () {
     if (state.running) return;
@@ -634,7 +675,8 @@ export function createEngine () {
     await Promise.all ([keys.ready, lead.ready, ...Object.values (pendingVoices).map (part => part?.ready)].filter (Boolean));
 
     vinyl.hiss.start();
-    scheduleId = Tone.getTransport().scheduleRepeat (onBar, '1m');
+    eighthsUntilBar = 0;
+    scheduleId = Tone.getTransport().scheduleRepeat (onEighth, '8n');
 
     // Start a fraction ahead so the first bar is scheduled into the future
     // rather than at the exact current time.
@@ -651,6 +693,7 @@ export function createEngine () {
     scheduleId = null;
 
     state.running = false;
+    setReplayPending (null);
     playbackTimeline.reset();
     Tone.getDraw().cancel (Tone.immediate());
     replaceInstruments (Tone.now());
@@ -762,8 +805,8 @@ export function createEngine () {
 
   const controls = {
     tempo (value) {
-      state.tempoUser = value;
-      state.tempo = Math.max (50, Math.min (100, value + (state.track?.tempoOffset ?? 0) * state.arcDepth));
+      state.tempoUser = clampTempo (value);
+      state.tempo = clampTempo (state.tempoUser + (state.track?.tempoOffset ?? 0) * state.arcDepth);
       setTempo (state.tempo, 0.4);
     },
 
@@ -796,6 +839,7 @@ export function createEngine () {
         are reused. */
     skip () {
       if (! state.running || state.skipRequested) return;
+      setReplayPending (null);
       state.skipRequested = true;
       playbackTimeline.reset();
       state.resting = 0;
@@ -814,7 +858,8 @@ export function createEngine () {
       } finally {
         restartTime = null;
       }
-      scheduleId = transport.scheduleRepeat (onBar, '1m', '1m');
+      eighthsUntilBar = meterInfo (state.meter).eighths - 1;
+      scheduleId = transport.scheduleRepeat (onEighth, '8n', '8n');
       transport.start (time + 0.06, 0);
     },
 
@@ -857,9 +902,15 @@ export function createEngine () {
 
   async function replay () {
     if (! lastComposition) return false;
-    replayPending = structuredClone (lastComposition);
-    if (state.running) controls.skip();
-    else await start();
+    // One repeat at the next track boundary. A second press cancels it;
+    // neither action changes the transport or any already scheduled notes.
+    if (state.running) {
+      setReplayPending (replayPending ? null : structuredClone (lastComposition));
+    } else {
+      setReplayPending (structuredClone (lastComposition));
+      try { await start(); }
+      catch (error) { setReplayPending (null); throw error; }
+    }
     return true;
   }
 
@@ -935,5 +986,9 @@ export function createEngine () {
     return bands;
   }
 
-  return { state, controls, start, stop, chain, analyser, getLevel, getSpectrum, replay, getComposition, getPlayback: () => playbackTimeline.read (Tone.immediate()) };
+  return { state, controls, start, stop, chain, analyser, getLevel, getSpectrum, replay,
+    isReplayQueued: () => Boolean (replayPending),
+    getTrackTime: () => playbackTimeline.readClock (Tone.immediate()),
+    getTempo: () => Tone.getTransport().bpm.getValueAtTime (Tone.immediate()) / meterInfo (state.meter).pulseBeats,
+    getComposition, getPlayback: () => playbackTimeline.read (Tone.immediate()) };
 }

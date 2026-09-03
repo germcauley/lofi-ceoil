@@ -75,14 +75,24 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **36. Levelling the voices**
 - [x] **37. Kalimba replaces the whistle**
 - [x] **38. The supporting line**
-- [ ] **39. Replay should queue, not interrupt**
-- [ ] **40. Irish forms with a hip-hop backing**
+- [x] **39. Replay should queue, not interrupt**
+- [ ] **40. Irish forms with a hip-hop backing** *(6/8 first pass done)*
 - [x] **41. Filter sweeps across a section boundary**
 - [ ] **42. More of the effects palette**
 - [x] **43. Mix corrections**
 - [ ] **44. The piano roll** *(built, currently hidden)*
 - [x] **45. New lead voices**
 - [x] **46. Tempo actually varies per tune**
+- [x] **47. Vinyl surface — hiss, crackle, pops and scuffs**
+- [x] **48. Track timer**
+- [x] **49. Track titles as Gaeilge, with English translations**
+- [x] **50. Hook development across turns — first pass**
+- [x] **51. Bass and kick coordination — first pass**
+- [x] **52. Chords leave space for the melody — first pass**
+- [x] **53. Short transition fills**
+- [x] **54. Arpeggiated chord accompaniment**
+- [x] **55. Sampled nylon-string guitar**
+- [x] **56. 6/8 jig feel — first pass**
 ---
 
 ## 1. Chord voice leading — done
@@ -615,11 +625,15 @@ Three complaints after a long listen, all of them regressions from recent work.
 
 **The drums disappeared for minutes.** The energy arc set `drumsFrom` to "never" when `random() > 0.25 + energy * 0.8`, which at the trough is **65% of parts**. Four parts a turn and tracks lasting several turns meant the beat could be gone for minutes on end. A sit-out is an effect; the arc had made it the norm.
 
-Two changes. The threshold moved to `0.55 + energy * 0.45`, so the peak of an arc now always keeps the drums and the trough drops them about a third of the time rather than two thirds. And a continuity rule was added after the plans are drawn: **never two drumless parts running, and never a whole turn without drums**. Measured over 3,000 turns at each level, the longest run is now 1 part and no turn is ever without a beat.
+The threshold moved to `0.55 + energy * 0.45`, reducing how often the arrangement requests a drumless part. The first continuity check worked only within individual turns; a later audit of complete scores still found gaps of **17 bars** where breaks joined across a turn boundary.
+
+The continuity rule now carries the trailing silence across the whole track, including empty bars and early drum exits. Once the groove starts, a breakdown lasts **at most four bars** before the drums return for the rest of the part. Varied openings and deliberate set endings keep their separate entrance and exit rules. Verified across 150 generated tracks; an 80-seed regression test checks the actual drum events in the scores.
 
 **The bass was too loud.** Each of the four voices had been set at a level that would suit a lead. `round` −11 to −15, `upright` −9 to −13, `electric` −13 to −16, and `sub` from −7 to −17 — a sine in the bottom octave carries far more energy than its number suggests, so it now sits lowest of the four rather than highest.
 
 **The drone was too present.** A sustained sawtooth never stops, so it never stops being noticed. Its voice went from −26 to −34, the default level from 0.25 to 0.14, its per-track variation from ±0.225 to ±0.10, and the velocity it is played at from half to a third.
+
+A later vinyl calibration accidentally changed the drone to −12 dB through a broad text replacement. Restored to −34 dB and covered by a real audio test: at the default playing velocity its isolated RMS returned from about −45 to −67 dBFS.
 
 ## 44. The piano roll — hidden for now
 
@@ -682,15 +696,19 @@ Saved recipes also gained a compatibility fix: a setting that did not exist when
 
 ---
 
-## 39. Replay should queue, not interrupt
+## 39. Replay should queue, not interrupt — done
 
 "Replay tune" restarts immediately. It should **line up** — finish the tune that is playing and repeat from its start — the way a repeat is a musical instruction rather than a rewind.
+
+Implemented as a single queued repeat. During playback, the button snapshots the current score and highlights a **repeat-once icon**, with a tooltip and accessible label explaining how to cancel. It leaves the transport and scheduled notes alone, waits through the remaining turns and any set-ending rest, then replays that score from bar one. The queue clears when consumed, so new tracks resume after the repeat.
+
+A second press cancels. **New track** and **Stop** also clear the queue. While stopped, **Replay tune** starts the last saved score immediately. Replay preserves the notes and arrangement captured when queued; current sound and tempo controls still apply. Browser tests cover track boundaries, cancellation, skips, stops and set rests.
 
 ## 40. Irish forms with a hip-hop backing
 
 **6/8 and 3/4** as well as 4/4, and the dance forms that live there: **jigs** (6/8), **slip jigs** (9/8), **reels** (4/4 driving), **polkas** (2/4), **hornpipes** (dotted 4/4). Each has its own rhythmic cell and its own melodic habits, so this reaches the rhythm vocabulary and the motif grammar, not only the time signature.
 
-Underneath them, a **hip-hop drum and bass backing** — which is exactly the collision the project is named for. The engine currently assumes eight quaver slots in a bar everywhere; 6/8 and 3/4 mean that assumption has to become a parameter.
+Underneath them, a **hip-hop drum and bass backing** — which is exactly the collision the project is named for. The first 6/8 pass is implemented in item 56. Other meters and more specialised dance-form vocabularies remain open.
 
 ## 41. Filter sweeps across a section boundary — done
 
@@ -730,8 +748,84 @@ It needs the arrangement to expose its intentions slightly ahead of time — whi
 
 ## 46. Tempo actually varies per tune — done
 
+**Current tempo floor: 74 BPM.** The tempo knob, generated score settings, replay playback and end-of-track slowdown targets all use this minimum. The default base tempo is now 80 BPM, leaving room for variation down to 74 without making neighbouring tracks identical at the floor.
+
+Follow-up: the knob showed only the base tempo, hiding the actual changes, and independent random offsets allowed nearly identical neighbouring tempos. A separate live BPM readout now shows the transport's tempo, including ramps. New tracks choose from offsets of −12 to +12 BPM scaled by drift, with adjacent tempos separated by at least 4 BPM at default drift. Zero drift still uses the exact base tempo; replay keeps the saved offset.
+
 Every tune ran at nearly the same speed. A track did carry its own tempo offset, but the range was four beats either way and it was then multiplied by the drift knob, so the default of 0.5 turned it into **two beats** — not a tempo change anyone notices.
 
 The range is now seven either way. At the default that gives roughly 68 to 76 bpm around a knob set to 72, and at full drift 65 to 79.
 
 The first attempt removed the drift multiplication entirely, on the argument that a tune's tempo is part of its identity like its key. A test rejected it: **at arc 0 every knob must mean exactly what it says**, and that contract is worth more than the argument. Widening the range satisfies both.
+
+## 47. Vinyl surface — done
+
+Completed the vinyl work left in progress: a quiet continuous hiss, fine crackle, duller pops and occasional scuffs. Each transient stream has its own noise voice and filter. The surface joins the music at the limiter, outside the sidechain and tape effects, so the kick does not pump it.
+
+The dust control changes the shared surface level and event density. At zero dust the surface is silent; new instrument banks fade it in after a skip. The default isolated surface measured around −56 dBFS RMS, with individual ticks around −35 dBFS peak in the calibration pass. These measurements establish a restrained starting balance; listening remains the guide for further tuning.
+
+Surface events are generated during playback rather than stored in the musical score. Per-voice scheduling also carries across bars: when a tempo increase catches up with already queued noise, conflicting ticks are omitted instead of scheduling backwards and throwing. Tests cover this transition, default surface level and silence at zero dust.
+
+Queued replay (**39**) is now complete. The piano roll remains hidden (**44**).
+
+## 48. Track timer — done
+
+The current track's elapsed playback time appears in `m:ss` beside its title. It counts from the audible start of each track, resets on a new track or repeat and clears on stop. The audio timeline retains the track's start across tempo changes and score revisions; elapsed time is not estimated from bar count. During a between-track gap, the finished track's time freezes with a **rest** label.
+
+The display catches up from the audio clock after a background tab returns. Timer updates sit outside the title's live region so screen readers do not repeatedly announce the tune. Tests cover changing tempo, future scheduled boundaries, repeats, skips, stop and rests; the layout was checked at mobile width.
+
+## 49. Track titles as Gaeilge, with English translations — done
+
+Give each track an Irish title as the main heading, with its English translation in smaller text directly underneath. Keep both titles paired with the track so they remain consistent through playback, repeat and saved scores.
+
+Use natural, checked Irish phrasing with correct fadas, and translations that preserve the title's meaning and tone. Prefer a curated collection of bilingual titles over assembling unrelated words. Keep the English subtitle legible on small screens and mark each language appropriately for screen readers.
+
+Implemented with a starter deck of 32 paired titles: Irish heading, smaller English subtitle, and language tags. The pair is stored in the score recipe and retained through repeats and JSON downloads. Older English-only scores keep their title without an invented translation. The shuffled deck avoids repeats until exhausted. Reference spot checks: [cois na tine](https://www.teanglann.ie/en/fgb/cois) and [solas na gealaí](https://www.teanglann.ie/en/fuaim/solas_na_geala%C3%AD).
+
+## 50. Hook development across turns — first pass done
+
+Structured tracks establish the original A phrase throughout the first turn. On middle turns, the middle bars answer with neighbouring scale tones while preserving the hook's opening, rhythm and cadences. The existing singability check rejects awkward contours. The final turn restores the original A phrase; contrasting B phrases and intentionally drifting tracks retain their existing behaviour. Two-turn tracks keep a statement and return without forcing an extra development stage.
+
+This is a conservative first step, not the whole musical-development milestone. Flexible section lengths, stronger rhythmic transformations and more deliberate ensemble responses remain open. Composition tests check retained openings, changed middle phrases, final returns and reproducibility.
+
+## 51. Bass and kick coordination — first pass done
+
+After writing each bar, coordinate eligible bass attacks with its actual kick events. A bass attack within half a beat (plus humanisation tolerance) joins the kick, including the offbeat kick near beat three. Pitches, velocities and note counts stay unchanged; durations shorten where needed to leave room for the next bass note. Passing notes are not collapsed onto a shared kick.
+
+Sparse entries and anticipations retain their deliberate independence. Without a kick, the bass keeps its original timing. The same coordination runs for new compositions and revised scores, so saved notes and replay carry the relationship without fresh playback randomness. Existing quieter bass voices and staged openings are preserved.
+
+Next ensemble work: accompaniment that leaves space around the hook, then short fills that announce section changes.
+
+## 52. Chords leave space for the melody — first pass done
+
+Chord attacks sharing a main melody entrance play at 68% of their original velocity; chord attacks underneath a held melody note play at 82%. Rolled chord notes share one adjustment, keeping the voicing balanced. Chords responding in melody rests, chord-only introductions and short melody ornaments retain their original dynamics.
+
+This pass changes dynamics rather than removing harmony: chord pitches, durations, rhythms and note counts are preserved. It runs when writing or revising a score, so replay and exports retain the interaction. Tests cover rolled chords, held melody notes, responses in rests, unchanged introductions and saved-score reproduction. More selective rhythmic accompaniment and transition fills remain future work.
+
+## 53. Short transition fills — done
+
+Occasional two- or three-hit pickups on the final beat before a different section. Two patterns use soft ghost notes with a hat or snare response. Fills keep the kick and backbeat, replacing only late ghost/hat decoration to avoid duplicate noise triggers. They skip repeated sections, busy melody endings, drumless bars and final wind-downs; an eligible transition has a 45% chance of a fill.
+
+Fill decisions and notes are part of the reproducible score, including revisions, replay and export. A 30-track audit found 61 fill bars, all at valid section transitions. Tests cover preserved backbone, per-voice spacing, restrained levels and excluded passages. This completes the first transition-fill pass proposed in items 51 and 52; more selective rhythmic accompaniment remains open.
+
+## 54. Arpeggiated chord accompaniment — done
+
+Rising, falling and alternating patterns play individual tones from the current voice-led chord. They replace the chord accompaniment in at most one inner section per turn, chosen occasionally, and retain the existing instrument. Slow pad sections keep their original articulation. Each bar has up to six soft attacks and a closing rest; prominent melody entrances suppress nearby attacks except the opening harmonic anchor.
+
+Arpeggios continue through held-chord bars without speeding up harmonic changes. Notes, pattern choices and melody gaps are stored in the score for replay and export. Thirteen relevant tests passed; a 30-track audit exercised all three patterns and verified the section limit and held-bar playback.
+
+## 55. Sampled nylon-string guitar — done
+
+Added **guitar** to both lead and chord voice rows and their automatic choices. Ten local nylon-string samples span A2–A5 and share the existing preload/cache and instrument-disposal paths. Lead volume is −10 dB; chord accompaniment is −16 dB with a darker filter and shorter release, suitable for the arpeggio patterns.
+
+Recordings by quartertone, via Nicholaus P. Brosowsky's tonejs-instruments distribution. Attribution, source revision and license references are retained in `public/samples/guitar/ATTRIBUTION.md`. Sample levels were matched to approximately −6 dBFS (encoded peaks −6.6 to −6.3); A3, E4 and A5 pitch labels were spot-checked by autocorrelation. Browser checks verify actual audio from both voices, their relative levels, manual selection surviving skips, and no sample refetching after preload.
+
+## 56. 6/8 jig feel — first pass done
+
+New tracks draw from a shuffled bag of two 4/4 choices and one 6/8 choice. The score summary identifies the meter. In 6/8, tempo counts the dotted-quarter pulse (two pulses per bar), retaining the 74 BPM minimum; stored note times remain quarter-note beats, with three per bar. Older recipes without a meter retain 4/4.
+
+The existing melodic contour is rephrased onto six integer quaver slots, grouped in threes, with rests and phrase-ending cadences retained. This is a first adaptation of the motif grammar, not a complete traditional jig vocabulary. Dedicated chord and bass patterns, six-slot arpeggios, a second-pulse snare, lighter intervening hats and meter-aware fills support that phrasing. Counter-line occupancy and echoes follow the six-slot grid. Straight triplet grouping replaces 4/4 swing for jig tracks.
+
+Playback counts quavers between bar callbacks so skips, natural track boundaries and repeats can change meter. Meter changes update the underlying quarter-note tempo at the boundary. Track timing, note highlighting, vinyl duration and section sweep lengths follow the meter. The piano roll remains hidden as before.
+
+Validation covers reproducible jig scores and revisions across 20 seeds, note bounds for every role, snare placement, phrase returns, playhead endings, and browser playback at both meters with skips and repeat. Further work: native jig-specific motif selection, a manual meter choice, 3/4 and 9/8, and more dance-specific accompaniment.

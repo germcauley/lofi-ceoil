@@ -37,6 +37,10 @@ function instrument (voice, ...effects) {
 }
 
 const SAMPLE_MAPS = {
+  guitar: {
+    A2: 'A2.mp3', E3: 'E3.mp3', A3: 'A3.mp3', 'C#4': 'Cs4.mp3', E4: 'E4.mp3',
+    'G#4': 'Gs4.mp3', B4: 'B4.mp3', D5: 'D5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3'
+  },
   piano: {
     C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
     C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
@@ -80,7 +84,7 @@ function loadSamples (folder) {
   return sampleLoads.get (folder);
 }
 
-// The complete library is about 1 MB. Warm it before playback so any voice
+// Warm the local library before playback so any voice
 // can be chosen for the next track without delaying a skip.
 export function preloadSamples () {
   return Promise.all (Object.keys (SAMPLE_MAPS).map (loadSamples));
@@ -180,7 +184,16 @@ function pianoKeys () {
   return sampled ('piano', { volume: -16, release: 1.4, cutoff: 3400 });
 }
 
-export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, pad };
+/** Nylon guitar, voiced lower in the mix for chords and arpeggios. */
+function guitarKeys () {
+  return sampled ('guitar', { volume: -16, release: 0.65, cutoff: 4200 });
+}
+
+function guitar () {
+  return sampled ('guitar', { volume: -10, release: 0.8, cutoff: 5600 });
+}
+
+export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, guitar: guitarKeys, pad };
 
 // ------------------------------------------------------------------- lead
 
@@ -263,6 +276,7 @@ function piano () {
 // oscillator can suggest a struck or plucked string, but a bowed or blown one
 // gives itself away immediately.
 export const LEAD_VOICES = {
+  guitar,
   vibraphone,
   marimba,
   kalimba,
@@ -440,28 +454,61 @@ export function createDrone () {
   return instrument (voice);
 }
 
-/** The crackle bed: continuous surface noise plus occasional pops, the way a
-    worn record behaves. Runs outside the sidechain so it never pumps. */
+/** The record surface.
+
+    Four parts, because real surface noise is not one sound. A continuous
+    **hiss** bed; a dense carpet of small **crackle** ticks, which is what
+    actually reads as vinyl; larger, duller **pops** from deeper damage; and a
+    rare **scuff** — the one that makes you look at the record.
+
+    Ticks and pops get their own voices. NoiseSynth wraps a single noise source
+    and rejects a trigger at or before the last one, so sharing a voice between
+    a dense carpet and occasional larger events would throw constantly. */
 export function createVinyl () {
-  const hiss = new Tone.Noise ({ type: 'pink', volume: -34 });
-  const hissFilter = new Tone.Filter ({ type: 'highpass', frequency: 1400 });
+  // Wider than before. Surface noise highpassed at 1.4 kHz is a hiss; real
+  // noise has body underneath it.
+  const hiss = new Tone.Noise ({ type: 'pink', volume: -26 });
+  const hissFilter = new Tone.Filter ({ type: 'highpass', frequency: 700 });
   hiss.connect (hissFilter);
 
-  const pops = new Tone.NoiseSynth ({
+  // The carpet: many small ticks, individually almost inaudible.
+  const crackle = new Tone.NoiseSynth ({
     noise: { type: 'white' },
-    envelope: { attack: 0.0005, decay: 0.02, sustain: 0 },
-    volume: -22
+    envelope: { attack: 0.0004, decay: 0.008, sustain: 0 },
+    volume: -12
   });
 
-  const popFilter = new Tone.Filter ({ type: 'bandpass', frequency: 2600, Q: 1.4 });
+  const crackleFilter = new Tone.Filter ({ type: 'bandpass', frequency: 4200, Q: 1.1 });
+  crackle.connect (crackleFilter);
+
+  // Bigger and duller, from deeper damage.
+  const pops = new Tone.NoiseSynth ({
+    noise: { type: 'brown' },
+    envelope: { attack: 0.0006, decay: 0.035, sustain: 0 },
+    volume: -5
+  });
+
+  const popFilter = new Tone.Filter ({ type: 'bandpass', frequency: 1300, Q: 0.9 });
   pops.connect (popFilter);
 
-  const level = new Tone.Gain (0.6);
-  hissFilter.connect (level);
-  popFilter.connect (level);
+  // The rare one you notice.
+  const scuff = new Tone.NoiseSynth ({
+    noise: { type: 'brown' },
+    envelope: { attack: 0.001, decay: 0.09, sustain: 0 },
+    volume: -3
+  });
+
+  const scuffFilter = new Tone.Filter ({ type: 'lowpass', frequency: 900, rolloff: -12 });
+  scuff.connect (scuffFilter);
+
+  const level = new Tone.Gain (0);
+  [hissFilter, crackleFilter, popFilter, scuffFilter].forEach (node => node.connect (level));
 
   return {
-    hiss, pops, level,
-    dispose () { [hiss, pops, hissFilter, popFilter, level].forEach (node => node.dispose()); }
+    hiss, crackle, pops, scuff, level,
+    dispose () {
+      [hiss, crackle, pops, scuff, hissFilter, crackleFilter, popFilter, scuffFilter, level]
+        .forEach (node => node.dispose());
+    }
   };
 }

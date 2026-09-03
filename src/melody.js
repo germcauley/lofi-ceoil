@@ -554,7 +554,7 @@ export function createMelodyGenerator (random = () => Math.random()) {
   //   pulsed   quavers with every other one much lighter, which swings it
   const FIGURE_FEELS = ['even', 'even', 'sparse', 'double', 'pulsed'];
 
-  function planCounter (phrase) {
+  function planCounter (phrase, eighths = 8) {
     const name = ARP_NAMES[Math.floor (random() * ARP_NAMES.length)];
 
     const rise = phrase[phrase.length - 1].degree - phrase[0].degree;
@@ -568,29 +568,41 @@ export function createMelodyGenerator (random = () => Math.random()) {
       // from foundation to decoration without changing a note of it.
       octave: chance (0.25) ? 1 : 0,
       pattern: rise > 0 ? [...pattern].reverse() : pattern,
-      busy: busyMap (phrase)
+      busy: busyMap (phrase, eighths)
     };
   }
 
   /** For each bar of the phrase, which eighth-note slots the melody is sounding
       in. The counter line uses this to stay out of the way. */
-  function busyMap (phrase) {
-    const bars = Array.from ({ length: 8 }, () => new Array (8).fill (false));
+  function busyMap (phrase, eighths) {
+    const bars = Array.from ({ length: 8 }, () => new Array (eighths).fill (false));
 
     for (const event of phrase) {
-      const bar = Math.floor (event.at / 8);
+      const bar = Math.floor (event.at / eighths);
       if (bar > 7) continue;
 
       for (let i = 0; i < event.length; i++) {
-        const slot = (event.at % 8) + i;
-        if (slot < 8) bars[bar][slot] = true;
+        const slot = (event.at % eighths) + i;
+        if (slot < eighths) bars[bar][slot] = true;
       }
     }
 
     return bars;
   }
 
-  return { createMotif, developPhrase, developRiff, createPhrase, gappedPool, planCounter };
+  // Preserve the statement and cadences, answering with a neighbouring scale
+  // tone in the middle bars. Reject awkward contours using the same musical
+  // guard as phrase generation; never mutate the hook kept for its return.
+  function varyPhrase (phrase, poolSize, direction = 1) {
+    const candidate = phrase.map (event => {
+      const bar = Math.floor (event.at / 8);
+      if (! [1, 2, 5, 6].includes (bar)) return { ...event };
+      return { ...event, degree: Math.max (0, Math.min (poolSize - 1, event.degree + direction)) };
+    });
+    return isSingable (candidate) ? candidate : phrase.map (event => ({ ...event }));
+  }
+
+  return { createMotif, developPhrase, developRiff, varyPhrase, createPhrase, gappedPool, planCounter };
 }
 
 const defaultGenerator = createMelodyGenerator();

@@ -140,6 +140,7 @@ export function createPianoRoll (element, getPlayback) {
     const timeSpan = horizontal ? right - left : bottom - top;
     const pitchStep = pitchSpan / pitchCount;
     const beat = playback?.beat ?? 0;
+    const beatsPerBar = score?.beatsPerBar ?? 4;
     const window = rollWindow (beat, scrolling);
     const timeAt = value => horizontal
       ? left + (value - window.start) / 32 * timeSpan
@@ -166,9 +167,9 @@ export function createPianoRoll (element, getPlayback) {
       if (horizontal) { fill ('#241b2b', left, pos, timeSpan, 6); text (['K', 'S', 'H'][lane], 5, pos + 5); }
       else { fill ('#241b2b', pos, top, 6, timeSpan); text (['K', 'S', 'H'][lane], pos, height - 3); }
     }
-    for (let bar = Math.max (0, Math.ceil (window.start / 4)); bar * 4 <= window.end; bar++) {
+    for (let bar = Math.max (0, Math.ceil (window.start / beatsPerBar)); bar * beatsPerBar <= window.end; bar++) {
       if (score && bar > score.barCount) break;
-      const pos = timeAt (bar * 4), major = bar % 8 === 0;
+      const pos = timeAt (bar * beatsPerBar), major = bar % 8 === 0;
       if (horizontal) { fill (major ? '#59405b' : '#33263f', pos, top, 1, bottom - top); text (String (bar + 1).padStart (2, '0'), pos + 2, 8); }
       else { fill (major ? '#59405b' : '#33263f', left, pos, right - left, 1); text (String (bar + 1).padStart (2, '0'), left + 2, pos - 2); }
     }
@@ -176,14 +177,14 @@ export function createPianoRoll (element, getPlayback) {
     if (playback) {
       ctx.save();
       ctx.beginPath(); ctx.rect (left, top, right - left, bottom - top); ctx.clip();
-      const first = Math.max (0, Math.floor (window.start / 4) - 2);
-      const last = Math.min (score.barCount - 1, Math.floor (window.end / 4));
+      const first = Math.max (0, Math.floor (window.start / beatsPerBar) - 2);
+      const last = Math.min (score.barCount - 1, Math.floor (window.end / beatsPerBar));
       let visibleNotes = 0;
       for (let i = first; i <= last; i++) {
         score.bars[i].notes.forEach ((note, index) => {
           const family = familyOf (note.role);
           if (! FAMILIES[family] || hidden.has (family)) return;
-          const at = i * 4 + note.at, end = at + note.duration;
+          const at = i * beatsPerBar + note.at, end = at + note.duration;
           if (end < window.start || at > window.end) return;
           const active = scrolling && playback.activeNotes.has (`${i}:${index}`);
           const percussion = family === 'drums';
@@ -203,7 +204,7 @@ export function createPianoRoll (element, getPlayback) {
       ctx.restore();
       canvas.dataset.visibleNotes = visibleNotes;
       ctx.globalAlpha = 1;
-      const cursor = timeAt (scrolling ? beat : playback.barIndex * 4);
+      const cursor = timeAt (scrolling ? beat : playback.barIndex * beatsPerBar);
       if (horizontal) { fill ('#ffecbd', cursor, top, 1, bottom - top); fill ('#ffecbd', cursor - 2, top - 4, 5, 3); }
       else { fill ('#ffecbd', left, cursor, right - left, 1); fill ('#ffecbd', right, cursor - 2, 3, 5); }
       const summary = playback.ended ? 'between tunes' : `section ${playback.bar.section} · bar ${playback.barIndex + 1} / ${score.barCount}`;

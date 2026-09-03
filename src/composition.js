@@ -1,9 +1,12 @@
 // A complete, serialisable score. No audio context, wall clock, storage or
 // global random state is consulted: the recipe plus version determines it.
 import { createMelodyGenerator } from './melody.js';
+import { meterInfo, jigPhrase } from './musical-meter.js';
+import { clampTempo } from './track-tempo.js';
+import { coordinateBassWithKick, makeRoomForMelody, addTransitionFill } from './ensemble.js';
 import { openingPlan } from './track-structure.js';
 import { PROGRESSIONS, noteNameToMidi, findPivot } from './theory.js';
-import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, playVinyl, durationSeconds } from './parts.js';
+import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, durationSeconds, ARP_PATTERNS } from './parts.js';
 
 export const COMPOSITION_VERSION = 1;
 export function seededRandom (seed) {
@@ -32,7 +35,7 @@ export function compositionSettings (recipe, energy) {
     ornament: value ('ornament'), droneLevel: value ('drone'), dust: value ('dust'),
     supportLevel: value ('support'),
     swing: value ('swing'),
-    tempo: Math.max (50, Math.min (100, recipe.tempoUser + recipe.tempoOffset * drift))
+    tempo: clampTempo (recipe.tempoUser + recipe.tempoOffset * drift)
   };
 }
 
@@ -43,10 +46,8 @@ function arrangement (energy, random) {
     bass: part === 0 && bare ? 'none' : pick (energy > 0.5
       ? ['walk', 'octave', 'anticipate', 'rootFifth'] : ['held', 'root', 'sparse']),
     chordsFrom: part === 0 && bare ? 2 : 0,
-    // 8 means the drums never arrive in this part. Kept rare: a sit-out is an
-    // effect, and the arc used to make it the norm at low energy — 65% of
-    // parts, four parts a turn, tracks lasting several turns, so the drums
-    // could be gone for minutes at a time.
+    // 8 requests a drumless part. The continuity pass below shortens these
+    // breaks so the arc cannot leave the track without a beat for too long.
     drumsFrom: (part === 0 && bare) || random() > 0.55 + energy * 0.45 ? 8 : part === 0 ? 4 : 0,
     drumsUntil: part === 3 ? 6 : 8,
     counter: ! (part === 0 && bare), emptyBar: random() < 0.35 ? 7 : -1,
@@ -89,7 +90,8 @@ function targetKey (root, scale, random) {
     synth. Both generation and live re-voicing use this same arrangement logic. */
 export function writeBarNotes (bar, context, random) {
   const notes = [];
-  const state = { ...context, ...bar.settings, random, rootMidi: bar.rootMidi, scale: bar.scale };
+  const state = { ...context, ...bar.settings, random, rootMidi: bar.rootMidi, scale: bar.scale, meter: bar.meter };
+  const eighths = meterInfo (bar.meter).eighths;
   const secondsPerBeat = 60 / state.tempo;
   const record = (role, pitched) => ({ triggerAttackRelease (...args) {
     const [pitch, length, at, velocity] = pitched ? args : [null, ...args];
@@ -98,11 +100,13 @@ export function writeBarNotes (bar, context, random) {
   } });
   for (const role of ['keys', 'bass', 'lead', 'drone', 'pluck', 'support']) state[role] = record (role, true);
   state.drums = Object.fromEntries (['kick', 'snare', 'ghost', 'hat'].map (role => [role, record (role, role === 'kick')]));
-  state.vinyl = { pops: record ('vinyl', false) };
   state.chain = { duck () {} };
   const plan = bar.arrangement, b = bar.barInPart;
+  const melodyBar = b - (plan.leadFrom ?? 0);
+  state.melodyAttacks = (bar.phrase ?? []).filter (event =>
+    Math.floor (event.at / eighths) === melodyBar && event.length >= 2).map (event => event.at % eighths);
   const empty = b === plan.emptyBar || (bar.winding && b === 7);
-  if (! empty && b >= (plan.chordsFrom ?? 0) && (bar.hold === 1 || b % bar.hold === 0)) {
+  if (! empty && b >= (plan.chordsFrom ?? 0) && (ARP_PATTERNS[plan.comp] || bar.hold === 1 || b % bar.hold === 0)) {
     playChord (state, 0, bar.chord, plan.comp);
   }
   if (! empty && ! (bar.winding && b >= 6) && plan.bass !== 'none' && b >= (plan.bassFrom ?? 0)) {
@@ -118,9 +122,12 @@ export function writeBarNotes (bar, context, random) {
   // The supporting line follows the tune, so it plays wherever the lead does.
   if (! empty) playSupport (state, 0, b, bar.phrase, bar.chord);
   if (b >= (plan.droneFrom ?? 0)) playDrone (state, 0);
-  playVinyl (state, 0);
+  // Surface noise is not composition. It is generated live instead, which
+  // keeps a saved score to the notes someone actually wrote — a dense crackle
+  // carpet would add thousands of events a track and dwarf the music in it.
   context.previousVoicing = state.previousVoicing;
-  return notes.sort ((a, b) => a.at - b.at);
+  const ensemble = makeRoomForMelody (coordinateBassWithKick (notes, plan.bass, meterInfo (bar.meter).beats));
+  return addTransitionFill (ensemble, bar, random).sort ((a, b) => a.at - b.at);
 }
 
 export function composeTrack (input) {
@@ -132,10 +139,11 @@ export function composeTrack (input) {
   const melody = createMelodyGenerator (random);
   const arc = { ...recipe.arc };
   const structured = recipe.structure.style !== 'drift';
-  const score = { version: COMPOSITION_VERSION, recipe, beatsPerBar: 4, turns: [], bars: [] };
+  const score = { version: COMPOSITION_VERSION, recipe, beatsPerBar: meterInfo (recipe.structure.meter).beats, turns: [], bars: [] };
   const ending = recipe.turnsSinceEnding + recipe.turns >= 4 && random() < 0.4;
   let rootMidi = recipe.rootMidi, scale = recipe.scale, progression = recipe.progression;
   let saved, pendingKey = null;
+  let trailingDrumRest = 0;
   const voices = { ...recipe.voices };
   const context = { previousVoicing: null };
 
@@ -157,21 +165,23 @@ export function composeTrack (input) {
     let b = saved?.B ?? melody.developPhrase (scale, size, recipe.motifB, 0.28, shift);
     while (! saved && shift < 6 && mean (b) < mean (a) + 1.5) b = melody.developPhrase (scale, size, recipe.motifB, 0.28, ++shift);
     if (structured) saved = { A: a, B: b };
-    const phrases = structured ? recipe.structure.sections.map (name => saved[name])
+    const development = turnIndex === 0 ? 'statement'
+      : turnIndex === recipe.turns - 1 ? 'return' : 'development';
+    let phrases = structured ? recipe.structure.sections.map (name => {
+      const original = saved[name];
+      // Give the first turn time to establish the hook before developing it.
+      const vary = name === 'A' && development === 'development';
+      return vary ? melody.varyPhrase (original, size, turnIndex % 2 ? -1 : 1) : original;
+    })
       : [a, melody.developPhrase (scale, size, recipe.motifA), b, melody.developPhrase (scale, size, recipe.motifB, 0.28, shift)];
+    if (recipe.structure.meter === '6/8') phrases = phrases.map (jigPhrase);
     const plans = arrangement (recipe.arcDepth > 0 ? energy : 0.5, random);
     const counterBySection = {};
     const counters = phrases.map ((phrase, i) => {
       const name = recipe.structure.sections[i];
-      return structured ? counterBySection[name] ??= melody.planCounter (phrase) : melody.planCounter (phrase);
+      return structured ? counterBySection[name] ??= melody.planCounter (phrase, meterInfo (recipe.structure.meter).eighths) : melody.planCounter (phrase, meterInfo (recipe.structure.meter).eighths);
     });
     plans.forEach ((plan, i) => {
-      // Never two drumless parts running, and never a turn without drums at
-      // all. Whatever the dice said, the beat has to come back.
-      if (i && plans[i - 1].drumsFrom >= 8 && plans[i].drumsFrom >= 8) {
-        plans[i].drumsFrom = 0;
-      }
-
       if (i && plans[i - 1].emptyBar >= 0) {
         for (const [role, probability] of [['lead', 1], ['keys', 0.4], ['bass', 0.25]]) {
           if (recipe.auto[role] && ! (structured && role === 'lead') && random() < probability) {
@@ -186,7 +196,24 @@ export function composeTrack (input) {
     if (turnIndex === 0) Object.assign (plans[0], openingPlan (recipe.structure), {
       bass: pick (['held', 'root', 'sparse']), emptyBar: -1, counter: true
     });
-    const turn = { phrases, arrangement: plans, counterPlans: counters, energy, arc: { ...arc }, rootMidi, scale };
+    // At most one inner section per turn: an alternative accompaniment, not
+    // another layer. Slow pads retain their original chord articulation.
+    if (random() < 0.6) {
+      const part = pick ([1, 2]);
+      if (plans[part].keysVoice !== 'pad') plans[part].comp = pick (Object.keys (ARP_PATTERNS));
+    }
+    plans.forEach ((plan, i) => {
+      // Count the silence across the whole track, including turn boundaries.
+      // A breakdown gets at most four bars before the groove returns; only
+      // the track's opening and final wind-down can take longer.
+      if (turnIndex > 0 || i > 0) {
+        plan.drumsFrom = Math.min (plan.drumsFrom, Math.max (0, 4 - trailingDrumRest));
+      }
+      const lastDrumBar = plan.emptyBar === plan.drumsUntil - 1
+        ? plan.drumsUntil - 2 : plan.drumsUntil - 1;
+      trailingDrumRest = 7 - lastDrumBar;
+    });
+    const turn = { phrases, development, arrangement: plans, counterPlans: counters, energy, arc: { ...arc }, rootMidi, scale };
     score.turns.push (turn);
     let pivot = null;
     for (let position = 0; position < 32; position++) {
@@ -203,8 +230,9 @@ export function composeTrack (input) {
       }
       const hold = progression.chords.length >= 6 ? 1 : plan.chordHold;
       const chord = pivot ?? progression.chords[Math.floor (barInPart / hold) % progression.chords.length];
-      const bar = { index: score.bars.length, turn: turnIndex, part, barInPart,
-        section: recipe.structure.sections[part], rootMidi, scale, progression: progression.name,
+      const bar = { meter: recipe.structure.meter ?? '4/4', index: score.bars.length, turn: turnIndex, part, barInPart,
+        section: recipe.structure.sections[part], nextSection: recipe.structure.sections[part + 1] ?? null,
+        rootMidi, scale, progression: progression.name,
         chord, hold, arrangement: plan, phrase: phrases[part], counterPlan: counters[part],
         settings, winding, noteSeed: Math.floor (random() * 4294967296),
         voicingBefore: context.previousVoicing ? [...context.previousVoicing] : null };

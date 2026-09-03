@@ -26,10 +26,11 @@ function bagPicker (values) {
 
 export function createStructurePicker () {
   const opening = bagPicker (OPENINGS);
+  const meter = bagPicker (['4/4', '4/4', '6/8']);
   const style = bagPicker (Object.keys (FORMS));
   return () => {
     const kind = style();
-    return { opening: opening(), style: kind, sections: [...FORMS[kind]], chordHold: Math.random() < 0.6 ? 2 : 1 };
+    return { meter: meter(), opening: opening(), style: kind, sections: [...FORMS[kind]], chordHold: Math.random() < 0.6 ? 2 : 1 };
   };
 }
 

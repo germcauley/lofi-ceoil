@@ -31,19 +31,33 @@
         </div>
       </header>
 
-      <div class="now-playing" role="status" aria-live="polite" aria-atomic="true">
+      <div class="now-playing">
         <span class="track-label" id="trackLabel">on the air soon</span>
         <span class="track-number" id="trackNumber"></span>
-        <p class="track-title" id="trackTitle">press start, stay awhile</p>
+        <p class="track-title" id="trackTitle" role="status" aria-live="polite" aria-atomic="true">press start, stay awhile</p>
+        <span class="track-time" id="trackTime" aria-label="Track elapsed time" aria-live="off">—:—</span>
+        <p class="track-subtitle" id="trackSubtitle" lang="en" hidden></p>
       </div>
 
       <div class="transport-bay">
-        <button id="playButton" class="power" aria-label="Start and stop the generator">
-          <span class="power-glyph" aria-hidden="true"></span>
-          <span class="power-text">start</span>
-        </button>
+        <div class="transport-actions" role="group" aria-label="Playback controls">
+          <button id="playButton" class="power" aria-label="Start playback" title="Start playback">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">
+              <path class="play-icon" d="M8 4.5v15L20 12z"/>
+              <rect class="stop-icon" x="5" y="5" width="14" height="14" rx="1.5"/>
+            </svg>
+          </button>
 
-        <button id="skipButton" class="skip" aria-label="Start a new track">new track</button>
+          <button id="replayButton" class="skip repeat-button" disabled aria-pressed="false" aria-label="Play the saved tune from the beginning" title="Play the saved tune from the beginning">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M17 3l3 3-3 3M20 6H7a3 3 0 0 0-3 3v1M7 21l-3-3 3-3M4 18h13a3 3 0 0 0 3-3v-1"/>
+              <path d="M10.5 11l1.5-1v4m-1.5 0h3"/>
+            </svg>
+          </button>
+          <button id="saveScoreButton" class="skip" disabled title="Download the notes, arrangement and generation recipe as a JSON score">save score</button>
+
+          <button id="skipButton" class="skip" aria-label="Start a new track">new track</button>
+        </div>
 
         <div class="tape" aria-hidden="true">
           <div class="reel"><span></span></div>
@@ -52,6 +66,10 @@
         </div>
 
         <div class="counter">
+          <div class="counter-line">
+            <span class="counter-label">tempo</span>
+            <span class="counter-value small" id="tempoReadout">— bpm</span>
+          </div>
           <div class="counter-line">
             <span class="counter-label">bar</span>
             <span class="counter-value" id="barReadout">000</span>
@@ -69,10 +87,6 @@
         <div class="score-copy">
           <span class="score-label">the written tune</span>
           <span id="scoreSummary">A new composition with every track</span>
-        </div>
-        <div class="score-actions">
-          <button id="replayButton" class="skip" disabled title="Replay the same notes and arrangement with your current sound and tempo controls">replay tune</button>
-          <button id="saveScoreButton" class="skip" disabled title="Download the notes, arrangement and generation recipe as a JSON score">save score</button>
         </div>
       </div>
 

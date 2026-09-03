@@ -1,4 +1,4 @@
-import titles from './data/track-titles.json';
+import titles from './data/track-titles-ga.json';
 
 /** One shuffled deck per listening session. Every title gets a turn before
     any repeats, including when the listener stops and starts again. */
@@ -21,6 +21,6 @@ export function createTrackNamer () {
       }
     }
     previous = remaining.pop();
-    return previous;
+    return { ...previous };
   };
 }

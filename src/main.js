@@ -6,6 +6,7 @@ import { createKnob } from './knob.js';
 import { createMeter } from './meter.js';
 import { createPianoRoll } from './piano-roll.js';
 import { NOTE_NAMES } from './theory.js';
+import { MIN_TEMPO, DEFAULT_TEMPO } from './track-tempo.js';
 
 const engine = createEngine();
 createPianoRoll (document.getElementById ('pianoRoll'), engine.getPlayback);
@@ -15,7 +16,7 @@ createPianoRoll (document.getElementById ('pianoRoll'), engine.getPlayback);
 if (import.meta.env.DEV) window.lofi = engine;
 
 const MUSIC_KNOBS = [
-  { id: 'tempo', label: 'tempo', min: 55, max: 95, step: 1, value: 72,
+  { id: 'tempo', label: 'tempo', min: MIN_TEMPO, max: 95, step: 1, value: DEFAULT_TEMPO,
     format: v => `${Math.round (v)} bpm` },
   { id: 'swing', label: 'swing', min: 0, max: 0.6, step: 0.01, value: 0.28 },
   { id: 'density', label: 'density', min: 0, max: 1, step: 0.01, value: 0.5 },
@@ -130,11 +131,11 @@ function mountVoiceChooser (id, names, initial, apply, autoFlag) {
 }
 
 mountVoiceChooser ('leadVoiceRow',
-  ['vibraphone', 'marimba', 'kalimba', 'piano', 'harp', 'harp (synth)'],
+  ['vibraphone', 'marimba', 'kalimba', 'piano', 'guitar', 'harp', 'harp (synth)'],
   'auto', value => engine.controls.leadVoice (value), 'autoVoice');
 
 mountVoiceChooser ('keysVoiceRow',
-  ['rhodes', 'felt', 'piano', 'pad'],
+  ['rhodes', 'felt', 'piano', 'guitar', 'pad'],
   'auto', value => engine.controls.keysVoice (value), 'autoKeysVoice');
 
 mountVoiceChooser ('bassVoiceRow',
@@ -152,18 +153,28 @@ window.addEventListener ('resize', () => meter.refresh());
 // ------------------------------------------------------------------ transport
 
 const playButton = document.getElementById ('playButton');
-const playText = playButton.querySelector ('.power-text');
+function updatePlayButton () {
+  const label = engine.state.running ? 'Stop playback' : 'Start playback';
+  playButton.setAttribute ('aria-label', label);
+  playButton.title = label;
+}
 const status = document.getElementById ('status');
 const barReadout = document.getElementById ('barReadout');
 const progressionReadout = document.getElementById ('progressionReadout');
 const trackLabel = document.getElementById ('trackLabel');
 const trackTitle = document.getElementById ('trackTitle');
+const trackSubtitle = document.getElementById ('trackSubtitle');
 const trackNumber = document.getElementById ('trackNumber');
+const trackTime = document.getElementById ('trackTime');
+const tempoReadout = document.getElementById ('tempoReadout');
 const pageTitle = document.title;
 
-engine.state.onTrack = ({ title, number }) => {
+engine.state.onTrack = ({ title, titleEnglish, titleLanguage, number }) => {
   trackLabel.textContent = 'now playing';
   trackTitle.textContent = title;
+  trackTitle.lang = titleLanguage ?? 'en';
+  trackSubtitle.textContent = titleEnglish ?? '';
+  trackSubtitle.hidden = ! titleEnglish;
   trackNumber.textContent = `track ${String (number).padStart (3, '0')}`;
   document.title = `${title} · Lofi Ceoil`;
   updateScoreSummary();
@@ -189,8 +200,22 @@ engine.state.onBar = (bar, progressionName) => {
 
 let meterFrame = null;
 
+function updateTrackTime () {
+  const bpm = engine.state.running ? `${engine.getTempo().toFixed (1)} bpm` : '— bpm';
+  if (tempoReadout.textContent !== bpm) tempoReadout.textContent = bpm;
+  const clock = engine.getTrackTime();
+  const seconds = Math.floor (clock?.elapsedSeconds ?? 0);
+  const text = clock
+    ? `${Math.floor (seconds / 60)}:${String (seconds % 60).padStart (2, '0')}${clock.resting ? ' · rest' : ''}`
+    : '—:—';
+  // Only write when the displayed second changes. The title's live region is
+  // separate so screen readers do not announce a new track every second.
+  if (trackTime.textContent !== text) trackTime.textContent = text;
+}
+
 function driveMeter () {
   meter.update (engine.getSpectrum());
+  updateTrackTime();
   meterFrame = requestAnimationFrame (driveMeter);
 }
 
@@ -204,14 +229,18 @@ playButton.addEventListener ('click', async () => {
   if (engine.state.running) {
     engine.stop();
     stopMeter();
+    updateTrackTime();
 
     document.body.classList.remove ('running');
-    playText.textContent = 'start';
+    updatePlayButton();
     status.textContent = 'standby';
     barReadout.textContent = '000';
     progressionReadout.textContent = '—';
     trackLabel.textContent = 'on the air soon';
     trackTitle.textContent = 'press start, stay awhile';
+    trackTitle.lang = 'en';
+    trackSubtitle.textContent = '';
+    trackSubtitle.hidden = true;
     trackNumber.textContent = '';
     document.title = pageTitle;
     return;
@@ -225,7 +254,7 @@ playButton.addEventListener ('click', async () => {
     await engine.start();
 
     document.body.classList.add ('running');
-    playText.textContent = 'stop';
+    updatePlayButton();
     status.textContent = 'running';
     driveMeter();
   } catch (error) {
@@ -251,23 +280,35 @@ const replayButton = document.getElementById ('replayButton');
 const saveScoreButton = document.getElementById ('saveScoreButton');
 const scoreSummary = document.getElementById ('scoreSummary');
 
+function updateReplayButton () {
+  const queued = engine.isReplayQueued();
+  replayButton.setAttribute ('aria-pressed', String (queued));
+  replayButton.title = queued ? 'Repeat queued — click to cancel'
+    : engine.state.running ? 'Repeat this tune once after it finishes'
+    : 'Play the saved tune from the beginning';
+  replayButton.setAttribute ('aria-label', replayButton.title);
+}
+engine.state.onReplayQueue = updateReplayButton;
+
 function updateScoreSummary () {
   const score = engine.state.track?.composition;
   if (! score) return;
   replayButton.disabled = false;
+  updateReplayButton();
   saveScoreButton.disabled = false;
   const edit = score.revisions?.length ? ' · edited' : '';
-  scoreSummary.textContent = `${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
+  scoreSummary.textContent = `${score.recipe.structure.meter === '6/8' ? '6/8 jig' : '4/4'} · ${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
 }
 
 replayButton.addEventListener ('click', async () => {
+  const wasRunning = engine.state.running;
   replayButton.disabled = true;
   playButton.disabled = true;
   try {
-    if (await engine.replay()) {
+    if (await engine.replay() && ! wasRunning) {
       stopMeter();
       document.body.classList.add ('running');
-      playText.textContent = 'stop';
+      updatePlayButton();
       status.textContent = 'running';
       driveMeter();
     }
@@ -277,6 +318,7 @@ replayButton.addEventListener ('click', async () => {
   } finally {
     replayButton.disabled = false;
     playButton.disabled = false;
+    updateReplayButton();
   }
 });
 
@@ -287,7 +329,7 @@ saveScoreButton.addEventListener ('click', () => {
   const url = URL.createObjectURL (blob);
   const link = document.createElement ('a');
   link.href = url;
-  link.download = `${score.recipe.title.replace (/[^a-z0-9]+/gi, '-').replace (/^-|-$/g, '') || 'lofi-ceoil'}-score.json`;
+  link.download = `${score.recipe.title.normalize ('NFD').replace (/\p{M}/gu, '').replace (/[^a-z0-9]+/gi, '-').replace (/^-|-$/g, '') || 'lofi-ceoil'}-score.json`;
   link.click();
   setTimeout (() => URL.revokeObjectURL (url), 1000);
 });

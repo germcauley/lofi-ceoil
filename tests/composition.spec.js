@@ -18,6 +18,16 @@ const recipe = {
   voiceOptions: { lead: ['vibraphone', 'harp'], keys: ['rhodes', 'felt'], bass: ['round', 'upright'] }
 };
 
+test ('the hook develops without losing its opening and returns in the final turn', () => {
+  const score = composeTrack (recipe);
+  const first = score.turns[0].phrases[0];
+  const middle = score.turns[1].phrases[0];
+  expect (middle.filter (note => note.at < 8)).toEqual (first.filter (note => note.at < 8));
+  expect (middle).not.toEqual (first);
+  expect (score.turns.at (-1).phrases[0]).toEqual (first);
+  expect (score.turns.map (turn => turn.development)).toEqual (['statement', 'development', 'return']);
+});
+
 test ('a recipe produces the full same score independent of global randomness', () => {
   const first = composeTrack (recipe);
   for (let i = 0; i < 1000; i++) Math.random();
@@ -63,6 +73,24 @@ test ('revisions preserve played bars and can be reconstructed from the saved re
   expect (rebuilt).toEqual (saved);
 });
 
+test ('drum breaks stay within four bars across section and turn boundaries', () => {
+  const excessive = [];
+  for (let seed = 0; seed < 80; seed++) {
+    const score = composeTrack ({ ...recipe, seed, turns: 4 });
+    let silence = 0, started = false;
+    for (const bar of score.bars) {
+      if (bar.notes.some (note => ['kick', 'snare', 'hat'].includes (note.role))) {
+        started = true;
+        silence = 0;
+      } else if (started && ! (bar.winding && bar.barInPart >= 5)) {
+        silence++;
+        if (silence > 4) excessive.push ({ seed, bar: bar.index, silence });
+      }
+    }
+  }
+  expect (excessive.slice (0, 5)).toEqual ([]);
+});
+
 test ('the audio adapter schedules exactly the stored notes at the supplied tempo', () => {
   const score = composeTrack (recipe);
   const played = [], ducks = [];
@@ -89,6 +117,10 @@ test ('live playback starts with a complete score, replays it and keeps edits af
   await page.click ('#playButton');
   await page.waitForFunction (() => window.lofi.state.track?.composition);
   const original = await page.evaluate (() => window.lofi.getComposition());
+  expect (original.recipe.titleLanguage).toBe ('ga');
+  expect (original.recipe.titleEnglish).toBeTruthy ();
+  await expect (page.locator ('#trackTitle')).toHaveAttribute ('lang', 'ga');
+  await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
   expect (original.bars.length).toBe (original.recipe.turns * 32);
   await page.click ('#replayButton');
   expect (await page.evaluate (() => window.lofi.getComposition())).toEqual (original);
@@ -112,5 +144,6 @@ test ('live playback starts with a complete score, replays it and keeps edits af
   await page.waitForFunction (() => window.lofi.state.track?.composition);
   expect (await page.evaluate (() => window.lofi.getComposition())).toEqual (revised);
   expect (failures).toEqual ([]);
+  await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
   await page.evaluate (async () => { window.lofi.stop(); await window.lofi.chain.input.context.close(); });
 });
