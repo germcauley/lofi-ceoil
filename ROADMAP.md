@@ -94,6 +94,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **55. Sampled nylon-string guitar**
 - [x] **56. 6/8 jig feel — first pass**
 - [ ] **57. Learn the harmony from a corpus of real tunes**
+- [ ] **58. Two traditions: Irish and pop/rock**
 ---
 
 ## 1. Chord voice leading — done
@@ -874,3 +875,60 @@ Open question before starting: derive the tables offline and commit them
 (small, fast, reproducible, needs the ODbL notice and an alterations
 file), or ship the ABC parser and derive at build time. Offline looks
 right.
+
+## 58. Two traditions: Irish and pop/rock
+
+A switch between an Irish traditional character and a pop/rock one, each
+drawing on its own material.
+
+**Naming first.** Two axes already use the obvious words. `mode` is the
+musical mode (dorian, minor, mixolydian, major) and `style` is the form
+(`tune`, `riff`, `traditional`, `drift` in `src/track-structure.js`). The
+new axis needs a third name — **tradition** — and it sits above both: a
+tradition constrains which modes and forms are even in the bag.
+
+**Harmony is the smallest part of the difference.** Swapping chord tables
+alone will not make this sound like pop. If we left everything else as it
+is, a pop progression would still arrive wearing an AABB form, cuts and
+rolls on the long notes, a 6/8 jig lilt and a harp. A tradition has to be
+a bundle:
+
+| Slot | Where it lives | Irish | Pop/rock |
+| --- | --- | --- | --- |
+| Harmony | `PROGRESSIONS` in `theory.js` | modal, flat seventh, double-tonic | functional, V-I cadences |
+| Mode bag | `composition.js` | dorian and mixolydian weighted up | major and minor |
+| Form | `FORMS` in `track-structure.js` | AABB, 32-bar tune | verse/chorus, 8- and 16-bar |
+| Meter | `track-structure.js` | 6/8 and 4/4 | 4/4, occasional 6/8 |
+| Melody | `melody.js` | cuts and rolls, stepwise, ornament bias high | hooks, repeated rhythmic cells, wider leaps |
+| Voices | `instruments.js` pools | harp, guitar, whistle-family, vibraphone | rhodes, electric bass, felt piano |
+| Drums | `parts.js` | the same hip-hop backing either way |
+
+The drums stay put deliberately. The hip-hop backing is what makes this
+lofi rather than either a session recording or a rock demo, and it is the
+constant that lets the two traditions sound like one instrument.
+
+**The datasets are asymmetric, and only one is needed.**
+
+Pop/rock does not need a corpus. `PROGRESSIONS.major` is already a
+hand-written pop and rock table — I-V-vi-IV, I-IV-V, doo-wop, the royal
+road, the Pachelbel canon. Pop harmony is the most documented harmony
+there is; a dataset would mostly re-derive what is already in that file,
+at the cost of a licence to honour. The work for this tradition is in the
+other slots — form, melodic cells, voices — not the chords.
+
+Irish is where a corpus genuinely earns its keep. Modal cadences, how
+often a tune shuttles between relative major and minor, which intervals
+carry a phrase — these are hard to hand-write convincingly and easy to
+get subtly wrong. **The Session** under ODbL is the source, as recorded in
+item 57.
+
+**Chordonomicon** (666,000 genre-tagged chord progressions, on Hugging
+Face) is the tempting shortcut for the pop side and is **CC-BY-NC**.
+Non-commercial only, which would bind any derived weight table we shipped
+and would sit badly with ever monetising output from this generator. Given
+we do not need it, not worth the constraint.
+
+Order of work: introduce the tradition axis with hand-written tables on
+both sides and no dataset at all, so the bundle is proven end to end. Only
+then feed the Irish harmony from The Session, where it is measurably hard
+to do by hand.
