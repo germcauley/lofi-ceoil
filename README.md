@@ -8,7 +8,7 @@ A browser instrument that generates endless lofi with an Irish accent, and lets 
 
 ![The Lofi Ceoil panel](docs/panel.png)
 
-Everything is synthesised in the browser with [Tone.js](https://tonejs.github.io/). There are no audio files, no samples, and no server — the whole thing is about 280 kB of JavaScript and it will run forever without repeating itself.
+The music is generated in the browser with [Tone.js](https://tonejs.github.io/), using synthesis and a small library of piano, whistle and harp samples. There is no server. Samples are decoded and cached before playback so new tracks can start without another download.
 
 ## What it actually does
 
@@ -16,9 +16,17 @@ Most generative lofi toys roll new random notes every bar, which produces noodli
 
 It plays in **tracks**. Each track holds its material for two to four turns — a tune played several times through, as a set does — then a new one begins, at its own tempo. Underneath, the arrangement, the energy arc, the voices and the counter textures keep moving.
 
-Within a track it works from **motifs**. Each cycle invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then plays them **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
+Every track has a **wistful title** — *the light you left on*, *we took the long way home*, *an evening i wish i could post to you*. The panel and browser tab follow the current track. A pool of 256 complete titles ships with the app, with no repeats until the whole pool has played and no runtime API calls.
 
-Bars 1 and 5 are always the plain statement and bars 4 and 8 are always cadences, so the two developments of a motif share a skeleton and differ only in the middles. That is what makes the repeat sound like a repeat.
+**New tracks are checked against recent music.** The generator remembers the last 128 motif pairs in this browser, rejects recent reused openings, and spaces out matching rhythms and melodic contours. Changing key or swapping the A and B parts does not make an old tune count as new. Each track also chooses a different opening progression, alongside its own voices and settings. If browser storage is unavailable, the memory lasts for the current session.
+
+**Each track is written before it plays.** A complete score holds all 64–128 bars of notes, percussion, harmony, arrangement and planned voices. **Replay tune** restarts those notes; **save score** downloads the versioned recipe, full score and edits as JSON. The last score remains available after stopping. Replay uses the current sound and tempo controls; the saved composition does not capture continuous noise or effect tails as audio.
+
+Note-related knob changes, key and mode changes rewrite upcoming bars at the next bar boundary, with revision history retained in the score. WAV, MIDI, stems and score import are still on the roadmap.
+
+Within a track it works from **motifs**. Each track invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then chooses **AABA**, **ABAB**, or **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
+
+In developed tunes, bars 1 and 5 are the plain statement and bars 4 and 8 are always cadences, so the two developments of a motif share a skeleton and differ only in the middles. Most tracks keep their complete A and B phrases, harmony and lead colour across turns. Riff tracks repeat a short cell before answering it with a cadence. One in four tracks keeps the freer evolving treatment.
 
 Two gates keep it honest: a motif needs three distinct pitches and a range between a second and a sixth, and a finished phrase is rejected if it spans more than a tenth, leaps more than twice in a row, or repeats a note more than three times.
 
@@ -61,9 +69,9 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
-**Voices are switchable while it plays.** The lead can be a `whistle`, a `fiddle`, a `piano` or a `harp`, with synthesised versions of the whistle and harp kept alongside the sampled ones; the keys a `rhodes`, a `felt` piano, a `piano` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples load only when you choose it.
+**Voices are switchable while it plays.** The lead can be a `whistle`, a `fiddle`, a `piano` or a `harp`, with synthesised versions of the whistle and harp kept alongside the sampled ones; the keys a `rhodes`, a `felt` piano, a `piano` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples share the cache used by the whistle and harp.
 
-Set either row to `auto` and the **arrangement picks the voice**: a part that follows a drop comes back on a different instrument, which is what gives a section return its lift. The chord voice changes less often than the lead, because if both change at once nothing carries across the seam, and the bass least often of all — it is the foundation. Pick a voice by hand and it stays put.
+All three rows default to `auto`, choosing fresh instruments for each track. A dot shows which instrument is playing. The **arrangement also picks the voice**: a part that follows a drop comes back on a different instrument, which is what gives a section return its lift. The chord voice changes less often than the lead, because if both change at once nothing carries across the seam, and the bass least often of all — it is the foundation. Pick a voice by hand and it stays put.
 
 Phrases can begin with an **anacrusis** — a pickup into the answering sentence, stepping toward its first note, the way an Irish tune starts on an upbeat rather than the downbeat. And a part's closing bar is sometimes **empty**: no harmony, no bass, no drums, so the tune lands on its cadence alone.
 
@@ -83,7 +91,9 @@ The arc reaches the arrangement, not only the levels. Low down, a turn is likeli
 
 ## The controls
 
-**New track** abandons whatever is playing and starts something fresh on the next bar — new motifs, new arrangement, and half the time a new key. No pivot: a skip is a cut, and smoothing it would paper over the thing you just asked for.
+**New track** starts a fresh tune after a short fade, without waiting for the bar to finish. It replaces the old queued notes with new motifs, a new arrangement, and half the time a new key. It also works during the pause between sets.
+
+Each track varies tempo, swing, cuts, drone, counter melody and tape settings around your knob positions. The `arc` knob controls both this variation and the long energy arc; at zero, the knob values are exact. Output level always stays under your control.
 
 Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to reset, scroll to nudge. Everything responds while it plays. **Space** starts and stops.
 
@@ -95,7 +105,7 @@ Drag a knob vertically. Hold **shift** for fine adjustment, **double-click** to 
 | **counter** | how much the arpeggiated second line plays |
 | **cuts** | how often notes get ornamented |
 | **drone** | the sustained fifth underneath |
-| **arc** | how far the long energy arc swings things; 0 is flat |
+| **arc** | depth of track variation and the long energy arc; 0 uses your exact knob settings |
 
 | Tape path | |
 |---|---|
@@ -128,11 +138,24 @@ The code is organised so that each file answers one question.
 | [`src/parts.js`](src/parts.js) | What each instrument plays in a given bar. |
 | [`src/instruments.js`](src/instruments.js) | The synth voices. Each exposes `triggerAttackRelease`, which is also the `Tone.Sampler` interface, so swapping any voice for real samples is a one-function change. |
 | [`src/effects.js`](src/effects.js) | The tape path and the sidechain duck. |
-| [`src/engine.js`](src/engine.js) | Audio graph, live state, and bar scheduling. |
+| [`src/engine.js`](src/engine.js) | Audio graph, live controls, track identity, and playback of stored bars. |
+| [`src/composition.js`](src/composition.js) | Pure seeded composition, complete beat-event scores and revisions to upcoming bars. |
+| [`src/score-player.js`](src/score-player.js) | Schedules a stored bar on the audio instruments without choosing new notes. |
+| [`src/track-structure.js`](src/track-structure.js) | Track forms and staged openings, selected without immediate repeats. |
+| [`src/track-material.js`](src/track-material.js) | Chooses fresh motif pairs against bounded recent musical history. |
+| [`src/track-names.js`](src/track-names.js) | Shuffles the title pool in [`src/data/track-titles.json`](src/data/track-titles.json); edit that file to refresh the names. |
 | [`src/knob.js`](src/knob.js) | The rotary control. Pointer, wheel, and keyboard, with the standard slider role. |
 | [`src/meter.js`](src/meter.js) | The segmented LED spectrum display, driven by a real FFT of the output. Colours are read from CSS custom properties, so the palette stays in one place. |
 
+In development, `lofi.getComposition()` returns a detached score snapshot. `composeTrack(score.recipe)` reconstructs the original; apply `score.revisions` in order with `reviseComposition` to reconstruct an edited score.
+
 In development, `window.lofi` is exposed — `lofi.controls.dust(0.9)` works from the console.
+
+Tracks rotate through melody-only, chords-first, layered, light-percussion and full-band openings. Bass, kick and drone follow explicit entrance times; the intro happens only once per track. Delayed lead entrances introduce a four-bar question before the next section.
+
+## Playback tests
+
+`npm test` runs the browser regression tests in installed Google Chrome, including rapid skips, stop/restart, voice loading, knob variation, titles across track transitions, varied low-end entrances, recurring phrases and riff structure. For another Playwright browser, install it with `npx playwright install chromium` and use `PLAYWRIGHT_CHANNEL=chromium npm test`.
 
 ## Notes for anyone extending it
 

@@ -4,9 +4,11 @@
 import { createEngine } from './engine.js';
 import { createKnob } from './knob.js';
 import { createMeter } from './meter.js';
+import { createPianoRoll } from './piano-roll.js';
 import { NOTE_NAMES } from './theory.js';
 
 const engine = createEngine();
+createPianoRoll (document.getElementById ('pianoRoll'), engine.getPlayback);
 
 // Handy from the browser console for poking at the running graph:
 // lofi.controls.dust(0.9), lofi.state.progression, and so on.
@@ -94,34 +96,44 @@ engine.state.onKey = (note, scale) => {
   scaleChooser.select (scale);
 };
 
-// Voices swap while it plays, so you can hear the difference in context rather
-// than having to restart to compare.
-// `auto` hands the choice to the arrangement, which changes voice coming back
-// from a drop. Picking a voice by hand pins it.
+const voiceRows = {
+  lead: { id: 'leadVoiceRow', autoFlag: 'autoVoice' },
+  keys: { id: 'keysVoiceRow', autoFlag: 'autoKeysVoice' },
+  bass: { id: 'bassVoiceRow', autoFlag: 'autoBassVoice' }
+};
+
+function showVoice (kind) {
+  const { id, autoFlag } = voiceRows[kind];
+  document.getElementById (id).querySelectorAll ('.seg').forEach (button => {
+    const playing = engine.state[autoFlag] && button.textContent === engine.state[kind + 'Voice'];
+    button.classList.toggle ('auto-pick', playing);
+    button.setAttribute ('aria-label', button.textContent + (playing ? ' (playing automatically)' : ''));
+  });
+}
+
+// Auto chooses a new sound for each track and at arrangement changes.
+// Picking a voice by hand pins it until the listener chooses auto again.
 function mountVoiceChooser (id, names, initial, apply, autoFlag) {
+  const kind = id.replace ('VoiceRow', '');
   mountChooser (document.getElementById (id), ['auto', ...names], initial, 'seg',
     value => {
-      if (value === 'auto') {
-        engine.state[autoFlag] = true;
-        return;
-      }
-
-      engine.state[autoFlag] = false;
-      apply (value);
+      engine.state[autoFlag] = value === 'auto';
+      if (value !== 'auto') apply (value);
+      showVoice (kind);
     });
 }
 
 mountVoiceChooser ('leadVoiceRow',
   ['whistle', 'whistle (synth)', 'fiddle', 'piano', 'harp', 'harp (synth)'],
-  'whistle', value => engine.controls.leadVoice (value), 'autoVoice');
+  'auto', value => engine.controls.leadVoice (value), 'autoVoice');
 
 mountVoiceChooser ('keysVoiceRow',
   ['rhodes', 'felt', 'piano', 'pad'],
-  'rhodes', value => engine.controls.keysVoice (value), 'autoKeysVoice');
+  'auto', value => engine.controls.keysVoice (value), 'autoKeysVoice');
 
 mountVoiceChooser ('bassVoiceRow',
   ['round', 'upright', 'sub', 'electric'],
-  'round', value => engine.controls.bassVoice (value), 'autoBassVoice');
+  'auto', value => engine.controls.bassVoice (value), 'autoBassVoice');
 
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
@@ -138,15 +150,35 @@ const playText = playButton.querySelector ('.power-text');
 const status = document.getElementById ('status');
 const barReadout = document.getElementById ('barReadout');
 const progressionReadout = document.getElementById ('progressionReadout');
+const trackLabel = document.getElementById ('trackLabel');
+const trackTitle = document.getElementById ('trackTitle');
+const trackNumber = document.getElementById ('trackNumber');
+const pageTitle = document.title;
 
-// A sampled voice takes a moment to load; say so rather than going quiet.
+engine.state.onTrack = ({ title, number }) => {
+  trackLabel.textContent = 'now playing';
+  trackTitle.textContent = title;
+  trackNumber.textContent = `track ${String (number).padStart (3, '0')}`;
+  document.title = `${title} · Lofi Ceoil`;
+  updateScoreSummary();
+};
+
+
+// Several rows may load at once. Completing one must not hide the others.
+const loadingVoices = new Map();
 engine.state.onVoice = (kind, name, ready) => {
-  status.textContent = ready ? (engine.state.running ? 'running' : 'standby') : `loading ${name}`;
+  if (ready) loadingVoices.delete (kind);
+  else loadingVoices.set (kind, name);
+  status.textContent = loadingVoices.size
+    ? `loading ${[...loadingVoices.values()].join (', ')}`
+    : engine.state.running ? 'running' : 'standby';
+  showVoice (kind);
 };
 
 engine.state.onBar = (bar, progressionName) => {
   barReadout.textContent = String (bar + 1).padStart (3, '0');
   progressionReadout.textContent = progressionName;
+  updateScoreSummary();
 };
 
 let meterFrame = null;
@@ -172,10 +204,15 @@ playButton.addEventListener ('click', async () => {
     status.textContent = 'standby';
     barReadout.textContent = '000';
     progressionReadout.textContent = '—';
+    trackLabel.textContent = 'on the air soon';
+    trackTitle.textContent = 'press start, stay awhile';
+    trackNumber.textContent = '';
+    document.title = pageTitle;
     return;
   }
 
   playButton.disabled = true;
+  replayButton.disabled = true;
   status.textContent = 'loading';
 
   try {
@@ -190,6 +227,7 @@ playButton.addEventListener ('click', async () => {
     console.error ('could not start', error);
   } finally {
     playButton.disabled = false;
+    replayButton.disabled = ! engine.getComposition();
   }
 });
 
@@ -201,6 +239,51 @@ skipButton.addEventListener ('click', () => {
   engine.controls.skip();
   status.textContent = 'new track';
   setTimeout (() => { if (engine.state.running) status.textContent = 'running'; }, 1400);
+});
+
+const replayButton = document.getElementById ('replayButton');
+const saveScoreButton = document.getElementById ('saveScoreButton');
+const scoreSummary = document.getElementById ('scoreSummary');
+
+function updateScoreSummary () {
+  const score = engine.state.track?.composition;
+  if (! score) return;
+  replayButton.disabled = false;
+  saveScoreButton.disabled = false;
+  const edit = score.revisions?.length ? ' · edited' : '';
+  scoreSummary.textContent = `${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
+}
+
+replayButton.addEventListener ('click', async () => {
+  replayButton.disabled = true;
+  playButton.disabled = true;
+  try {
+    if (await engine.replay()) {
+      stopMeter();
+      document.body.classList.add ('running');
+      playText.textContent = 'stop';
+      status.textContent = 'running';
+      driveMeter();
+    }
+  } catch (error) {
+    status.textContent = 'could not replay';
+    console.error ('could not replay', error);
+  } finally {
+    replayButton.disabled = false;
+    playButton.disabled = false;
+  }
+});
+
+saveScoreButton.addEventListener ('click', () => {
+  const score = engine.getComposition();
+  if (! score) return;
+  const blob = new Blob ([JSON.stringify (score)], { type: 'application/json' });
+  const url = URL.createObjectURL (blob);
+  const link = document.createElement ('a');
+  link.href = url;
+  link.download = `${score.recipe.title.replace (/[^a-z0-9]+/gi, '-').replace (/^-|-$/g, '') || 'lofi-ceoil'}-score.json`;
+  link.click();
+  setTimeout (() => URL.revokeObjectURL (url), 1000);
 });
 
 // Space toggles transport, the way it does on anything that plays audio.

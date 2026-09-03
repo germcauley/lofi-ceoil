@@ -1,19 +1,60 @@
-// The voices.
-//
-// Everything is synthesised, so there is nothing to download and no asset
-// pipeline — but raw synth tones read as "synthy" very quickly. Three things
-// fix most of that without samples:
-//
-//   * a soft attack with a noise transient, so notes start rather than appear
-//   * slight detune or chorus, so a note is never one perfectly static pitch
-//   * a lowpass sitting below the brightness of the raw oscillator
-//
-// Each factory returns { voice, output }. `voice` is what gets triggered and
-// exposes triggerAttackRelease — which is also the Tone.Sampler interface, so
-// swapping any of these for real samples stays a one-function change. `output`
-// is what connects onward, which may be the end of a small effect chain.
+// Synthesised and sampled voices, each with explicit ownership of its nodes.
 
 import * as Tone from 'tone';
+
+function instrument (voice, ...effects) {
+  return {
+    voice,
+    output: effects.at (-1) ?? voice,
+    dispose () { [voice, ...effects].forEach (node => node.dispose()); }
+  };
+}
+
+const SAMPLE_MAPS = {
+  piano: {
+    C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
+    C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+    C5: 'C5.mp3', 'F#5': 'Fs5.mp3', C6: 'C6.mp3'
+  },
+  recorder: {
+    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
+    C5: 'C5.mp3', E5: 'E5.mp3', C6: 'C6.mp3'
+  },
+  harp: {
+    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
+    C5: 'C5.mp3', E5: 'E5.mp3', 'G#5': 'Gs5.mp3', C6: 'C6.mp3'
+  }
+};
+
+// Cache decoded AudioBuffers, not voices: a skip needs fresh scheduling
+// timelines, but should never download or decode the same sample again.
+const sampleBuffers = new Map();
+const sampleLoads = new Map();
+function loadSamples (folder) {
+  if (! sampleLoads.has (folder)) {
+    const loading = Promise.all (Object.entries (SAMPLE_MAPS[folder]).map (async ([note, file]) => {
+      const buffer = await Tone.ToneAudioBuffer.fromUrl (`${import.meta.env.BASE_URL}samples/${folder}/${file}`);
+      const audio = buffer.get();
+      buffer.dispose();
+      return [note, audio];
+    })).then (entries => {
+      const buffers = Object.fromEntries (entries);
+      sampleBuffers.set (folder, buffers);
+      return buffers;
+    }).catch (error => {
+      sampleLoads.delete (folder);
+      throw error;
+    });
+    sampleLoads.set (folder, loading);
+  }
+  return sampleLoads.get (folder);
+}
+
+// The complete library is about 1 MB. Warm it before playback so any voice
+// can be chosen for the next track without delaying a skip.
+export function preloadSamples () {
+  return Promise.all (Object.keys (SAMPLE_MAPS).map (loadSamples));
+}
 
 /** Builds a sampled voice from a folder under public/samples.
 
@@ -24,26 +65,22 @@ import * as Tone from 'tone';
     Filenames use `s` rather than `#` for sharps. In a URL a `#` begins the
     fragment, so `G#4.mp3` requests `G` and the sample never arrives — silently,
     because the sampler simply has no buffer for that note. */
-function sampled (folder, urls, { volume = -10, release = 1.2, cutoff = 6000 } = {}) {
-  // Tone.loaded() is global and can resolve before a sampler built moments ago
-  // has its buffers, so each one carries its own signal instead.
-  let markReady;
-  const ready = new Promise (resolve => { markReady = resolve; });
-
-  const voice = new Tone.Sampler ({
-    urls,
-    baseUrl: `${import.meta.env.BASE_URL}samples/${folder}/`,
-    release,
-    volume,
-    onload: () => markReady()
-  });
-
-  // Rolled off so a sampled voice sits inside the tape path rather than on
-  // top of it — real recordings are brighter than the synths they replace.
+function sampled (folder, { volume = -10, release = 1.2, cutoff = 6000 } = {}) {
+  const cached = sampleBuffers.get (folder);
+  const voice = new Tone.Sampler ({ urls: cached ?? {}, release, volume });
   const tone = new Tone.Filter ({ type: 'lowpass', frequency: cutoff, rolloff: -12 });
   voice.connect (tone);
-
-  return { voice, output: tone, loading: true, ready };
+  const result = instrument (voice, tone);
+  if (! cached) {
+    result.ready = loadSamples (folder).then (buffers => {
+      if (! voice.disposed) {
+        Object.entries (buffers).forEach (([note, buffer]) => voice.add (note, buffer));
+      }
+    });
+    // The engine reports errors when a requested voice/start awaits readiness.
+    result.ready.catch (() => {});
+  }
+  return result;
 }
 
 // ------------------------------------------------------------------- keys
@@ -69,7 +106,7 @@ function rhodes () {
   voice.connect (chorus);
   chorus.connect (tone);
 
-  return { voice, output: tone };
+  return instrument (voice, chorus, tone);
 }
 
 /** Felt piano: hammers muted with cloth. A soft triangle body under a short
@@ -88,7 +125,7 @@ function felt () {
   voice.connect (tone);
   tone.connect (chorus);
 
-  return { voice, output: chorus };
+  return instrument (voice, tone, chorus);
 }
 
 /** Slow strings. Detuned saws with a long swell — barely an attack at all, so
@@ -104,18 +141,13 @@ function pad () {
   const tone = new Tone.Filter ({ type: 'lowpass', frequency: 1100, rolloff: -24 });
   voice.connect (tone);
 
-  return { voice, output: tone };
+  return instrument (voice, tone);
 }
 
 /** The same Salamander piano the lead can use, voiced for chords: quieter, and
     rolled off further so a four-note voicing does not crowd the melody. */
 function pianoKeys () {
-  return sampled ('piano', {
-    C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
-    C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
-    C5: 'C5.mp3', 'F#5': 'Fs5.mp3',
-    C6: 'C6.mp3'
-  }, { volume: -16, release: 1.4, cutoff: 3400 });
+  return sampled ('piano', { volume: -16, release: 1.4, cutoff: 3400 });
 }
 
 export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, pad };
@@ -137,7 +169,7 @@ function whistle () {
   voice.connect (breath);
   breath.connect (tone);
 
-  return { voice, output: tone };
+  return instrument (voice, breath, tone);
 }
 
 /** Fiddle. A filtered saw with a slower, bowed attack and heavier vibrato. */
@@ -154,7 +186,7 @@ function fiddle () {
   voice.connect (vibrato);
   vibrato.connect (tone);
 
-  return { voice, output: tone };
+  return instrument (voice, vibrato, tone);
 }
 
 /** Baroque soprano recorder, standing in for a tin whistle — the nearest thing
@@ -164,20 +196,12 @@ function fiddle () {
     an octave low; the two cancel, so each file is filed under the note it is
     named after and the voice transposes up for free. */
 function whistleSampled () {
-  return sampled ('recorder', {
-    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
-    C5: 'C5.mp3', E5: 'E5.mp3',
-    C6: 'C6.mp3'
-  }, { volume: -14, release: 0.6, cutoff: 5200 });
+  return sampled ('recorder', { volume: -14, release: 0.6, cutoff: 5200 });
 }
 
 /** A real folk harp — the instrument this music actually belongs to. */
 function harpSampled () {
-  return sampled ('harp', {
-    C4: 'C4.mp3', E4: 'E4.mp3', 'G#4': 'Gs4.mp3',
-    C5: 'C5.mp3', E5: 'E5.mp3', 'G#5': 'Gs5.mp3',
-    C6: 'C6.mp3'
-  }, { volume: -8, release: 1.4, cutoff: 6500 });
+  return sampled ('harp', { volume: -8, release: 1.4, cutoff: 6500 });
 }
 
 /** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
@@ -194,7 +218,7 @@ function harpSynth () {
     volume: -12
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 /** Real piano, from the Salamander Grand Piano set that Tone.js itself uses.
@@ -203,28 +227,9 @@ function harpSynth () {
     resonance and release noise is not something an oscillator reaches.
 
     The samples are vendored rather than fetched from someone else's host, and
-    loaded only when this voice is chosen, so nobody pays for them unless they
-    ask for a piano. */
+    cached before playback so a new track can use them immediately. */
 function piano () {
-  const base = `${import.meta.env.BASE_URL}samples/piano/`;
-
-  const voice = new Tone.Sampler ({
-    urls: {
-      C3: 'C3.mp3', 'F#3': 'Fs3.mp3',
-      C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
-      C5: 'C5.mp3', 'F#5': 'Fs5.mp3',
-      C6: 'C6.mp3'
-    },
-    baseUrl: base,
-    release: 1.2,
-    volume: -9
-  });
-
-  // Rolled off a little so it sits in the tape path rather than on top of it.
-  const tone = new Tone.Filter ({ type: 'lowpass', frequency: 5200, rolloff: -12 });
-  voice.connect (tone);
-
-  return { voice, output: tone, loading: true };
+  return sampled ('piano', { volume: -9, release: 1.2, cutoff: 5200 });
 }
 
 export const LEAD_VOICES = {
@@ -258,7 +263,7 @@ function bassRound () {
     volume: -11
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 /** Upright, pizzicato. The lofi default. A fast filter sweep gives the finger
@@ -276,7 +281,7 @@ function bassUpright () {
     volume: -9
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 /** Sub. Near a pure sine, felt more than heard. Sits well under the sparse and
@@ -293,7 +298,7 @@ function bassSub () {
     volume: -7
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 /** Fingered electric. More sustain than the upright and a brighter edge, so it
@@ -310,7 +315,7 @@ function bassElectric () {
     volume: -13
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 export const BASS_VOICES = {
@@ -330,7 +335,7 @@ export function createPluck () {
     volume: -17
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 export function createDrums () {
@@ -372,7 +377,12 @@ export function createDrums () {
   const hatFilter = new Tone.Filter ({ type: 'highpass', frequency: 7000 });
   hat.connect (hatFilter);
 
-  return { kick, snare, ghost, hat, outputs: [kick, snareFilter, ghostFilter, hatFilter] };
+  return {
+    kick, snare, ghost, hat, outputs: [kick, snareFilter, ghostFilter, hatFilter],
+    dispose () {
+      [kick, snare, ghost, hat, snareFilter, ghostFilter, hatFilter].forEach (node => node.dispose());
+    }
+  };
 }
 
 /** A pipe-like drone. Sawtooth through a low filter with a slow attack, so it
@@ -389,7 +399,7 @@ export function createDrone () {
     volume: -26
   });
 
-  return { voice, output: voice };
+  return instrument (voice);
 }
 
 /** The crackle bed: continuous surface noise plus occasional pops, the way a
@@ -412,5 +422,8 @@ export function createVinyl () {
   hissFilter.connect (level);
   popFilter.connect (level);
 
-  return { hiss, pops, level };
+  return {
+    hiss, pops, level,
+    dispose () { [hiss, pops, hissFilter, popFilter, level].forEach (node => node.dispose()); }
+  };
 }

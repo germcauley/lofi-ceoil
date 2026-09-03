@@ -31,6 +31,12 @@
         </div>
       </header>
 
+      <div class="now-playing" role="status" aria-live="polite" aria-atomic="true">
+        <span class="track-label" id="trackLabel">on the air soon</span>
+        <span class="track-number" id="trackNumber"></span>
+        <p class="track-title" id="trackTitle">press start, stay awhile</p>
+      </div>
+
       <div class="transport-bay">
         <button id="playButton" class="power" aria-label="Start and stop the generator">
           <span class="power-glyph" aria-hidden="true"></span>
@@ -58,6 +64,37 @@
 
         <div id="meterSlot"></div>
       </div>
+
+      <div class="score-bay" aria-label="Current composition">
+        <div class="score-copy">
+          <span class="score-label">the written tune</span>
+          <span id="scoreSummary">A new composition with every track</span>
+        </div>
+        <div class="score-actions">
+          <button id="replayButton" class="skip" disabled title="Replay the same notes and arrangement with your current sound and tempo controls">replay tune</button>
+          <button id="saveScoreButton" class="skip" disabled title="Download the notes, arrangement and generation recipe as a JSON score">save score</button>
+        </div>
+      </div>
+
+      <section class="piano-roll" id="pianoRoll" aria-labelledby="rollTitle">
+        <div class="roll-head">
+          <div class="roll-heading"><span class="pixel-mark" aria-hidden="true">▦</span><h2 id="rollTitle">Piano roll</h2></div>
+          <div class="roll-controls">
+            <div class="roll-directions" role="group" aria-label="Scroll direction">
+              <button type="button" data-direction="horizontal" aria-pressed="true">horizontal</button>
+              <button type="button" data-direction="vertical" aria-pressed="false">vertical</button>
+            </div>
+            <button type="button" id="rollMotion" aria-pressed="true">scroll on</button>
+          </div>
+        </div>
+        <div class="roll-screen">
+          <div class="roll-screen-head"><span id="rollReadout">press start to see the tune</span><span class="roll-tag">live score</span></div>
+          <div id="rollSections" role="img" aria-label="Track form appears when music starts"></div>
+          <canvas role="img" aria-label="Piano roll">Notes are shown by pitch and duration, with an instrument colour legend below.</canvas>
+        </div>
+        <div id="rollLegend" class="roll-legend" role="group" aria-label="Visible instruments"></div>
+        <p class="roll-hint">Follow the colours. Tap an instrument to hide its notes.</p>
+      </section>
 
       <section class="module">
         <div class="module-head">

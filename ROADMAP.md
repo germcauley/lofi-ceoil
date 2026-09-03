@@ -15,7 +15,28 @@ Four techniques let us add variety without risk. Everything below is an applicat
 
 ---
 
+## Main development priorities
+
+These six milestones guide the next stage of the music maker. Priority numbers describe development order; the feature numbers in the status list retain their existing IDs.
+
+| Priority | What we build | What you hear or gain |
+|---|---|---|
+| **1. A complete composition plan** | Store the sections, notes, harmony and arrangement before playback, with reproducible generation. | A track we can replay, inspect, edit and improve. |
+| **2. Stronger musical development** | Flexible section lengths, memorable hooks, tension, contrasting passages and deliberate returns. | Music that feels like it goes somewhere. |
+| **3. Instruments that respond to each other** | Bass works with the kick; accompaniment leaves space for the melody; fills announce transitions. | A more convincing ensemble. |
+| **4. Better performance and sound** | Richer samples, articulation, coordinated timing and dynamics, better balance. | Less of the “MIDI instruments playing patterns” feeling. |
+| **5. Creative control and export** | “Keep this melody, change the backing”; lock sections; regenerate selected parts; WAV, MIDI and stems. | A useful music-making instrument. |
+| **6. Selection and taste** | Audition alternatives, save favourites and gradually bias generation toward preferred choices. | More music you want to keep. |
+
+**Priority 1 is implemented:** tracks now have a complete, reproducible score before playback, with replay and JSON score downloads. See feature **34** for the delivered scope.
+
+The composition plan supplies a shared foundation for the visualiser (**33**), notation (**19**), and creative control/export (**18**, expanded to MIDI and stems). Musical development builds on the recurring forms in **32**; ensemble interaction extends arrangement and counter-line work in **6**, **8** and **27**. Performance and sound extend instruments and phrasing in **12**, **20** and **26**. Selection and taste build on **30**.
+
+---
+
 ## Status
+
+- [x] **34. Complete composition plans, reproducible scores and replay**
 
 - [x] **1. Chord voice leading**
 - [x] **2. Per-mode progression sets, including the pop canon**
@@ -25,6 +46,8 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **6. Counter-line textures: imitation and heterophony**
 - [x] **7. Eight-bar parts with a higher turn**
 - [x] **8. Bass patterns, staged entrances, comping and harmonic rhythm**
+- [x] **32. Varied openings and recognizable tune/riff returns**
+- [ ] **33. Pixel-art piano-roll visualiser — instrument colours and switchable scrolling**
 - [x] **9. Long-form structure — the energy arc**
 - [x] **10. Rests and phrasing**
 - [x] **11a. Ties over the barline**
@@ -35,12 +58,12 @@ Four techniques let us add variety without risk. Everything below is an applicat
 - [x] **15. More bass voices**
 - [x] **16. Radio mode — tracks that segue**
 - [x] **31. A "new track" button**
-- [ ] **17. Generated tune names**
+- [x] **17. Generated tune names**
 - [ ] **18. Save the current tune — WAV download**
 - [ ] **19. Notation of the current tune** *(backlog)*
 - [x] **20. Sampled whistle and harp** *(fiddle still synthesised — no CC0 violin found)*
-- [ ] **21. More styles, slowed + reverb type music, trance, minimalism
-- [ ] **22. Animated DJ that actually controls the mix, tempo etc
+- [ ] **21. More styles, slowed + reverb type music, trance, minimalism**
+- [ ] **22. Animated DJ that actually controls the mix, tempo etc**
 - [ ] **30. Liking a track, and learning from it**
 - [x] **23. Piano for chords, with an auto mode**
 - [x] **24. Ending a set — wind down, leave space, let the crackle run**
@@ -228,7 +251,7 @@ Two things need care:
 - **Key relationship.** A jump to an unrelated key sounds like someone changed station. The next key should come from a pivot set — the relative major or minor, or up a fourth or fifth — so the move reads as a modulation rather than an edit. Better still, end the outgoing track on a chord the two keys share and simply continue into it.
 - **Tempo.** Tracks want different tempos, but a jump is jarring. `Transport.bpm.rampTo` over a bar or two carries it, and a slight rallentando into the drop would sound deliberate.
 
-## 17. Generated tune names
+## 17. Generated tune names — done
 
 Wistful, longing titles: *thinking of you here*, *why can't it rain every day*.
 
@@ -240,7 +263,11 @@ Three routes, and the third is clearly best:
 2. **Live LLM** — best variety, but needs a proxy server or asks each listener for their own key.
 3. **Pre-generated at build time.** An LLM writes several hundred titles once; they ship as a JSON file; the app picks one per track. The quality of an LLM, none of the runtime cost, no key anywhere. Regenerate the pool whenever it starts to feel familiar.
 
-The title also wants somewhere to live on the panel — probably where the model plate sits now.
+**As built.** A pool of 256 complete, pre-generated titles ships in `src/data/track-titles.json`. There is no runtime text generation or API call. Each listening session shuffles the full pool, uses every name before repeating, and avoids a repeat at the join between pools. Title selection uses its own randomness so it does not change the musical choices.
+
+A track owns its title for its whole lifetime, including repeated turns and arrangement changes. A new track gets a new title whether it arrives naturally or through a skip. The panel's now-playing area and browser tab update at the audible start, with a track number beside the title. Stopping clears the display but keeps the remaining title pool for the next start.
+
+Browser checks cover title stability across turns, natural track boundaries, skips, and stopping before a queued display update.
 
 ## 18. Save the current tune
 
@@ -253,7 +280,7 @@ From a captured buffer, two output routes:
 - **WAV** with a `LIST`/`INFO` chunk carrying artist and composer. No dependencies, but tag support is thin and not every player reads it.
 - **MP3** with proper ID3 tags via an encoder such as `lamejs`. Better metadata, at the cost of a dependency and encoding time.
 
-Worth also writing the **seed** into the metadata — the key, mode, tempo, motifs and voices that produced the track. A saved file that records how to regenerate itself is a nicer artefact than a bare audio export, and it costs one JSON blob in a comment field.
+Feature **34** now supplies a versioned recipe, random seed, complete score and revision history. Audio export should embed or accompany that data. A seed alone is insufficient: generation also depends on the recipe parameters and composer version.
 
 ## 19. Notation of the current tune — backlog
 
@@ -265,7 +292,7 @@ Two ways to get there. `abcjs` takes ABC and renders it as ordinary notation in 
 
 Either works. The choice only matters if a copyable text form is wanted alongside the picture. MusicXML remains worth adding later for anyone importing into MuseScore or Sibelius.
 
-A wrinkle worth noting now: what is playing is not fixed. Voices swap, the key moves and the form rebuilds every 32 bars, so "the current tune" needs a definition — most likely a snapshot of the turn in progress, captured the moment the button is pressed.
+Feature **34** now defines the current tune as a complete stored score, with explicit revisions for live musical edits. Notation can use that snapshot and distinguish the current turn from the complete track.
 
 Two things to decide:
 
@@ -487,8 +514,85 @@ Pairs naturally with item 17: a track with a name is much easier to like than on
 
 Abandons the current track and starts a fresh one.
 
-**The timing is the whole design.** Instantly would mean cutting mid-bar, which sounds broken; waiting for the turn to end would mean up to thirty-two bars, which defeats the point of a skip. It lands on the **next bar** — measured at one to two bars in practice, which is how a skip should feel: immediate, but not damaged.
+**The skip no longer waits for a bar boundary.** The outgoing instruments fade over 40 ms and a fresh first bar starts 60 ms after the audio scheduling time. All voices, including percussion and vinyl pops, get fresh scheduling timelines: moving the transport alone left old notes queued and caused Tone.js errors. The small sample library is decoded and cached before playback, so skipping needs no network request. Skipping also interrupts the pause between sets.
 
 Half the time the new track arrives in a new key, chosen from the same four moves as a set ending. Deliberately **without a pivot**: a skip is a cut, and smoothing the seam would be papering over the thing the listener just asked for.
 
 Everything else resets with it — motifs, arrangement, voicing, any modulation that was in flight — while the long energy arc carries on, since that is a separate dimension from which tune is playing.
+
+
+### Track character and voice selection
+
+All three instrument rows now default to `auto` and choose fresh voices when a track starts. Choosing a voice manually pins that row. A dot marks the voice currently playing in auto mode. Independent loading per row prevents a bass choice from cancelling a sampled lead or keys choice.
+
+Tracks also vary tempo, swing, cuts, drone, counter, brightness, dust, wobble, drive, space and pump around the listener's knob positions. The `arc` control scales this variation and the long energy arc; at zero the knob values are exact. Output level is never randomised.
+
+Browser regression tests cover rapid skips, skipping during a set rest, stop/restart, independent voice loads and preserving knob settings. Fresh instrument banks dispose all their owned effects as well as their voices, so repeated skips do not leave chorus or filter nodes running.
+
+
+### Near-unique tracks — done
+
+New tracks are now screened against recent musical material, independently of titles, keys, timbres and floating-point effect settings. Those alone cannot make a familiar melody feel new.
+
+- Remember the last 128 motif pairs in this browser, including across reloads where local storage is available.
+- Reject repeated pairs even when A/B are swapped or pitches transposed.
+- Avoid the same rhythm-and-contour pair from the last 32 tracks, reused opening motifs from the last eight, and repeated pairs of rhythm cells from the last four.
+- Give each track a fresh opening chord progression and retain the existing per-track voice and parameter variation.
+
+Candidates still come from the existing folk-melody grammar. Selection is limited to 64 candidates; if none clear every check, the least repetitive valid candidate wins, so the skip cannot stall. This reduces recent resemblance rather than guaranteeing perceptual uniqueness forever or against music outside this browser's history.
+
+In a seeded comparison of 2,000 generated tracks, recent opening reuse fell from 49 occurrences to zero; repeated motif pairs fell from one to zero. Tests also cover transposition, swapped sections, similar contours, history across reloads, unavailable storage and a stalled random source.
+
+Rapid-skip coverage also exposed a clock stall when multiple settings updates repeatedly replaced the same tempo ramp. Tempo changes now share one scheduling path: unchanged targets do not restart ramps, and a skip sets the new tempo at the cut before restarting playback.
+
+
+## 32. Varied openings and recognizable returns — done
+
+The opening audit found low-end audio in all 12 sampled starts: even a bare arrangement called the drone unconditionally. None of those tracks repeated a complete A phrase exactly; only their underlying motif was retained.
+
+- Rotate through five entrances: melody alone, chords first, melody with offbeat backing, light percussion without kick, and the full band. Each appears once per shuffled bag, with no adjacent repeat at the seam.
+- Schedule bass, drone, kick, chords, lead and counter entrances explicitly. Bass can arrive after two or four bars. The intro is used only on the first turn.
+- Mix AABA tunes, ABAB riffs, traditional AABB and freer evolving AABB tracks. Three styles retain the complete phrases across turns; the fourth keeps developing them.
+- Riffs state the same cell three times, then answer with a cadence. Structured tracks retain their progression and lead colour, so changes in backing do not erase the tune's identity. Explicit key/mode changes still work.
+- Delayed lead entrances introduce the first four-bar question, then the following section carries the music onward.
+
+Browser checks observe instrument scheduling through real starts and skips; phrase checks cover recurrence across turns and riff timing. These verify the arrangement rules, while the musical feel still needs listening feedback.
+
+## 33. Pixel-art piano-roll visualiser
+
+Visualise each generated track inside the player as a colourful, scrolling piano roll with an 8-bit or 16-bit game aesthetic. The listener can switch between horizontal and vertical layouts during playback.
+
+**What the engine already knows.** Pitched parts are composed as scale degrees, converted to MIDI note numbers, then scheduled through Tone.js as note names with duration, time and velocity. The app does not currently create a MIDI file or maintain a complete MIDI sequence for the track. Drum hits are scheduled events too; noise-based percussion, vinyl hiss, effects and reverb are not pitched MIDI notes. We can build this directly from the note events without audio-to-MIDI transcription or ML.
+
+### Player experience
+
+- **Horizontal:** time runs left to right, pitch runs bottom to top. Follow playback with a visible playhead and a scrolling note field.
+- **Vertical:** rotate the musical layout so time runs vertically and pitch runs left to right, like a falling-note game. A horizontal/vertical toggle preserves the current musical position and remembers the listener's preference.
+- **Instrument colours:** distinct, stable colours for lead, keys, bass, counter line and drone. Keep colours tied to musical roles when automatic voice changes occur; the legend names the current instrument. Give percussion labelled lanes of its own so a snare is not mistaken for a pitched note.
+- **Musical detail:** block length represents note duration, position represents pitch, and a restrained brightness change reflects velocity. Highlight sounding notes at the playhead. Show chords as stacked blocks, ornaments as small blocks, rests as space, and section/bar markers to reveal hooks and returns.
+- **Pixel-art treatment:** crisp rectangular notes, a limited game-like palette, pixel-grid details and small instrument sprites or icons. Begin with a readable 16-bit-inspired look; an 8-bit palette can be a later appearance option. This changes the visuals only, with no required change to the audio.
+- **Readable in the player:** responsive layout, a compact colour legend, optional instrument visibility, and a reduced-motion/static view. Labels and shapes support the colours so they are not the sole way to identify parts.
+
+### Implementation path
+
+1. **Expose the events that are actually scheduled.** Introduce a shared note-event boundary for audio and visuals, carrying track identity, instrument role/voice, final pitch or percussion lane, audio start time, duration and velocity. Capture after chord fitting, ornaments and humanisation so the display follows the performed notes. Stop and skip must invalidate cancelled future events.
+2. **Render the live rolling view.** Use a bounded event buffer and a canvas renderer driven by the audio clock. Use the complete score from **34** for future-note previews and track layout. Use actual scheduled audio times for the playhead and performed notes; live revisions replace only the upcoming part of the score. Keep rendering separate from sound scheduling and pause drawing when hidden.
+3. **Add the orientation toggle and pixel styling.** Both layouts use the same events and playhead. Resizing or changing direction must preserve playback, colour assignments and position.
+4. **Connect the future composition plan.** Whole tracks now have a stored score through **34**; use it for a complete-track overview and longer previews. The same event representation can support MIDI export and notation; recorded audio remains the source for an exact WAV including effects and tails.
+
+**Acceptance checks:** visible notes match the scheduled pitches and entrances; muted/absent parts produce no invented notes; percussion occupies its own lanes; track changes clear outgoing queued notes; stop freezes or clears consistently; direction changes do not restart audio; both layouts remain usable on mobile. Verify clock alignment through tempo changes and ensure rendering does not cause audible glitches.
+
+
+## 34. Complete composition plans, reproducible scores and replay — done
+
+Priority 1 separates writing a track from playing it. Before its first bar sounds, the composer writes all 64–128 bars: section order, phrases, harmony, arrangement, planned voices, energy changes, percussion, ornaments and note timings. The same folk grammar, varied openings and recent-material screening remain in use.
+
+- **Pure composer:** `composeTrack(recipe)` requires no Web Audio context, wall clock, local storage or global random state. A versioned recipe records the seed and all inputs. Repeating it produces the same score.
+- **Stored events:** each bar has ordered note events with instrument role, MIDI pitch where applicable, onset and duration in beats, and velocity. Percussion roles remain identifiable separately from pitched instruments. Continuous hiss and effect tails are audio processes rather than score notes.
+- **Playback adapter:** the engine schedules those stored events onto its existing instruments. It does not redraw the melody, percussion or ornamentation while playing. Timing follows the live transport tempo; kick ducking uses the kick's actual scheduled onset.
+- **Live edits:** key, mode and note-related controls rewrite the upcoming bars at the next bar boundary. Played bars remain intact. The recipe plus saved revision history reconstructs the revised score.
+- **Player controls:** “replay tune” restarts the current composition, including after stopping; “save score” downloads its JSON. The player shows bar count, section order, turn count and whether the score has been edited.
+
+Replay retains current sound and tempo controls, including manually pinned instruments. This is reproducible composition, not a promise of byte-identical audio: synthesis noise, continuous vinyl, effect tails and live mix changes are outside the note score. JSON score import, WAV/MIDI/stem export and section editing remain future work under priority 5. The visualiser remains feature **33**.
+
+Validation covers deterministic generation, all four modes and supported track lengths, event ordering and pitch bounds, reconstruction after edits, the audio adapter's exact note scheduling, browser replay/save/stop behaviour, and the existing playback regressions.

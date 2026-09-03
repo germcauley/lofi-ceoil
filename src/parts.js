@@ -4,20 +4,28 @@
 // schedules notes. Nothing holds state of its own, so patterns stay easy to
 // reason about and easy to replace.
 
-import * as Tone from 'tone';
 import { buildChord, chordPitchClasses, voiceLead, fitToChordTone, scaleDegreeToMidi, midiToNoteName } from './theory.js';
 import { gappedPool } from './melody.js';
 
-const chance = p => Math.random() < p;
-const pick = arr => arr[Math.floor (Math.random() * arr.length)];
+const random = state => (state.random ?? Math.random)();
+const chance = (state, p) => random (state) < p;
+
+
+/** Musical duration at the supplied tempo. Composition uses this with a
+    recording adapter; live playback has no influence on these calculations. */
+export function durationSeconds (state, value) {
+  if (typeof value === 'number') return value;
+  const beats = value === '1m' ? 4 : 4 / Number (value.slice (0, -1));
+  return beats * 60 / state.tempo;
+}
 
 /** Small timing and velocity variation. Perfectly quantised lofi sounds like a
     MIDI demo; this is most of what makes it feel played. */
-const humanise = (amount = 0.012) => (Math.random() - 0.5) * 2 * amount;
+const humanise = (state, amount = 0.012) => (random (state) - 0.5) * 2 * amount;
 
 /** Applies jitter without ever landing before the bar's own start time, which
     would try to schedule into the past on the very first bar. */
-const jitter = (time, base, amount) => Math.max (time, base + humanise (amount));
+const jitter = (state, time, base, amount) => Math.max (time, base + humanise (state, amount));
 
 // How the keys place a chord in the bar. One figure every bar — a hit on the
 // downbeat and a stab halfway — is a sequencer, not a player. These are the
@@ -51,7 +59,7 @@ export function playChord (state, time, chordSpec, compName = 'sustain') {
   const [degree, quality] = chordSpec;
 
   const pattern = COMP_PATTERNS[compName] ?? COMP_PATTERNS.sustain;
-  const eighth = Tone.Time ('8n').toSeconds();
+  const eighth = durationSeconds (state, '8n');
 
   for (const hit of pattern) {
     // Move each voice to the nearest tone of the new chord rather than
@@ -67,8 +75,8 @@ export function playChord (state, time, chordSpec, compName = 'sustain') {
 
     // Roll the voicing slightly rather than hitting all notes dead together.
     notes.forEach ((midi, i) => {
-      const start = jitter (time, at + i * 0.012, 0.01);
-      const velocity = (0.3 + Math.random() * 0.08) * hit.velocity;
+      const start = jitter (state, time, at + i * 0.012, 0.01);
+      const velocity = (0.3 + random (state) * 0.08) * hit.velocity;
 
       keys.triggerAttackRelease (midiToNoteName (midi), duration, start, velocity);
     });
@@ -99,7 +107,7 @@ export function playBass (state, time, chordSpec, patternName = 'root') {
   const [degree] = chordSpec;
 
   const pattern = BASS_PATTERNS[patternName] ?? BASS_PATTERNS.root;
-  const eighth = Tone.Time ('8n').toSeconds();
+  const eighth = durationSeconds (state, '8n');
 
   // The bass takes the chord's actual root, independent of how the keys are
   // voiced — voice leading moves the upper parts, not the foundation.
@@ -111,28 +119,30 @@ export function playBass (state, time, chordSpec, patternName = 'root') {
     bass.triggerAttackRelease (
       midiToNoteName (midi),
       Math.max (0.1, note.len * eighth - 0.04),
-      jitter (time, time + note.at * eighth, 0.012),
+      jitter (state, time, time + note.at * eighth, 0.012),
       note.at === 0 ? 0.75 : 0.55);
   }
 }
 
 /** Kick, snare and hats on a sixteenth grid. Swing comes from the Transport,
     so it is not applied here. */
-export function playDrums (state, time) {
+export function playDrums (state, time, { kick = true } = {}) {
   const { drums, chain, density } = state;
-  const sixteenth = Tone.Time ('16n').toSeconds();
-  const at = step => jitter (time, time + step * sixteenth, 0.008);
+  const sixteenth = durationSeconds (state, '16n');
+  const at = step => jitter (state, time, time + step * sixteenth, 0.008);
 
   // Kick: beat one always, beat three usually, plus an occasional pickup.
-  drums.kick.triggerAttackRelease ('C1', '8n', at (0), 0.9);
-  chain.duck (at (0), state.pump, state.tempo);
+  if (kick) {
+    drums.kick.triggerAttackRelease ('C1', '8n', at (0), 0.9);
+    chain.duck (at (0), state.pump, state.tempo);
+  }
 
-  if (chance (0.75)) {
+  if (kick && chance (state, 0.75)) {
     drums.kick.triggerAttackRelease ('C1', '8n', at (10), 0.8);
     chain.duck (at (10), state.pump, state.tempo);
   }
 
-  if (chance (0.25)) drums.kick.triggerAttackRelease ('C1', '8n', at (14), 0.6);
+  if (kick && chance (state, 0.25)) drums.kick.triggerAttackRelease ('C1', '8n', at (14), 0.6);
 
   // Snare on two and four, the backbone of the whole feel.
   drums.snare.triggerAttackRelease ('8n', at (4), 0.7);
@@ -141,17 +151,17 @@ export function playDrums (state, time) {
   // Ghost notes fill the gaps as density rises. Their own voice, so they never
   // collide with the backbeat.
   for (const step of [7, 11, 15]) {
-    if (chance (density * 0.35)) drums.ghost.triggerAttackRelease ('32n', at (step), 0.5);
+    if (chance (state, density * 0.35)) drums.ghost.triggerAttackRelease ('32n', at (step), 0.5);
   }
 
   // Hats on eighths, with the odd sixteenth flourish.
   for (let step = 0; step < 16; step += 2) {
-    if (chance (0.9)) {
+    if (chance (state, 0.9)) {
       const velocity = step % 4 === 0 ? 0.5 : 0.3;
-      drums.hat.triggerAttackRelease ('32n', at (step), velocity + Math.random() * 0.1);
+      drums.hat.triggerAttackRelease ('32n', at (step), velocity + random (state) * 0.1);
     }
 
-    if (chance (density * 0.3)) {
+    if (chance (state, density * 0.3)) {
       drums.hat.triggerAttackRelease ('32n', at (step + 1), 0.16);
     }
   }
@@ -167,7 +177,7 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
   if (! phrase) return;
 
   const pool = gappedPool (scale);
-  const eighth = Tone.Time ('8n').toSeconds();
+  const eighth = durationSeconds (state, '8n');
   const gap = Math.min (0.08, eighth * 0.35);
 
   // Sits the line above the chords without straying into whistle register.
@@ -193,7 +203,7 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
     // A player takes a moment before starting a new sentence.
     const breath = event.breath ? 0.022 : 0;
 
-    const start = jitter (time, time + offsetEighths * eighth + breath, 0.014);
+    const start = jitter (state, time, time + offsetEighths * eighth + breath, 0.014);
     const duration = Math.max (0.08, event.length * eighth - articulationGap);
 
     const poolIndex = Math.min (pool.length - 1, event.degree);
@@ -212,12 +222,12 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
     // peak and eases into its cadence. The random component is small, and only
     // there so repeated notes are not identical.
     const shape = event.dynamic ?? 0.8;
-    const velocity = Math.max (0.12, Math.min (0.85, shape * 0.42 + Math.random() * 0.05));
+    const velocity = Math.max (0.12, Math.min (0.85, shape * 0.42 + random (state) * 0.05));
 
     // A cut: a very short note a scale step above, flicked in just before the
     // beat. This one ornament does more for the folk character than any
     // amount of note choice. It sits under the note it decorates.
-    if (event.ornament && chance (ornament)) {
+    if (event.ornament && chance (state, ornament)) {
       const above = midi + (scaleDegreeToMidi (base, scale, degree + 1) - scaleDegreeToMidi (base, scale, degree));
       lead.triggerAttackRelease (
         midiToNoteName (above), 0.03, Math.max (time, start - 0.038),
@@ -253,7 +263,7 @@ function playFiguration (state, time, barInPhrase, chordSpec, plan) {
   const chord = buildChord (rootMidi, scale, degree, quality, 55 + (plan.octave ?? 0) * 12);
   const busy = plan.busy[barInPhrase] ?? new Array (8).fill (false);
 
-  const eighth = Tone.Time ('8n').toSeconds();
+  const eighth = durationSeconds (state, '8n');
   const feel = plan.feel ?? 'even';
 
   // Where in the bar this feel places notes, and how heavy each one is. A
@@ -282,7 +292,7 @@ function playFiguration (state, time, barInPhrase, chordSpec, plan) {
     const probability = (free ? 0.55 + counter * 0.45 : counter * 0.18)
       * (feel === 'double' ? 0.75 : 1);
 
-    if (! chance (probability)) continue;
+    if (! chance (state, probability)) continue;
 
     const index = plan.pattern[step % plan.pattern.length];
     const midi = chord[index % chord.length];
@@ -292,12 +302,12 @@ function playFiguration (state, time, barInPhrase, chordSpec, plan) {
     // The figure follows the melody's own shape rather than sitting flat: it
     // leans into the middle of the bar and eases at the edges.
     const arch = 0.82 + 0.18 * Math.sin (Math.PI * (slot / grid));
-    const velocity = (free ? 0.46 : 0.28) * weight * arch + Math.random() * 0.04;
+    const velocity = (free ? 0.46 : 0.28) * weight * arch + random (state) * 0.04;
 
     pluck.triggerAttackRelease (
       midiToNoteName (midi),
       stepLength * (feel === 'sparse' ? 1.7 : 0.9),
-      jitter (time, time + slot * stepLength, 0.012),
+      jitter (state, time, time + slot * stepLength, 0.012),
       Math.max (0.08, velocity));
   }
 }
@@ -312,7 +322,7 @@ function renderEcho (state, time, events, chordSpec, offsetSeconds, velocity) {
   const base = rootMidi;                       // an octave under the melody
   const chordTones = new Set (chordPitchClasses (rootMidi, scale, degree, quality));
 
-  const eighth = Tone.Time ('8n').toSeconds();
+  const eighth = durationSeconds (state, '8n');
   const gap = Math.min (0.08, eighth * 0.35);
 
   for (const event of events) {
@@ -324,7 +334,7 @@ function renderEcho (state, time, events, chordSpec, offsetSeconds, velocity) {
     }
 
     const slot = event.at % 8;
-    const start = jitter (time, time + slot * eighth + offsetSeconds, 0.012);
+    const start = jitter (state, time, time + slot * eighth + offsetSeconds, 0.012);
 
     // Carries the melody's phrasing with it — an echo that ignored the shape
     // of what it is echoing would give the game away immediately.
@@ -368,7 +378,7 @@ export function playDrone (state, time) {
   const { drone, rootMidi, scale, droneLevel } = state;
   if (droneLevel <= 0.001) return;
 
-  const bar = Tone.Time ('1m').toSeconds();
+  const bar = durationSeconds (state, '1m');
   const fifth = scaleDegreeToMidi (rootMidi - 12, scale, 4);
 
   drone.triggerAttackRelease (midiToNoteName (fifth), bar * 0.98, time, droneLevel * 0.5);
@@ -381,11 +391,11 @@ export function playDrone (state, time) {
     makes Tone reject the event. */
 export function playVinyl (state, time) {
   const { vinyl, dust } = state;
-  const bar = Tone.Time ('1m').toSeconds();
-  const count = Math.floor (Math.random() * (2 + dust * 8));
+  const bar = durationSeconds (state, '1m');
+  const count = Math.floor (random (state) * (2 + dust * 8));
   const minGap = 0.06;
 
-  const offsets = Array.from ({ length: count }, () => Math.random() * bar).sort ((a, b) => a - b);
+  const offsets = Array.from ({ length: count }, () => random (state) * bar).sort ((a, b) => a - b);
 
   let previous = -Infinity;
 
@@ -393,6 +403,6 @@ export function playVinyl (state, time) {
     if (offset - previous < minGap) continue;
 
     previous = offset;
-    vinyl.pops.triggerAttackRelease ('64n', time + offset, 0.2 + Math.random() * 0.5);
+    vinyl.pops.triggerAttackRelease ('64n', time + offset, 0.2 + random (state) * 0.5);
   }
 }
