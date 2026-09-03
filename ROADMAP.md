@@ -596,3 +596,21 @@ Priority 1 separates writing a track from playing it. Before its first bar sound
 Replay retains current sound and tempo controls, including manually pinned instruments. This is reproducible composition, not a promise of byte-identical audio: synthesis noise, continuous vinyl, effect tails and live mix changes are outside the note score. JSON score import, WAV/MIDI/stem export and section editing remain future work under priority 5. The visualiser remains feature **33**.
 
 Validation covers deterministic generation, all four modes and supported track lengths, event ordering and pitch bounds, reconstruction after edits, the audio adapter's exact note scheduling, browser replay/save/stop behaviour, and the existing playback regressions.
+
+---
+
+## 32. Mix corrections — done
+
+Three complaints after a long listen, all of them regressions from recent work.
+
+**The drums disappeared for minutes.** The energy arc set `drumsFrom` to "never" when `random() > 0.25 + energy * 0.8`, which at the trough is **65% of parts**. Four parts a turn and tracks lasting several turns meant the beat could be gone for minutes on end. A sit-out is an effect; the arc had made it the norm.
+
+Two changes. The threshold moved to `0.55 + energy * 0.45`, so the peak of an arc now always keeps the drums and the trough drops them about a third of the time rather than two thirds. And a continuity rule was added after the plans are drawn: **never two drumless parts running, and never a whole turn without drums**. Measured over 3,000 turns at each level, the longest run is now 1 part and no turn is ever without a beat.
+
+**The bass was too loud.** Each of the four voices had been set at a level that would suit a lead. `round` −11 to −15, `upright` −9 to −13, `electric` −13 to −16, and `sub` from −7 to −17 — a sine in the bottom octave carries far more energy than its number suggests, so it now sits lowest of the four rather than highest.
+
+**The drone was too present.** A sustained sawtooth never stops, so it never stops being noticed. Its voice went from −26 to −34, the default level from 0.25 to 0.14, its per-track variation from ±0.225 to ±0.10, and the velocity it is played at from half to a third.
+
+## 33. The piano roll — hidden for now
+
+Left in place and fully wired; the section simply carries `hidden`. Removing that attribute brings it back without touching anything else.

@@ -260,7 +260,7 @@ function bassRound () {
       attack: 0.02, decay: 0.25, sustain: 0.35, release: 0.9,
       baseFrequency: 75, octaves: 2
     },
-    volume: -11
+    volume: -15
   });
 
   return instrument (voice);
@@ -278,7 +278,7 @@ function bassUpright () {
       attack: 0.004, decay: 0.14, sustain: 0.08, release: 0.3,
       baseFrequency: 90, octaves: 3.2
     },
-    volume: -9
+    volume: -13
   });
 
   return instrument (voice);
@@ -295,7 +295,9 @@ function bassSub () {
       attack: 0.05, decay: 0.3, sustain: 0.6, release: 1,
       baseFrequency: 60, octaves: 1.2
     },
-    volume: -7
+    // A sine in the bottom octave carries far more energy than its number
+    // suggests, so the sub sits lowest of the four rather than highest.
+    volume: -17
   });
 
   return instrument (voice);
@@ -312,7 +314,7 @@ function bassElectric () {
       attack: 0.008, decay: 0.22, sustain: 0.2, release: 0.6,
       baseFrequency: 110, octaves: 2.6
     },
-    volume: -13
+    volume: -16
   });
 
   return instrument (voice);
@@ -396,7 +398,9 @@ export function createDrone () {
       attack: 1.2, decay: 0.6, sustain: 0.5, release: 1.5,
       baseFrequency: 160, octaves: 1.8
     },
-    volume: -26
+    // A sustained sawtooth is present out of all proportion to its level:
+    // it never stops, so it never stops being noticed.
+    volume: -34
   });
 
   return instrument (voice);

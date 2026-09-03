@@ -381,7 +381,7 @@ export function playDrone (state, time) {
   const bar = durationSeconds (state, '1m');
   const fifth = scaleDegreeToMidi (rootMidi - 12, scale, 4);
 
-  drone.triggerAttackRelease (midiToNoteName (fifth), bar * 0.98, time, droneLevel * 0.5);
+  drone.triggerAttackRelease (midiToNoteName (fifth), bar * 0.98, time, droneLevel * 0.32);
 }
 
 /** Random pops in the vinyl bed, scattered across the bar.

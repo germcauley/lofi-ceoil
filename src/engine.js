@@ -103,7 +103,7 @@ export function createEngine () {
     // swing, dust and ornament sounds like one long tune.
     user: {
       density: 0.5, counter: 0.55, brightness: 0.29, swing: 0.28,
-      ornament: 0.6, drone: 0.25, dust: 0.3, wobble: 0.27,
+      ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27,
       drive: 0.3, space: 0.28, pump: 0.35
     },
 
@@ -343,7 +343,7 @@ export function createEngine () {
       variation: {
         swing:      (Math.random() - 0.5) * 0.30,
         ornament:   (Math.random() - 0.5) * 0.55,
-        drone:      (Math.random() - 0.5) * 0.45,
+        drone:      (Math.random() - 0.5) * 0.20,
         dust:       (Math.random() - 0.5) * 0.45,
         wobble:     (Math.random() - 0.5) * 0.45,
         drive:      (Math.random() - 0.5) * 0.40,

@@ -37,7 +37,11 @@ function arrangement (energy, random) {
     bass: part === 0 && bare ? 'none' : pick (energy > 0.5
       ? ['walk', 'octave', 'anticipate', 'rootFifth'] : ['held', 'root', 'sparse']),
     chordsFrom: part === 0 && bare ? 2 : 0,
-    drumsFrom: (part === 0 && bare) || random() > 0.25 + energy * 0.8 ? 8 : part === 0 ? 4 : 0,
+    // 8 means the drums never arrive in this part. Kept rare: a sit-out is an
+    // effect, and the arc used to make it the norm at low energy — 65% of
+    // parts, four parts a turn, tracks lasting several turns, so the drums
+    // could be gone for minutes at a time.
+    drumsFrom: (part === 0 && bare) || random() > 0.55 + energy * 0.45 ? 8 : part === 0 ? 4 : 0,
     drumsUntil: part === 3 ? 6 : 8,
     counter: ! (part === 0 && bare), emptyBar: random() < 0.35 ? 7 : -1,
     comp: pick (energy > 0.5 ? ['bouzouki', 'boomChuck', 'anticipate', 'offbeat']
@@ -154,6 +158,12 @@ export function composeTrack (input) {
       return structured ? counterBySection[name] ??= melody.planCounter (phrase) : melody.planCounter (phrase);
     });
     plans.forEach ((plan, i) => {
+      // Never two drumless parts running, and never a turn without drums at
+      // all. Whatever the dice said, the beat has to come back.
+      if (i && plans[i - 1].drumsFrom >= 8 && plans[i].drumsFrom >= 8) {
+        plans[i].drumsFrom = 0;
+      }
+
       if (i && plans[i - 1].emptyBar >= 0) {
         for (const [role, probability] of [['lead', 1], ['keys', 0.4], ['bass', 0.25]]) {
           if (recipe.auto[role] && ! (structured && role === 'lead') && random() < probability) {
