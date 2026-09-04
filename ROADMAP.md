@@ -98,6 +98,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **59. A melodic grammar measured from the repertoire**
 - [x] **60. Cadence targets, and the notes the pool leaves out**
 - [x] **62. Ornamentation as a real layer — cuts, taps, rolls and crans**
+- [x] **63. The answer restates the question, then goes somewhere else**
 - [ ] **61. Dungeon synth — a side project off this engine**
 ---
 
@@ -970,10 +971,7 @@ The melody is closest to being genuinely good and furthest from finished.
 - **60** is the next honest gap: real tunes cadence on notes this generator
   cannot reach.
 - **Ornamentation as a first-class layer.** Done — see **62**.
-- **Phrase-level structure.** The AABB form exists, but A and B do not yet
-  answer each other. A real tune poses a question in bars one to four and
-  answers it in five to eight. The corpus can be measured for this the same way
-  its intervals were.
+- **Phrase-level structure.** Done — see **63**.
 - **Heterophony.** `parts.js` already notes that two players on one tune, very
   slightly apart, is the traditional texture — and it is much more evocative
   than two different melodies. Worth making real.
@@ -1151,3 +1149,31 @@ roughly cut 47%, roll 26%, tap 23%, cran under 1% — which is right, since a
 cran only applies at the bottom of the range. Verified against all four lead
 voices, including the plucked one, since a roll retriggers a monophonic voice
 five times and that is exactly what used to break it.
+
+## 63. The answer restates the question, then goes somewhere else — done
+
+A tune's second half answers its first, and the answer begins by saying the
+same thing again before it goes elsewhere. Measuring 25,812 eight-bar jig
+parts gives the shape of that precisely, and it is a staircase rather than a
+switch:
+
+| | jigs | reels |
+| --- | --- | --- |
+| bar 5 repeats bar 1 | 46.8% | 43.6% |
+| bars 5–6 repeat bars 1–2 | 31.1% | 28.8% |
+| bar 7 repeats bar 3 | 22.2% | 24.7% |
+| bar 8 repeats bar 4 | 7.8% | 10.8% |
+
+The last row is the point: the ending is where the two halves part company,
+because that is a half cadence answered by a full one.
+
+Both sentences used to open with a plain restatement of the motif, so the
+answer began identically **88%** of the time — nearly twice as often as the
+repertoire, and audible as a tune going round in circles. The answering
+sentence now decides for itself, with bars two and three conditional on the
+first so the pair lands at the measured 31% rather than at 47% squared.
+
+Generated against corpus after the change: 52% against 47%, 27% against 31%,
+25% against 22%. The alternative operation deliberately excludes `repeat`,
+because drawing it from the usual pool restated the opening by accident on top
+of the times we chose to and pushed the rate back to 61%.

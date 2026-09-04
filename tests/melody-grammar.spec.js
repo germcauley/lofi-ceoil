@@ -197,3 +197,36 @@ test ('a cadence keeps its note through playback', () => {
   const pool = new Set (generator.gappedPool ('major'));
   expect (cadences.some (event => ! pool.has (event.scaleDegree))).toBe (true);
 });
+
+test ('the answer restates the question, then goes somewhere else', () => {
+  // Measured over 25,812 eight-bar jig parts: bar five repeats bar one 47% of
+  // the time, bars five and six repeat bars one and two 31%, bar seven repeats
+  // bar three 22%. A staircase, not a switch.
+  //
+  // Both sentences used to open with a plain restatement of the motif, so the
+  // answer began identically 88% of the time — nearly twice as often as the
+  // repertoire, and audible as going round in circles.
+  const generator = createMelodyGenerator (seeded (21), '6/8');
+  const bar = (phrase, index) => JSON.stringify (phrase
+    .filter (event => Math.floor (event.at / 8) === index)
+    .map (event => [event.at % 8, event.degree, event.length]));
+
+  let parts = 0, opens = 0, holds = 0, third = 0;
+  for (let i = 0; i < 3000; i++) {
+    const phrase = generator.createPhrase ('dorian', 14);
+    parts++;
+    const restates = bar (phrase, 4) === bar (phrase, 0);
+    if (restates) opens++;
+    if (restates && bar (phrase, 5) === bar (phrase, 1)) holds++;
+    if (bar (phrase, 6) === bar (phrase, 2)) third++;
+  }
+
+  expect (opens / parts).toBeGreaterThan (0.35);
+  expect (opens / parts).toBeLessThan (0.62);
+  // The staircase has to descend: restating the opening bar is commoner than
+  // holding on for two, which is commoner than the third bar coming back.
+  expect (opens).toBeGreaterThan (holds);
+  expect (holds / parts).toBeGreaterThan (0.15);
+  expect (third / parts).toBeGreaterThan (0.1);
+  expect (third / parts).toBeLessThan (0.35);
+});

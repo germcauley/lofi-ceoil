@@ -100,7 +100,7 @@ test ('the audio adapter schedules exactly the stored notes at the supplied temp
     played.push ({ role, midi: pitch === null ? null : noteNameToMidi (pitch), duration, time, velocity });
   } });
   const state = { drums: {}, vinyl: { pops: voice ('vinyl') }, chain: { duck: time => ducks.push (time) }, pump: 0.35, tempo: 80 };
-  for (const role of ['keys', 'bass', 'lead', 'pluck', 'drone']) state[role] = voice (role);
+  for (const role of ['keys', 'bass', 'lead', 'pluck', 'drone', 'support']) state[role] = voice (role);
   for (const role of ['kick', 'snare', 'ghost', 'hat']) state.drums[role] = voice (role);
   const bar = score.bars.find (bar => bar.notes.some (note => note.role === 'kick'));
   playScoreBar (state, bar, 20, 0.75);
