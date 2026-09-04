@@ -287,9 +287,43 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
   // ------------------------------------------------------------------- phrases
 
   /** Renders one derived cell into note events at a bar position. */
+  /** Which ornament a note takes, if any.
+
+      Ornamentation in this music is articulation rather than decoration: a
+      player has no volume control and no sustain, so these are how a note is
+      separated from its neighbour and how a long note is kept alive. Choosing
+      between them is not a flourish — it is the difference between a tune that
+      sounds Irish and one that is merely modal.
+
+      The rules are the ones a player follows without thinking:
+
+      - A **roll** needs room. It fills a long note, and in a jig it is the
+        whole dotted crotchet — the signature sound of the form.
+      - A **cut** separates two notes of the same pitch, which is the one place
+        an ornament is not optional: without it they run together.
+      - A **cran** is what you play when there is no note below to strike, so it
+        belongs at the bottom of the range.
+      - A **tap** answers a line that has just come down from above.
+
+      A note not long enough to hold anything stays plain. */
+  function chooseOrnament (length, degree, previous, bias) {
+    // A repeated note is not a matter of taste. A player has no way to sound
+    // the same note twice without articulating between them, so this one is
+    // decided before the bias is consulted at all. The listener's own control
+    // still gates every ornament at playback.
+    if (previous !== null && previous === degree) return 'cut';
+    if (! chance (bias)) return null;
+    if (length < 2) return null;
+    if (length >= 3) return 'roll';
+    if (degree <= 0) return 'cran';
+    if (previous !== null && previous > degree) return 'tap';
+    return 'cut';
+  }
+
   function renderCell (cell, bar, startDegree, poolSize, ornamentBias) {
     const events = [];
     let position = cell.start ?? 0;
+    let previous = null;
 
     for (let i = 0; i < cell.rhythm.length; i++) {
       const length = cell.rhythm[i];
@@ -299,10 +333,10 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
         at: bar * 8 + position,
         length,
         degree,
-        // Cuts land on longer notes, the way a player would ornament them.
-        ornament: length >= 2 && chance (ornamentBias)
+        ornament: chooseOrnament (length, degree, previous, ornamentBias)
       });
 
+      previous = degree;
       position += length;
     }
 
@@ -376,7 +410,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
         degree: clampDegree (nearestPoolIndex (formula[i], poolSize, pool), poolSize),
         scaleDegree: formula[i],
         cadence: true,
-        ornament: i < formula.length - 1 && chance (0.2)
+        ornament: i < formula.length - 1 && chance (0.2) ? 'cut' : null
       });
 
       position += rhythm[i];
@@ -413,7 +447,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       last.length += roomInNext;
       last.tied = true;
       // An ornament on a note that is about to be held reads as a stumble.
-      last.ornament = false;
+      last.ornament = null;
     }
 
     return events;
@@ -459,7 +493,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
         at: 3 * 8 + startAt + i,
         length: 1,
         degree,
-        ornament: false,
+        ornament: null,
         pickup: true
       });
     }

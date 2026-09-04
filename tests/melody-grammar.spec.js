@@ -181,8 +181,12 @@ test ('a cadence keeps its note through playback', () => {
   // The gapped pool cannot express every cadence target, so cadence events
   // carry the degree they mean; a plain index would silently move the note.
   const generator = createMelodyGenerator (seeded (11), '6/8');
-  const phrase = generator.createPhrase ('major', generator.gappedPool ('major').length);
-  const cadences = phrase.filter (event => event.cadence);
+  // Many phrases, not one: a single phrase makes this depend on where the
+  // seed happens to land, and any change upstream in the random stream then
+  // breaks a test that is not about the thing that changed.
+  const cadences = Array.from ({ length: 300 }, () =>
+    generator.createPhrase ('major', generator.gappedPool ('major').length))
+    .flat().filter (event => event.cadence);
   expect (cadences.length).toBeGreaterThan (0);
   for (const event of cadences) {
     expect (typeof event.scaleDegree).toBe ('number');

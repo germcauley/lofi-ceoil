@@ -97,6 +97,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **58. Two traditions: Irish and pop/rock** — *built, then rejected*
 - [x] **59. A melodic grammar measured from the repertoire**
 - [x] **60. Cadence targets, and the notes the pool leaves out**
+- [x] **62. Ornamentation as a real layer — cuts, taps, rolls and crans**
 - [ ] **61. Dungeon synth — a side project off this engine**
 ---
 
@@ -968,9 +969,7 @@ The melody is closest to being genuinely good and furthest from finished.
 - **59** gave it the vocabulary and the sentence structure. Done.
 - **60** is the next honest gap: real tunes cadence on notes this generator
   cannot reach.
-- **Ornamentation as a first-class layer.** Cuts, rolls and crans are currently
-  a probability on a note. In real playing they are how a player phrases, and
-  they are most of what makes a tune sound Irish rather than merely modal.
+- **Ornamentation as a first-class layer.** Done — see **62**.
 - **Phrase-level structure.** The AABB form exists, but A and B do not yet
   answer each other. A real tune poses a question in bars one to four and
   answers it in five to eight. The corpus can be measured for this the same way
@@ -1110,3 +1109,45 @@ of time.
 Kept separate on purpose. Folding it in would be exactly the dilution that
 **58** was rejected for; standing it up beside this one is a way to find out how
 much of this engine is genuinely reusable, which is worth knowing.
+
+## 62. Ornamentation as a real layer — done
+
+There was one ornament: a cut, a grace note a step above, on a note long
+enough to take it. Everything else in the vocabulary was missing, including
+the roll, which is the signature sound of a jig.
+
+Ornamentation here is articulation, not decoration. A player has no volume
+control and no sustain, so these are how one note is separated from the next
+and how a long note is kept alive. That framing decides the rules, and they
+are the ones a player follows without thinking:
+
+- A **roll** needs room. It fills a long note — in a jig, the whole dotted
+  crotchet — and sounds the note three times with a cut and a tap between:
+  the note, above, the note, below, the note.
+- A **cut** separates two notes of the same pitch. This is the one place an
+  ornament is not a matter of taste, because there is no way to sound the same
+  note twice without articulating between them, so it is decided before the
+  ornament bias is consulted at all. The listener's own control still gates
+  every ornament at playback.
+- A **cran** is what a player uses where there is no note below to strike, so
+  it belongs at the bottom of the range: several cuts in quick succession
+  rather than one.
+- A **tap** answers a line that has just come down from above.
+
+Kinds are chosen when the tune is written and recorded in the score, so a
+replay ornaments identically; the grace notes themselves are produced at
+playback, because they are performance rather than melody. Scores written
+before ornaments had kinds recorded a plain `true`, which is read as a cut.
+
+One real fault turned up while testing. A grace note is flicked in just before
+the beat, but on the first note of a bar there is no room before it, and the
+timing was clamped — so the grace landed exactly on top of its own note, a
+chord rather than an ornament, on the strong beat where a cut is most likely.
+A player solves it the other way round: the beat lands on the cut and the note
+follows. It now does that.
+
+Measured across 2,000 phrases: about 19% of notes carry an ornament, split
+roughly cut 47%, roll 26%, tap 23%, cran under 1% — which is right, since a
+cran only applies at the bottom of the range. Verified against all four lead
+voices, including the plucked one, since a roll retriggers a monophonic voice
+five times and that is exactly what used to break it.

@@ -256,17 +256,57 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
     const shape = event.dynamic ?? 0.8;
     const velocity = Math.max (0.12, Math.min (0.85, shape * 0.42 + random (state) * 0.05));
 
-    // A cut: a very short note a scale step above, flicked in just before the
-    // beat. This one ornament does more for the folk character than any
-    // amount of note choice. It sits under the note it decorates.
-    if (event.ornament && chance (state, ornament)) {
-      const above = midi + (scaleDegreeToMidi (base, scale, degree + 1) - scaleDegreeToMidi (base, scale, degree));
-      lead.triggerAttackRelease (
-        midiToNoteName (above), 0.03, Math.max (time, start - 0.038),
-        Math.max (0.1, velocity * 0.7));
+    // Ornamentation. A player has no volume control and no sustain, so these
+    // are how a note is separated from its neighbour and how a long note is
+    // kept alive — articulation rather than decoration, and most of what makes
+    // a tune sound Irish rather than merely modal.
+    //
+    // Scores written before ornaments had kinds recorded a plain true, which
+    // meant a cut.
+    const kind = event.ornament === true ? 'cut' : event.ornament;
+    const above = scaleDegreeToMidi (base, scale, degree + 1) - scaleDegreeToMidi (base, scale, degree);
+    const below = scaleDegreeToMidi (base, scale, degree) - scaleDegreeToMidi (base, scale, degree - 1);
+    const note = midiToNoteName (midi);
+
+    // A grace note is flicked in just before the beat. On the first note of a
+    // bar there is no room before it, and clamping put the grace exactly on
+    // top of the note — a chord rather than an ornament, on the strong beat
+    // where a cut is most likely. A player solves this the other way round:
+    // the beat lands on the cut and the note follows it.
+    const lead_in = 0.038;
+    let attack = start;
+    if (kind && kind !== 'roll' && start - lead_in < time) attack = time + lead_in;
+
+    const grace = (interval, at, length = 0.03, level = 0.7) =>
+      lead.triggerAttackRelease (midiToNoteName (midi + interval), length,
+        Math.max (time, at), Math.max (0.1, velocity * level));
+
+    if (kind && chance (state, ornament)) {
+      if (kind === 'roll') {
+        // The note, a cut, the note, a tap, the note — one gesture filling a
+        // long note, and in a jig the whole dotted crotchet. The signature
+        // sound of the form, and the reason a held note does not go dead.
+        const third = duration / 3;
+        lead.triggerAttackRelease (note, third * 0.9, start, velocity);
+        grace (above, start + third - 0.022, 0.024, 0.6);
+        lead.triggerAttackRelease (note, third * 0.9, start + third, velocity * 0.92);
+        grace (-below, start + 2 * third - 0.022, 0.024, 0.55);
+        lead.triggerAttackRelease (note, third * 0.9, start + 2 * third, velocity * 0.96);
+        continue;
+      }
+
+      // A cran is what a player uses where there is no note below to strike:
+      // several cuts in quick succession instead of one.
+      if (kind === 'cran') {
+        grace (above, attack - 0.062, 0.022, 0.58);
+        grace (above, attack - 0.03, 0.022, 0.66);
+      } else {
+        // A cut sits a step above and a tap a step below.
+        grace (kind === 'tap' ? -below : above, attack - lead_in);
+      }
     }
 
-    lead.triggerAttackRelease (midiToNoteName (midi), duration, start, velocity);
+    lead.triggerAttackRelease (note, duration, attack, velocity);
   }
 }
 
