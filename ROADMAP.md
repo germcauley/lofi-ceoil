@@ -99,6 +99,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **60. Cadence targets, and the notes the pool leaves out**
 - [x] **62. Ornamentation as a real layer — cuts, taps, rolls and crans**
 - [x] **63. The answer restates the question, then goes somewhere else**
+- [x] **64. Heterophony — two players on one tune**
 - [ ] **61. Dungeon synth — a side project off this engine**
 ---
 
@@ -972,9 +973,7 @@ The melody is closest to being genuinely good and furthest from finished.
   cannot reach.
 - **Ornamentation as a first-class layer.** Done — see **62**.
 - **Phrase-level structure.** Done — see **63**.
-- **Heterophony.** `parts.js` already notes that two players on one tune, very
-  slightly apart, is the traditional texture — and it is much more evocative
-  than two different melodies. Worth making real.
+- **Heterophony.** Done — see **64**. That closes phase one.
 
 ### Phase two — make a tune something you can keep
 
@@ -1177,3 +1176,33 @@ Generated against corpus after the change: 52% against 47%, 27% against 31%,
 25% against 22%. The alternative operation deliberately excludes `repeat`,
 because drawing it from the usual pool restated the opening by accident on top
 of the times we chose to and pushed the rate back to 61%.
+
+## 64. Heterophony — two players on one tune — done
+
+The texture existed in name. What it did was hand the melody to the echo
+renderer with a fixed thirty-millisecond lag and everything an octave down —
+which is a delay pedal, not a second player. A constant offset is the one
+thing two musicians never produce.
+
+What makes heterophony read is that the players **agree at the structural
+points and differ in between**. They land together on the downbeat, the
+half-bar and at a cadence; in the space between, one holds where the other
+divides, one ornaments where the other plays plain, and neither is reliably
+ahead of or behind the other. The divergence is only legible because the
+convergence keeps reminding the listener it is one tune.
+
+So the second player now: stays in the melody's own register most of the time,
+dropping an octave only occasionally, rather than always sitting under it;
+leaves out some of the shorter off-beat notes instead of doubling everything;
+sometimes holds through a short note the first player separates; arrives at
+its own ornaments, so it can decorate a note the tune leaves plain; and drifts
+to either side of the beat rather than trailing behind it.
+
+Measured: 6.5 ms of timing spread on the beat against 37.7 ms between, and
+0.77 notes played for every melody note. Cadences are pinned as tightly as
+downbeats, which is what stops the two lines finishing a phrase apart.
+
+This closes phase one — the melody now has a measured interval grammar, a
+measured answer to what follows what, cadences that land where real tunes
+land, a full ornament vocabulary, phrases that answer each other at the
+measured rate, and a second player worth the name.

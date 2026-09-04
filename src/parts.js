@@ -434,14 +434,82 @@ function playImitation (state, time, barInPhrase, chordSpec, phrase) {
 
 /** Heterophony: the same tune, thinned to its longer notes and nudged fractionally
     late, the way a second player sits just behind the lead. */
+/** Two players on one tune.
+
+    This used to be the echo renderer with a fixed thirty-millisecond lag and
+    everything an octave down, which is a delay pedal rather than a second
+    player: a constant offset is the one thing two musicians never produce.
+
+    What actually makes heterophony read is that the players **agree at the
+    structural points and differ in between**. They land together on the
+    downbeat and at a cadence, and in the space between one holds where the
+    other divides, one ornaments where the other plays plain, and neither is
+    reliably ahead of or behind the other. The divergence is only legible
+    because the convergence keeps reminding you it is one tune. */
 function playHeterophony (state, time, barInPhrase, chordSpec, phrase) {
   if (! phrase) return;
 
-  const events = phrase
-    .filter (e => Math.floor (e.at / meterInfo (state.meter).eighths) === barInPhrase)
-    .filter (e => e.length >= 2);
+  const { pluck, rootMidi, scale } = state;
+  const eighths = meterInfo (state.meter).eighths;
+  const bar = phrase
+    .filter (event => Math.floor (event.at / eighths) === barInPhrase)
+    .sort ((a, b) => a.at - b.at);
+  if (! bar.length) return;
 
-  renderEcho (state, time, events, chordSpec, 0.03, 0.3 + state.counter * 0.14);
+  const pool = gappedPool (scale);
+  // The same register as the melody. An octave down every time was most of
+  // why this read as an effect on the tune rather than a second voice in it.
+  const base = rootMidi + (chance (state, 0.25) ? 0 : 12);
+  const chordTones = new Set (chordPitchClasses (rootMidi, scale, chordSpec[0], chordSpec[1]));
+
+  const eighth = durationSeconds (state, '8n');
+  const gap = Math.min (0.08, eighth * 0.35);
+  const level = 0.26 + state.counter * 0.16;
+
+  for (let i = 0; i < bar.length; i++) {
+    const event = bar[i];
+    const slot = event.at % eighths;
+    // Where the two players are expected to agree.
+    const together = slot === 0 || slot === eighths / 2 || event.cadence;
+
+    // The second player thins out the busy parts rather than doubling every
+    // note, which is what stops this sounding like a chorus effect.
+    if (! together && event.length < 2 && chance (state, 0.4)) continue;
+
+    // Or holds through a short note the first player separates.
+    let length = event.length;
+    while (! together && i + 1 < bar.length && bar[i + 1].length <= 1
+           && ! bar[i + 1].cadence && chance (state, 0.3)) {
+      length += bar[++i].length;
+    }
+
+    const poolIndex = Math.min (pool.length - 1, event.degree);
+    let midi = scaleDegreeToMidi (base, scale, event.scaleDegree ?? pool[poolIndex]);
+    if (length >= 2 && ! event.cadence) {
+      midi = fitToChordTone (midi, base, scale, poolIndex, pool, chordTones);
+    }
+
+    // Tight together on the structural notes, loose in between — and not
+    // reliably on the same side of the beat, because two players drift both
+    // ways rather than one trailing the other.
+    const spread = together ? 0.008 : 0.02 + random (state) * 0.035;
+    const start = Math.max (time,
+      jitter (state, time, time + slot * eighth
+        + (chance (state, 0.4) ? -spread : spread), 0.01));
+
+    // Its own ornamentation, arrived at independently: where the tune is
+    // plain this player sometimes is not, and the reverse.
+    const shaped = level * (event.dynamic ?? 0.8);
+    if (length >= 2 && ! event.ornament && chance (state, 0.22)) {
+      const above = scaleDegreeToMidi (base, scale, (event.scaleDegree ?? pool[poolIndex]) + 1);
+      pluck.triggerAttackRelease (midiToNoteName (above), 0.028,
+        Math.max (time, start - 0.036), Math.max (0.06, shaped * 0.7));
+    }
+
+    pluck.triggerAttackRelease (midiToNoteName (midi),
+      Math.max (0.08, length * eighth - (event.slur ? gap * 0.3 : gap)),
+      start, Math.max (0.08, shaped));
+  }
 }
 
 /** The supporting line.
