@@ -117,10 +117,24 @@ test ('live playback starts with a complete score, replays it and keeps edits af
   await page.click ('#playButton');
   await page.waitForFunction (() => window.lofi.state.track?.composition);
   const original = await page.evaluate (() => window.lofi.getComposition());
-  expect (original.recipe.titleLanguage).toBe ('ga');
-  expect (original.recipe.titleEnglish).toBeTruthy ();
-  await expect (page.locator ('#trackTitle')).toHaveAttribute ('lang', 'ga');
-  await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
+  // Titles come in both languages now, so this checks that whichever one a
+  // track drew is carried into the recipe and marked on the element — not
+  // that it happened to be Irish, which it was when every title was.
+  const language = original.recipe.titleLanguage;
+  expect (['ga', 'en']).toContain (language);
+  await expect (page.locator ('#trackTitle')).toHaveAttribute ('lang', language);
+
+  // An Irish title is shown with its translation underneath; an English one
+  // has nothing to translate, so the line is hidden rather than left empty.
+  if (language === 'ga') {
+    expect (original.recipe.titleEnglish).toBeTruthy();
+    if (language === 'ga') {
+    await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
+  }
+  } else {
+    expect (original.recipe.titleEnglish).toBeFalsy();
+    await expect (page.locator ('#trackSubtitle')).toBeHidden();
+  }
   expect (original.bars.length).toBe (original.recipe.turns * 32);
   await page.click ('#replayButton');
   expect (await page.evaluate (() => window.lofi.getComposition())).toEqual (original);
@@ -144,7 +158,12 @@ test ('live playback starts with a complete score, replays it and keeps edits af
   await page.waitForFunction (() => window.lofi.state.track?.composition);
   expect (await page.evaluate (() => window.lofi.getComposition())).toEqual (revised);
   expect (failures).toEqual ([]);
-  await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
+  // The replayed track keeps the title it had, translation and all.
+  if (language === 'ga') {
+    await expect (page.locator ('#trackSubtitle')).toHaveText (original.recipe.titleEnglish);
+  } else {
+    await expect (page.locator ('#trackSubtitle')).toBeHidden();
+  }
   await page.evaluate (async () => { window.lofi.stop(); await window.lofi.chain.input.context.close(); });
 });
 
