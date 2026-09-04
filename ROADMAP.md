@@ -11,7 +11,7 @@ Four techniques let us add variety without risk. Everything below is an applicat
 1. **Vetted vocabularies** — sample from hand-authored cells (rhythms, cadences, motif operations), never from a continuous range.
 2. **Derivation over generation** — new material is a transformation of material already accepted.
 3. **Constraint plus rejection** — generate, test against music rules, retry on failure.
-4. **Weighted transitions** — degree-to-degree probability tables reflecting folk practice, so common moves stay common.
+4. **Weighted transitions** — interval probability tables reflecting folk practice, so common moves stay common. These are no longer guessed: they are measured from 55,246 real tunes, including what tends to follow what. See **47** and **59**.
 
 ---
 
@@ -93,8 +93,11 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **54. Arpeggiated chord accompaniment**
 - [x] **55. Sampled nylon-string guitar**
 - [x] **56. 6/8 jig feel — first pass**
-- [ ] **57. Learn the harmony from a corpus of real tunes**
-- [ ] **58. Two traditions: Irish and pop/rock**
+- [~] **57. Learn from a corpus of real tunes** *(melody done; harmony still open)*
+- [x] **58. Two traditions: Irish and pop/rock** — *built, then rejected*
+- [x] **59. A melodic grammar measured from the repertoire**
+- [ ] **60. Cadence targets, and the notes the pool leaves out**
+- [ ] **61. Dungeon synth — a side project off this engine**
 ---
 
 ## 1. Chord voice leading — done
@@ -932,3 +935,162 @@ Order of work: introduce the tradition axis with hand-written tables on
 both sides and no dataset at all, so the bundle is proven end to end. Only
 then feed the Irish harmony from The Session, where it is measurably hard
 to do by hand.
+
+---
+
+## Where this is going
+
+The roadmap had grown into fifty-odd items pulling in four directions at once —
+a toy, a radio station, an export tool and a product. That is why it stopped
+being useful for deciding what to do next. The direction is now settled:
+
+> **An Irish thing, done well.** Narrow and particular, not a general lofi
+> engine. There are many of the latter and nothing much like the former.
+
+That decision has teeth. It is why the pop tradition in **58** was built and
+then removed, and it is the test any new idea has to pass: *does this make the
+Irish thing better, or just bigger?*
+
+### What makes this worth continuing
+
+Most generative lofi is a chord loop with a pentatonic scale sprinkled over the
+top. The distinctive asset here is the melody: a grammar derived from 55,246
+real tunes, which as far as we can tell nothing else in this space has. That is
+the moat, and it is where effort compounds.
+
+The three phases below are ordered so the moat gets deeper before the surface
+gets wider.
+
+### Phase one — make the tunes convincing
+
+The melody is closest to being genuinely good and furthest from finished.
+
+- **59** gave it the vocabulary and the sentence structure. Done.
+- **60** is the next honest gap: real tunes cadence on notes this generator
+  cannot reach.
+- **Ornamentation as a first-class layer.** Cuts, rolls and crans are currently
+  a probability on a note. In real playing they are how a player phrases, and
+  they are most of what makes a tune sound Irish rather than merely modal.
+- **Phrase-level structure.** The AABB form exists, but A and B do not yet
+  answer each other. A real tune poses a question in bars one to four and
+  answers it in five to eight. The corpus can be measured for this the same way
+  its intervals were.
+- **Heterophony.** `parts.js` already notes that two players on one tune, very
+  slightly apart, is the traditional texture — and it is much more evocative
+  than two different melodies. Worth making real.
+
+### Phase two — make a tune something you can keep
+
+Everything generated so far is gone the moment it plays. Nothing can be shared,
+which is why nobody has heard this.
+
+- **A tune has a permalink.** A score is already a reproducible recipe plus a
+  seed. A URL carrying that seed would let someone send a tune to someone else.
+  Cheapest possible route to this being heard by anyone.
+- **18. Save the current tune** — WAV, and MIDI, which matters more: MIDI means
+  the tunes can leave and be used elsewhere.
+- **19. Notation** — the tunes are already stored as degrees and durations, and
+  ABC is the format the tradition actually uses. A tune that can be printed as
+  ABC is a tune a musician can play.
+
+### Phase three — make it an instrument rather than a toy
+
+- **"More like this."** Lock a phrase, ask for variations on it, keep the one
+  you like. The composition layer already supports revision; the interface does
+  not expose it.
+- **30. Liking a track, and learning from it** — with a corpus-derived baseline
+  to bias away from, this becomes meaningful rather than arbitrary.
+- **Lock and regenerate by part** — keep the melody, replace the backing.
+
+### Deliberately not doing
+
+- **A second tradition** (**58**). Tried, rejected. Dilutes the one thing that
+  makes this distinctive.
+- **Training a neural model.** The grammar is a first-order Markov chain fitted
+  by counting, and it is honest about that. A learned sequence model is a large
+  amount of work for a gain that ornamentation and phrase structure would
+  deliver more cheaply and more controllably.
+- **21. More styles** — trance and minimalism are a different project wearing
+  this one's clothes. Dungeon synth is genuinely adjacent and is **61**, kept
+  deliberately as a separate thing.
+
+---
+
+## 59. A melodic grammar measured from the repertoire — done
+
+`tools/derive-tune-stats.mjs` reads The Session's dump — 55,246 settings,
+6.6 million notes — and writes `src/data/tune-stats.js`: distributions only,
+about 28 KB, no tune or phrase reproduced. ODbL attribution and the full list
+of alterations are in `src/data/TUNE-STATS-ATTRIBUTION.md`.
+
+What the corpus said about the hand-tuned grammar it replaced: the instinct
+that folk melody is overwhelmingly stepwise was right, at 46% guessed against
+48% measured. Everything else was off. Notes were repeated nearly twice as
+often as real tunes repeat them; thirds were under-used by about a third; every
+interval was a coin flip on direction when real tunes fall more than they rise;
+and nothing wider than a fifth could occur at all, so a tune could never make
+the skip that gives a jig its lift.
+
+The table also holds what follows what, which is where grammar actually lives.
+After a fall of a fifth the corpus almost stops descending — a further step
+down goes from 16% to 1% — and either repeats the note or turns back up. That
+is the gap-fill principle, measured rather than assumed, and half the
+probability mass moves between the plain distribution and that row.
+
+`melody.js` now takes the meter and draws from the matching repertoire, which
+is the first time melody generation has known what meter it is in: 6/8 from
+jigs, 9/8 from slip jigs, 3/4 from waltzes, 2/4 from polkas, reels otherwise.
+
+One thing the data contradicts that is left alone on purpose. `engine.js` says
+dorian and minor are where this music lives and major is the exception; the
+corpus is 64% major and 14% dorian, and jigs specifically are 63% major. That
+inversion may well be right for lofi, where modal suits the mood — but it is
+now a taste decision rather than an assumption.
+
+## 60. Cadence targets, and the notes the pool leaves out
+
+The derived table already records where real parts come to rest. For jigs: the
+tonic 42% of the time, the fifth 15%, the second 13%, the fourth 10%, the
+seventh 8%. Nothing reads it yet, and wiring it in turns out to uncover
+something bigger than a cadence tweak.
+
+`CADENCE_FORMULAS` can only land a part on pool index 0, 1 or 4. In the corpus,
+**about a fifth of all part endings are on the fourth or the seventh** — and in
+major those two notes are not in the pool at all. `GAPPED.major` is
+`[0, 1, 2, 4, 5]`, which omits the fourth and the seventh deliberately, as a
+folk-flavoured simplification. It is a good instinct for the middle of a phrase,
+where those notes are the easiest way to sound wrong. It is the wrong rule at a
+cadence, where landing on the flat seventh is one of the most characteristic
+sounds in the modal repertoire.
+
+So this is really two decisions:
+
+1. **Cadences should target scale degrees, not pool indices.** The same formula
+   currently means different notes in different modes, because the pool is ten
+   notes in major and fourteen in dorian.
+2. **The pool should be allowed to widen at a cadence**, so a tune can end
+   where real tunes end.
+
+Then the formula set can be weighted by the measured frequencies, and formulas
+added for the endings that are currently unreachable.
+
+Worth doing carefully: the gapped pool is load-bearing for how the middle of a
+phrase sounds, and widening it everywhere would undo that.
+
+## 61. Dungeon synth — a side project off this engine
+
+A separate generator, not a style inside this one. Dungeon synth wants slow
+tempi, modal and minor material, long reverb, sparse or absent percussion, and
+bell, choir and reedy organ voices — and it is lo-fi by convention, so the tape
+character, hiss and vinyl surface already built here are the right aesthetic
+rather than an add-on.
+
+The overlap with what exists is unusually large: modal note pools, the drone,
+the motif grammar, the arc, the tape path and the surface noise all transfer
+almost unchanged. What differs is mostly what gets removed — the hip-hop
+backing, the swing, the tempo range — plus a voice bank and a much longer sense
+of time.
+
+Kept separate on purpose. Folding it in would be exactly the dilution that
+**58** was rejected for; standing it up beside this one is a way to find out how
+much of this engine is genuinely reusable, which is worth knowing.
