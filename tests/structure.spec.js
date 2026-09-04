@@ -72,7 +72,8 @@ test ('a track retains its tune across turns and opens only once', async ({ page
     }
     const s = e.state;
     s.track.turnsLeft = 2;
-    const result = { title: s.track.title, form: s.form, bassFrom: s.arrangement[0].bassFrom };
+    const result = { title: s.track.title, form: s.form, bassFrom: s.arrangement[0].bassFrom,
+      meter: s.track.structure.meter };
     const original = s.bass.triggerAttackRelease;
     window.introBassNotes = 0;
     s.bass.triggerAttackRelease = function (...args) {
@@ -98,7 +99,15 @@ test ('a track retains its tune across turns and opens only once', async ({ page
   });
   expect (next.title).toBe (first.title);
   // Development may change the middle bars, but the hook stays recognisable.
-  expect (next.form[0].filter (note => note.at < 8)).toEqual (first.form[0].filter (note => note.at < 8));
+  //
+  // The opening bar, not a fixed eight units of it: varyPhrase works on the
+  // phrase before jigPhrase rephrases it, so in 6/8 a bar is six units by the
+  // time it reaches the score. A fixed window straddles into bar one, which
+  // development is meant to change, and the test failed at random depending on
+  // whether it happened to land on a jig.
+  const openingBar = first.meter === '6/8' ? 6 : 8;
+  const hook = form => form[0].filter (note => note.at < openingBar);
+  expect (hook (next.form)).toEqual (hook (first.form));
   expect (next.bassFrom).toBe (0);
   await page.evaluate (() => window.lofi.chain.input.context.close());
 });
