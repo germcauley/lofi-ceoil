@@ -101,6 +101,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **63. The answer restates the question, then goes somewhere else**
 - [x] **64. Heterophony — two players on one tune**
 - [ ] **61. Dungeon synth — a side project off this engine**
+- [ ] **65. Live, with a database of what people like**
 ---
 
 ## 1. Chord voice leading — done
@@ -995,8 +996,16 @@ which is why nobody has heard this.
   you like. The composition layer already supports revision; the interface does
   not expose it.
 - **30. Liking a track, and learning from it** — with a corpus-derived baseline
-  to bias away from, this becomes meaningful rather than arbitrary.
+  to bias away from, this becomes meaningful rather than arbitrary. The
+  backend question in that item is now decided: see **65**.
 - **Lock and regenerate by part** — keep the melody, replace the backing.
+
+### Phase four — let it learn from the people listening
+
+**65** is the long goal: hosted, public, and getting better because people
+listen to it. It is the first thing on this roadmap that ends the
+folder-of-files property, so it comes last, and only after a tune has a
+permalink — a like is meaningless until a tune has a name you can point at.
 
 ### Deliberately not doing
 
@@ -1206,3 +1215,73 @@ This closes phase one — the melody now has a measured interval grammar, a
 measured answer to what follows what, cadences that land where real tunes
 land, a full ornament vocabulary, phrases that answer each other at the
 measured rate, and a second player worth the name.
+
+## 65. Live, with a database of what people like
+
+The goal: this runs online, anyone can listen, they can say which tunes they
+liked, and over time the generator learns what works.
+
+**The thing that makes it cheap is already built.** A tune is a recipe and a
+seed — a few kilobytes of JSON that regenerates the music exactly. Liking a
+tune never means storing audio. The entire corpus of everything anyone ever
+liked is a text table, and every liked tune can be played back note for note
+by anyone else.
+
+### Shape
+
+The front end stays a static site. A small API and a database sit beside it,
+and the page keeps working when they are unreachable — falling back to
+`localStorage`, as in option 1 of **30**. That keeps the property that this is
+a folder of files that runs anywhere, rather than an app that needs a server
+to make a sound.
+
+### What to record, and the mistake to avoid
+
+The obvious design is a like button and a count. That design fails, for four
+reasons worth writing down before building it.
+
+1. **A like count measures exposure, not quality.** A tune played more collects
+   more likes. Record plays alongside likes and rank on the *rate*.
+2. **Skips are the far richer signal.** Almost nobody presses like; nearly
+   everybody skips. A tune abandoned after eight seconds and a tune played to
+   the end are both labels, and there will be hundreds of times more of them
+   than there are likes. The skip button is already there and already tells us
+   something we are throwing away.
+3. **Optimising for likes optimises for inoffensiveness.** A generator that
+   only exploits what scored well collapses toward a bland average — the
+   familiar recommender death spiral, and a real risk for music whose whole
+   appeal is that it wanders. A fixed share of tracks must always be generated
+   from the unbiased distribution, with their outcomes recorded separately, so
+   there is an honest control group to measure the biased ones against.
+4. **The confounds are strong.** How a tune lands depends on the time of day,
+   how long the listener has been listening, and where their own knobs are set.
+   Record those with the outcome or the model will happily learn the confound.
+
+### What can actually be learned
+
+A track is already an explicit vector — mode, meter, form, tempo, progression,
+motif shape, arc, voices, counter texture, ornament density. A like or a
+completed play is a labelled example over it. That is a small, legible
+learning problem: weights nudging existing probabilities, not a model anyone
+has to train.
+
+The interesting part is that there is now a principled prior to measure
+against. The generator's defaults come from 55,246 real tunes, so this stops
+being "what do people like" in the abstract and becomes a much sharper
+question: **where do listeners prefer something other than what the repertoire
+does?** If people reliably like tunes with fewer rolls, or a flatter arc, or
+more major than the corpus average, that is a finding worth knowing, and one
+nobody could get any other way.
+
+### Ordering, and what it costs
+
+Needs the permalink first: a like is meaningless until a tune has a name you
+can point at. Play and skip telemetry should land before the like button,
+because it is the larger signal and it also proves the pipeline with something
+low-stakes.
+
+Costs to accept honestly: hosting and a database to keep running, a public
+write endpoint that needs rate limiting, and responsibility for other people's
+data. Anonymity is the right default and is enough — no accounts, at most a
+random per-browser identifier, and a plain statement on the page of what is
+stored. None of what we want to learn needs to know who anyone is.
