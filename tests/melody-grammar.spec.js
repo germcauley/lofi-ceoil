@@ -102,3 +102,40 @@ test ('a motif means the same thing in every mode', () => {
     for (const scale of ['minor', 'dorian', 'mixolydian']) expect (hookIn (scale)).toEqual (major);
   }
 });
+
+test ('a leap is answered rather than piled on', () => {
+  // Drawing every interval independently gets the vocabulary right and the
+  // sentences wrong. Real tunes fill a gap: after a fall of a fifth the corpus
+  // almost stops descending — a further step down goes from 16% to 1% — and
+  // either repeats the note or turns back up. The generator has to do the same.
+  const generator = createMelodyGenerator (seeded (7), '6/8');
+  const after = {};
+  let pairs = 0;
+
+  for (let i = 0; i < 40000; i++) {
+    const { offsets } = generator.createMotif();
+    for (let k = 2; k < offsets.length; k++) {
+      const previous = offsets[k - 1] - offsets[k - 2];
+      const step = offsets[k] - offsets[k - 1];
+      ((after[previous] ??= {})[step] ??= 0);
+      after[previous][step]++;
+      pairs++;
+    }
+  }
+  expect (pairs).toBeGreaterThan (10000);
+
+  const share = (previous, steps) => {
+    const row = after[previous] ?? {};
+    const total = Object.values (row).reduce ((sum, n) => sum + n, 0);
+    return steps.reduce ((sum, step) => sum + (row[step] ?? 0), 0) / total;
+  };
+
+  // After a big fall, the tune turns back up far more often than it keeps
+  // falling; after a big rise, the reverse.
+  expect (share (-4, [1, 2, 3])).toBeGreaterThan (share (-4, [-1, -2, -3]) * 3);
+  expect (share (4, [-1, -2, -3])).toBeGreaterThan (share (4, [1, 2, 3]));
+
+  // The transition rows must actually be reached — a typo in the key would
+  // silently fall back to the marginal table and still look plausible.
+  expect (share (-4, [-1, -2])).toBeLessThan (0.1);
+});

@@ -86,14 +86,33 @@ const CADENCE_RHYTHMS = {
 // repertoire the melodic grammar is drawn from.
 const TUNE_TYPE = { '6/8': 'jig', '9/8': 'slip jig', '3/4': 'waltz', '2/4': 'polka' };
 
-/** Cumulative interval table for a meter, as [step, runningTotal] pairs. */
-function intervalTable (meter) {
-  const type = TUNE_TYPE[meter] ?? 'reel';
-  const weights = (TUNE_STATS.types[type] ?? TUNE_STATS.types.reel).intervals;
+/** A weight table as a cumulative ladder of [step, runningTotal] pairs. */
+function ladder (weights) {
   let running = 0;
-  return Object.entries (weights)
-    .map (([step, weight]) => [Number (step), running += weight]);
+  return Object.entries (weights).map (([step, weight]) => [Number (step), running += weight]);
 }
+
+/** Everything the grammar knows about one repertoire: how often each interval
+    occurs at all, and what tends to follow what.
+
+    The second is where the grammar actually lives. Drawing every interval
+    independently gets the vocabulary right and the sentences wrong; real tunes
+    answer a leap rather than piling another one on top of it. After a fall of
+    a fifth the corpus almost stops descending — a further step down goes from
+    16% to 1% — and either repeats the note or turns back up. */
+function grammarFor (meter) {
+  const type = TUNE_TYPE[meter] ?? 'reel';
+  const stats = TUNE_STATS.types[type] ?? TUNE_STATS.types.reel;
+  return {
+    marginal: ladder (stats.intervals),
+    after: Object.fromEntries (Object.entries (stats.transitions ?? {})
+      .map (([from, row]) => [from, ladder (row)]))
+  };
+}
+
+// Transition rows are kept for intervals up to a fifth; anything wider shares
+// the widest row rather than getting one of its own.
+const foldStep = step => Math.max (-5, Math.min (5, step));
 
 // A motif has to mean the same thing in every mode. renderCell places it at
 // `round (poolSize * 0.35)` and clamps to `poolSize + 2`, and the gapped pool
@@ -120,7 +139,7 @@ function stepWithin (from, interval) {
 export function createMelodyGenerator (random = () => Math.random(), meter = '4/4') {
   const pick = arr => arr[Math.floor (random() * arr.length)];
   const chance = p => random() < p;
-  const intervals = intervalTable (meter);
+  const grammar = grammarFor (meter);
 
   /** Weighted melodic interval in scale steps, measured from real tunes
       rather than tuned by ear.
@@ -134,9 +153,11 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       over one and a half times as common as a third up. Nothing wider than
       a fifth could occur at all, so the tunes could never make the big skip
       that gives a jig its lift. */
-  function nextInterval () {
+  function nextInterval (previous = null) {
+    const row = previous === null ? null : grammar.after[foldStep (previous)];
+    const table = row ?? grammar.marginal;
     const roll = random();
-    for (const [step, cumulative] of intervals) if (roll < cumulative) return step;
+    for (const [step, cumulative] of table) if (roll < cumulative) return step;
     return 0;
   }
 
@@ -152,9 +173,13 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
     for (let attempt = 0; attempt < 20; attempt++) {
       const cell = pick (RHYTHMS);
       const offsets = [0];
+      let lastStep = null;
 
       for (let i = 1; i < cell.lengths.length; i++) {
-        offsets.push (stepWithin (offsets[i - 1], nextInterval()));
+        const from = offsets[i - 1];
+        const next = stepWithin (from, nextInterval (lastStep));
+        lastStep = next - from;
+        offsets.push (next);
       }
 
       if (isGoodMotif (offsets)) {
@@ -226,11 +251,16 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       const offsets = motif.offsets.slice (0, keep);
       let total = rhythm.reduce ((sum, n) => sum + n, 0);
 
-      // New tail, built from the same interval weighting as the motif itself.
+      // New tail, built from the same grammar as the motif itself. It carries
+      // on from the kept material's last move rather than starting cold.
+      let tailStep = offsets.length > 1 ? offsets.at (-1) - offsets.at (-2) : null;
       while (total < budget) {
         const length = Math.min (budget - total, pick ([1, 2, 2, 3]));
         rhythm.push (length);
-        offsets.push (stepWithin (offsets[offsets.length - 1], nextInterval()));
+        const from = offsets[offsets.length - 1];
+        const next = stepWithin (from, nextInterval (tailStep));
+        tailStep = next - from;
+        offsets.push (next);
         total += length;
       }
 

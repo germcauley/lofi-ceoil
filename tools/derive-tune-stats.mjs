@@ -70,21 +70,37 @@ export function parseAbc (abc) {
 }
 
 function tally () {
-  return { intervals: new Map(), cadences: new Map(), notes: 0, settings: 0 };
+  return { intervals: new Map(), transitions: new Map(), cadences: new Map(),
+           notes: 0, settings: 0 };
 }
+
+// Intervals rarer than this are folded into the neighbour one step smaller
+// rather than given their own row, which keeps the table small and stops a
+// handful of transcription oddities becoming a rule.
+const KEEP = 5;
+const fold = step => Math.max (-KEEP, Math.min (KEEP, step));
 
 function record (into, parts, tonic) {
   into.settings++;
   for (const part of parts) {
-    let previous = null;
+    let previous = null, lastStep = null;
     for (const event of part) {
-      if (! event) { previous = null; continue; }       // a rest breaks it
+      if (! event) { previous = null; lastStep = null; continue; }   // a rest breaks it
       into.notes++;
       if (previous !== null) {
         const step = event.degree - previous;
         // Beyond an octave is almost always a transcription artefact rather
         // than a melodic move.
-        if (Math.abs (step) <= 7) into.intervals.set (step, (into.intervals.get (step) ?? 0) + 1);
+        if (Math.abs (step) <= 7) {
+          into.intervals.set (step, (into.intervals.get (step) ?? 0) + 1);
+          // What a tune does next, given what it just did. This is where the
+          // grammar lives: a leap is answered, a run keeps running.
+          if (lastStep !== null) {
+            const key = fold (lastStep) + ',' + fold (step);
+            into.transitions.set (key, (into.transitions.get (key) ?? 0) + 1);
+          }
+          lastStep = step;
+        } else lastStep = null;
       }
       previous = event.degree;
     }
@@ -95,6 +111,26 @@ function record (into, parts, tonic) {
       into.cadences.set (degree, (into.cadences.get (degree) ?? 0) + 1);
     }
   }
+}
+
+/** Rows of P(next | previous), each row summing to one. A row with too little
+    behind it is dropped: the caller falls back to the plain distribution
+    rather than trusting a handful of examples. */
+function transitionRows (map, floor = 200) {
+  const rows = {};
+  for (const [key, count] of map) {
+    const [from, to] = key.split (',');
+    (rows[from] ??= {})[to] = (rows[from][to] ?? 0) + count;
+  }
+  const out = {};
+  for (const [from, row] of Object.entries (rows)) {
+    const total = Object.values (row).reduce ((sum, n) => sum + n, 0);
+    if (total < floor) continue;
+    out[from] = Object.fromEntries (Object.entries (row)
+      .sort ((a, b) => Number (a[0]) - Number (b[0]))
+      .map (([to, n]) => [to, Number ((n / total).toFixed (5))]));
+  }
+  return out;
 }
 
 const distribution = map => {
@@ -165,6 +201,7 @@ for (const [name, bucket] of Object.entries (buckets)) {
     settings: bucket.settings,
     notes: bucket.notes,
     intervals: distribution (bucket.intervals),
+    transitions: transitionRows (bucket.transitions),
     cadences: distribution (bucket.cadences),
     modes: modeCounts[name] ? share (modeCounts[name]) : undefined
   };
