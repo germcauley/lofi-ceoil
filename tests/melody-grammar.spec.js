@@ -139,3 +139,57 @@ test ('a leap is answered rather than piled on', () => {
   // silently fall back to the marginal table and still look plausible.
   expect (share (-4, [-1, -2])).toBeLessThan (0.1);
 });
+
+test ('parts come to rest where real tunes come to rest', () => {
+  const generator = createMelodyGenerator (seeded (3), '6/8');
+  const endings = {};
+  let total = 0;
+
+  for (let i = 0; i < 1500; i++) {
+    for (const scale of ['major', 'minor', 'dorian', 'mixolydian']) {
+      const phrase = generator.createPhrase (scale, generator.gappedPool (scale).length);
+      for (const bar of [3, 7]) {
+        const inBar = phrase.filter (event => Math.floor (event.at / 8) === bar);
+        const last = inBar.at (-1);
+        if (last?.scaleDegree === undefined) continue;
+        endings[last.scaleDegree] = (endings[last.scaleDegree] ?? 0) + 1;
+        total++;
+      }
+    }
+  }
+
+  const share = degree => (endings[degree] ?? 0) / total;
+
+  // The fourth and the seventh are missing from the gapped pool in major, so
+  // before cadences carried the note they meant these were unreachable — while
+  // about a fifth of real part endings land on them.
+  expect (share (3)).toBeGreaterThan (0.04);
+  expect (share (6)).toBeGreaterThan (0.03);
+
+  // A cadence still resolves far more often than it does anything else.
+  expect (share (0)).toBeGreaterThan (0.3);
+  expect (share (0)).toBeGreaterThan (share (4));
+
+  // Weighted by the corpus rather than picked uniformly over the formulas.
+  const corpus = TUNE_STATS.types.jig.cadences;
+  for (const degree of [1, 3, 4, 6]) {
+    expect (Math.abs (share (degree) - corpus[degree])).toBeLessThan (0.06);
+  }
+});
+
+test ('a cadence keeps its note through playback', () => {
+  // The gapped pool cannot express every cadence target, so cadence events
+  // carry the degree they mean; a plain index would silently move the note.
+  const generator = createMelodyGenerator (seeded (11), '6/8');
+  const phrase = generator.createPhrase ('major', generator.gappedPool ('major').length);
+  const cadences = phrase.filter (event => event.cadence);
+  expect (cadences.length).toBeGreaterThan (0);
+  for (const event of cadences) {
+    expect (typeof event.scaleDegree).toBe ('number');
+    expect (event.scaleDegree).toBeGreaterThanOrEqual (0);
+    expect (event.scaleDegree).toBeLessThanOrEqual (6);
+  }
+  // At least one lands somewhere major's pool has no seat for.
+  const pool = new Set (generator.gappedPool ('major'));
+  expect (cadences.some (event => ! pool.has (event.scaleDegree))).toBe (true);
+});

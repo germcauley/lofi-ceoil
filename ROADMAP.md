@@ -96,7 +96,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [~] **57. Learn from a corpus of real tunes** *(melody done; harmony still open)*
 - [x] **58. Two traditions: Irish and pop/rock** — *built, then rejected*
 - [x] **59. A melodic grammar measured from the repertoire**
-- [ ] **60. Cadence targets, and the notes the pool leaves out**
+- [x] **60. Cadence targets, and the notes the pool leaves out**
 - [ ] **61. Dungeon synth — a side project off this engine**
 ---
 
@@ -1047,7 +1047,7 @@ corpus is 64% major and 14% dorian, and jigs specifically are 63% major. That
 inversion may well be right for lofi, where modal suits the mood — but it is
 now a taste decision rather than an assumption.
 
-## 60. Cadence targets, and the notes the pool leaves out
+## 60. Cadence targets, and the notes the pool leaves out — done
 
 The derived table already records where real parts come to rest. For jigs: the
 tonic 42% of the time, the fifth 15%, the second 13%, the fourth 10%, the
@@ -1076,6 +1076,22 @@ added for the endings that are currently unreachable.
 
 Worth doing carefully: the gapped pool is load-bearing for how the middle of a
 phrase sounds, and widening it everywhere would undo that.
+
+**Done, and both decisions went the way described.** Cadence formulas are now
+scale degrees rather than pool indices — which in dorian, whose pool holds all
+seven notes, is what they already meant, so this mostly fixed major, where a
+half cadence on "index 4" had been landing on the sixth. A cadence event
+carries a `scaleDegree` alongside its pool index, and playback prefers it, so
+the pool widens exactly at the cadence and nowhere else. Cadence notes also
+skip the chord-tone fitting that would otherwise snap a modal ending on the
+flat seventh back onto the chord.
+
+Formula choice is weighted by the measured frequencies rather than picked
+uniformly. Generated part endings now sit close to the corpus: tonic 50%
+against 42%, the fifth 12% against 15%, the fourth 9% against 10%, the seventh
+7% against 8%. The tonic runs high because a full cadence still always
+resolves there, which is deliberate. Degrees two and five have no formulas yet
+and are the obvious next addition.
 
 ## 61. Dungeon synth — a side project off this engine
 

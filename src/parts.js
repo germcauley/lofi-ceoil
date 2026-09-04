@@ -234,14 +234,19 @@ export function playMelody (state, time, barInPhrase, phrase, chordSpec) {
     const duration = Math.max (0.08, event.length * eighth - articulationGap);
 
     const poolIndex = Math.min (pool.length - 1, event.degree);
-    const degree = pool[poolIndex];
+    // A cadence carries the note it actually means. The gapped pool leaves out
+    // the fourth in major and the seventh in major and minor, and those are
+    // where a fifth of real parts come to rest — the flat seventh especially.
+    const degree = event.scaleDegree ?? pool[poolIndex];
     let midi = scaleDegreeToMidi (base, scale, degree);
 
     // Accented, or simply long enough that a wrong note would be audible.
     const onStrongBeat = offsetEighths === 0 || offsetEighths === meterInfo (state.meter).eighths / 2;
     const exposed = (onStrongBeat && event.length >= 2) || event.length >= 3;
 
-    if (chordTones && exposed) {
+    // A cadence is chosen, not stumbled into. Snapping it to a chord tone is
+    // exactly what would undo a modal ending on the flat seventh.
+    if (chordTones && exposed && ! event.cadence) {
       midi = fitToChordTone (midi, base, scale, poolIndex, pool, chordTones);
     }
 

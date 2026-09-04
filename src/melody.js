@@ -70,9 +70,20 @@ const RHYTHMS = [
 //   full  comes to rest on the tonic, ending the sentence
 //   half  stops on an unstable degree — the fifth or the second — which is
 //         what turns the first two bars into a question
+// Scale degrees, not indices into the gapped pool. They read as scale degrees
+// — 2-1-0 is a descent onto the tonic, 4 is the fifth — and in dorian, whose
+// pool holds all seven notes, that is what they already were. In major the
+// pool omits the fourth and the seventh, so index 4 landed on the sixth and a
+// half cadence went somewhere nobody chose.
+//
+// The half-cadence targets are the ones real tunes use. Measured across the
+// corpus, about a fifth of all part endings are on the fourth or the seventh,
+// and neither was reachable before: the flat seventh in particular is one of
+// the most characteristic sounds in the modal repertoire.
 const CADENCE_FORMULAS = {
   full: [[2, 1, 0], [4, 2, 0], [1, 0], [2, 0], [0]],
-  half: [[0, 1, 4], [2, 4], [1, 4], [4], [0, 2, 1], [4, 2, 1]]
+  half: [[0, 1, 4], [2, 4], [1, 4], [4], [0, 2, 1], [4, 2, 1],
+         [2, 3], [4, 3], [0, 2, 3], [5, 6], [4, 5, 6], [0, 6]]
 };
 
 // Rhythms indexed by how many notes the formula needs.
@@ -306,8 +317,51 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       step — that approach is what makes an ending sound like an ending rather
       than a stop. A half cadence stops on the fifth or second instead, leaving
       the phrase open. */
-  function renderCadence (bar, poolSize, kind = 'full') {
-    const formula = pick (CADENCE_FORMULAS[kind]);
+  /** Weighted by where real parts of a tune actually come to rest.
+
+      A full cadence stays on the tonic: that is what ends a tune. A half
+      cadence is the one with a choice to make, and the corpus has an opinion
+      — for jigs the fifth 15% of the time, the second 13%, the fourth 10%,
+      the seventh 8%. Uniform picking over the formulas ignored all of that. */
+  /** The pool index closest to a scale degree, so a cadence still has a
+      sensible index for everything that reads one even when the pool has no
+      exact seat for the note. */
+  function nearestPoolIndex (degree, poolSize, pool) {
+    if (! pool?.length) return degree;
+    let best = 0;
+    for (let i = 0; i < pool.length && i < poolSize; i++) {
+      if (Math.abs (pool[i] - degree) < Math.abs (pool[best] - degree)) best = i;
+    }
+    return best;
+  }
+
+  function pickCadence (kind) {
+    const formulas = CADENCE_FORMULAS[kind];
+    if (kind !== 'half') return pick (formulas);
+
+    const weights = (TUNE_STATS.types[TUNE_TYPE[meter] ?? 'reel']
+      ?? TUNE_STATS.types.reel).cadences;
+    // Every formula weighted by how often its landing note ends a part, split
+    // between the formulas that share it so a popular target does not get
+    // extra weight merely for having more spellings.
+    const share = {};
+    for (const formula of formulas) share[formula.at (-1)] = (share[formula.at (-1)] ?? 0) + 1;
+
+    const ladder = [];
+    let running = 0;
+    for (const formula of formulas) {
+      const target = formula.at (-1);
+      running += (weights?.[target] ?? 0.05) / share[target];
+      ladder.push ([formula, running]);
+    }
+
+    const roll = random() * running;
+    for (const [formula, cumulative] of ladder) if (roll < cumulative) return formula;
+    return formulas[0];
+  }
+
+  function renderCadence (bar, poolSize, kind = 'full', pool = null) {
+    const formula = pickCadence (kind);
     const rhythm = pick (CADENCE_RHYTHMS[formula.length] ?? CADENCE_RHYTHMS[2]);
     const events = [];
     let position = 0;
@@ -316,7 +370,12 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       events.push ({
         at: bar * 8 + position,
         length: rhythm[i],
-        degree: clampDegree (formula[i], poolSize),
+        // `degree` stays a pool index so everything that reads a phrase keeps
+        // working; `scaleDegree` is the note actually meant, which the pool
+        // cannot always express.
+        degree: clampDegree (nearestPoolIndex (formula[i], poolSize, pool), poolSize),
+        scaleDegree: formula[i],
+        cadence: true,
         ornament: i < formula.length - 1 && chance (0.2)
       });
 
@@ -534,7 +593,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       ...renderCell (OPERATIONS.repeat (motif), offset, startDegree, poolSize, ornamentBias),
       ...renderCell (OPERATIONS[pick (BAR_TWO_OPERATIONS)] (motif), offset + 1, peak, poolSize, ornamentBias),
       ...renderCell (OPERATIONS[pick (BAR_THREE_OPERATIONS)] (motif), offset + 2, startDegree, poolSize, ornamentBias),
-      ...renderCadence (offset + 3, poolSize, closing)
+      ...renderCadence (offset + 3, poolSize, closing, gappedPool (scale))
     ];
 
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -548,7 +607,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
       ...renderCell (OPERATIONS.repeat (motif), offset, startDegree, poolSize, ornamentBias),
       ...renderCell (OPERATIONS.repeat (motif), offset + 1, startDegree, poolSize, ornamentBias),
       ...renderCell (OPERATIONS.repeat (motif), offset + 2, startDegree, poolSize, ornamentBias),
-      ...renderCadence (offset + 3, poolSize, closing)
+      ...renderCadence (offset + 3, poolSize, closing, gappedPool (scale))
     ];
 
     return addPhrasing (addPickup (addTies ([...plain (0, 'half'), ...plain (4, 'full')]), poolSize));
