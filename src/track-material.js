@@ -1,4 +1,8 @@
-import { createMotif } from './melody.js';
+import { createMelodyGenerator } from './melody.js';
+import { seededRandom } from './composition.js';
+
+// A motif from a given generator, so a seed can produce one on demand.
+const motifFrom = random => createMelodyGenerator (random).createMotif();
 
 const HISTORY_KEY = 'lofi-ceoil.recent-material.v1';
 const HISTORY_LIMIT = 128;
@@ -27,7 +31,7 @@ function validRecord (record) {
 /** Choose new musical material before the engine develops it into phrases.
     Keys, instruments, titles and tiny knob differences do not count towards
     novelty: a transposed or revoiced tune is still the same melodic idea. */
-export function createTrackMaterialPicker ({ storage, generateMotif = createMotif } = {}) {
+export function createTrackMaterialPicker ({ storage, generateMotif = motifFrom } = {}) {
   let history = [];
   try {
     if (storage === undefined) storage = globalThis.localStorage;
@@ -53,21 +57,41 @@ export function createTrackMaterialPicker ({ storage, generateMotif = createMoti
     return cost;
   }
 
-  return function nextMaterial () {
+  /** Motifs for a new track.
+
+      The search is over *seeds* rather than over motifs. Both produce the same
+      thing, but recording which seed won makes a track's material reproducible
+      from one number — and a tune that cannot be regenerated from a number
+      cannot be given a link. History-avoidance is unaffected: the candidates
+      are still scored against what has been heard recently, and the least
+      repetitive one still wins.
+
+      `materialSeed` replays a known winner and skips the search entirely,
+      which is what opening a shared tune does. */
+  return function nextMaterial ({ seed = (Math.random() * 4294967296) >>> 0, materialSeed } = {}) {
+    if (materialSeed !== undefined) {
+      const random = seededRandom (materialSeed);
+      return { motifA: generateMotif (random), motifB: generateMotif (random), materialSeed };
+    }
+
     let best;
     let bestCost = Infinity;
     // A fixed budget keeps skips responsive, even with pathological random
     // input. If all candidates are familiar, use the least repetitive valid
     // one rather than weakening the melody rules or retrying forever.
     for (let attempt = 0; attempt < 64; attempt++) {
-      const motifA = generateMotif();
-      const motifB = generateMotif();
+      // Each attempt is its own seed, derived from the track's, so the winner
+      // is a number we can write down.
+      const candidateSeed = (seed + Math.imul (attempt, 0x9E3779B1)) >>> 0;
+      const random = seededRandom (candidateSeed);
+      const motifA = generateMotif (random);
+      const motifB = generateMotif (random);
       const a = describe (motifA);
       const b = describe (motifB);
       const record = { motifs: [a.exact, b.exact], shapes: [a.shape, b.shape], rhythms: [a.rhythm, b.rhythm] };
       const cost = repetitionCost (record);
       if (cost < bestCost) {
-        best = { motifA, motifB, record };
+        best = { motifA, motifB, record, materialSeed: candidateSeed };
         bestCost = cost;
       }
       if (cost === 0) break;
@@ -75,6 +99,6 @@ export function createTrackMaterialPicker ({ storage, generateMotif = createMoti
     history.push (best.record);
     history = history.slice (-HISTORY_LIMIT);
     try { storage?.setItem (HISTORY_KEY, JSON.stringify (history)); } catch {}
-    return { motifA: best.motifA, motifB: best.motifB };
+    return { motifA: best.motifA, motifB: best.motifB, materialSeed: best.materialSeed };
   };
 }

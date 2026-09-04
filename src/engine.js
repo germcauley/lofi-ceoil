@@ -12,6 +12,7 @@ const SUPPORT_VOICE_NAMES = Object.keys (SUPPORT_VOICES);
 import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
 import { createTrackMaterialPicker } from './track-material.js';
+import { decodeTrack, encodeTrack, quantiseRecipe } from './track-link.js';
 import { createStructurePicker } from './track-structure.js';
 import { composeTrack, reviseComposition, COMPOSITION_VERSION } from './composition.js';
 import { playScoreBar } from './score-player.js';
@@ -446,7 +447,7 @@ export function createEngine () {
     const recipe = {
       version: COMPOSITION_VERSION, seed: Math.floor (Math.random() * 4294967296),
       title: track.title, titleEnglish: track.titleEnglish, titleLanguage: track.titleLanguage,
-      rootMidi: state.rootMidi, scale: state.scale,
+      rootMidi: state.rootMidi, scale: state.scale, materialSeed: track.materialSeed,
       structure: track.structure, motifA: track.motifA, motifB: track.motifB,
       progression: state.progression, turns: track.turnsLeft,
       variation: track.variation, user: { ...state.user }, tempoUser: state.tempoUser,
@@ -458,7 +459,7 @@ export function createEngine () {
       auto: { lead: state.autoVoice, keys: state.autoKeysVoice, bass: state.autoBassVoice },
       voiceOptions: { lead: LEAD_VOICE_NAMES, keys: KEYS_VOICE_NAMES, bass: BASS_VOICE_NAMES }
     };
-    track.composition = composeTrack (recipe);
+    track.composition = composeTrack (quantiseRecipe (recipe));
     lastComposition = track.composition;
     scoreDirty = false;
     scoreEdits = {};
@@ -933,6 +934,34 @@ export function createEngine () {
     }
   };
 
+  /** The share code for what is playing, or null before anything has. */
+  function linkForCurrentTrack () {
+    return lastComposition ? encodeTrack (lastComposition.recipe) : null;
+  }
+
+  /** Queue a tune somebody sent, as the next thing to play.
+
+      Composed here rather than trusted: the code carries a recipe, and every
+      note is regenerated from it locally, so a link can only ever describe a
+      tune the generator could have written itself.
+
+      This queues rather than starts. Starting is the play button's job, and
+      doing it here as well would run the transport up twice. */
+  function openLink (code) {
+    const recipe = decodeTrack (code, { voiceOptions: {
+      lead: LEAD_VOICE_NAMES, keys: KEYS_VOICE_NAMES, bass: BASS_VOICE_NAMES } });
+    if (! recipe) return false;
+
+    let composition;
+    try { composition = composeTrack (recipe); }
+    catch { return false; }
+
+    setReplayPending (composition);
+    // Already playing: cut to it, the way the new-track button does.
+    if (state.running) controls.skip();
+    return true;
+  }
+
   async function replay () {
     if (! lastComposition) return false;
     // One repeat at the next track boundary. A second press cancels it;
@@ -1020,6 +1049,7 @@ export function createEngine () {
   }
 
   return { state, controls, start, stop, chain, analyser, getLevel, getSpectrum, replay,
+    linkForCurrentTrack, openLink,
     isReplayQueued: () => Boolean (replayPending),
     getTrackTime: () => playbackTimeline.readClock (Tone.immediate()),
     getTempo: () => Tone.getTransport().bpm.getValueAtTime (Tone.immediate()) / meterInfo (state.meter).pulseBeats,

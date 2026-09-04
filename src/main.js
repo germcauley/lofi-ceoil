@@ -278,6 +278,7 @@ skipButton.addEventListener ('click', () => {
 
 const replayButton = document.getElementById ('replayButton');
 const saveScoreButton = document.getElementById ('saveScoreButton');
+const copyLinkButton = document.getElementById ('copyLinkButton');
 const scoreSummary = document.getElementById ('scoreSummary');
 
 function updateReplayButton () {
@@ -296,6 +297,7 @@ function updateScoreSummary () {
   replayButton.disabled = false;
   updateReplayButton();
   saveScoreButton.disabled = false;
+  copyLinkButton.disabled = false;
   const edit = score.revisions?.length ? ' · edited' : '';
   scoreSummary.textContent = `${score.recipe.structure.meter === '6/8' ? '6/8 jig' : '4/4'} · ${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
 }
@@ -342,3 +344,46 @@ document.addEventListener ('keydown', event => {
   event.preventDefault();
   playButton.click();
 });
+
+// ------------------------------------------------------------------ sharing
+
+/** A tune is a recipe and a seed, so it fits in a link — about sixty
+    characters of it. Nothing is uploaded and no server is involved: the link
+    carries the tune, and whoever opens it regenerates every note locally. */
+copyLinkButton.addEventListener ('click', async () => {
+  const code = engine.linkForCurrentTrack();
+  if (! code) return;
+
+  const url = new URL (window.location.href);
+  url.hash = '';
+  url.searchParams.set ('t', code);
+
+  const said = message => {
+    copyLinkButton.textContent = message;
+    setTimeout (() => { copyLinkButton.textContent = 'copy link'; }, 1600);
+  };
+
+  try {
+    await navigator.clipboard.writeText (url.toString());
+    said ('link copied');
+  } catch {
+    // Clipboard access can be refused, and a share is not worth losing over
+    // it: put the link in the address bar so it can be copied by hand.
+    window.history.replaceState (null, '', url);
+    said ('link in address bar');
+  }
+});
+
+// A shared tune, opened. Queued on load so the ordinary play button starts
+// it; the code is decoded and composed locally, so a link can only describe a
+// tune the generator could have written itself.
+const shared = new URLSearchParams (window.location.search).get ('t');
+if (shared) {
+  if (engine.openLink (shared)) {
+    trackLabel.textContent = 'a tune someone sent';
+    trackTitle.textContent = 'press start to hear it';
+  } else {
+    trackLabel.textContent = 'that link did not work';
+    trackTitle.textContent = 'press start for a new tune';
+  }
+}

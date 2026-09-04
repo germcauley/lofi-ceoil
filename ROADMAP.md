@@ -101,6 +101,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **63. The answer restates the question, then goes somewhere else**
 - [x] **64. Heterophony — two players on one tune**
 - [ ] **61. Dungeon synth — a side project off this engine**
+- [x] **66. A tune has a link**
 - [ ] **65. Live, with a database of what people like**
 ---
 
@@ -981,9 +982,7 @@ The melody is closest to being genuinely good and furthest from finished.
 Everything generated so far is gone the moment it plays. Nothing can be shared,
 which is why nobody has heard this.
 
-- **A tune has a permalink.** A score is already a reproducible recipe plus a
-  seed. A URL carrying that seed would let someone send a tune to someone else.
-  Cheapest possible route to this being heard by anyone.
+- **A tune has a permalink.** Done — see **66**.
 - **18. Save the current tune** — WAV, and MIDI, which matters more: MIDI means
   the tunes can leave and be used elsewhere.
 - **19. Notation** — the tunes are already stored as degrees and durations, and
@@ -1285,3 +1284,37 @@ write endpoint that needs rate limiting, and responsibility for other people's
 data. Anonymity is the right default and is enough — no accounts, at most a
 random per-browser identifier, and a plain statement on the page of what is
 stored. None of what we want to learn needs to know who anyone is.
+
+## 66. A tune has a link — done
+
+A tune is now about sixty-six characters. `?t=` plays it back note for note,
+from a link that carries no audio, uploads nothing and needs no server.
+
+The obvious approach — the recipe as JSON in the URL — measures 1,383 bytes,
+or 894 after compression. That works and is not a link anyone would paste into
+a message. The saving comes from spending bytes on identity rather than on
+JSON: a motif pair costs four bytes as the seed that produced it instead of a
+hundred as notes, a progression one byte as its position in the mode's table
+instead of seventy-six as its chords, and a knob one byte at 1/255, which is
+far finer than the ear on a control spanning nought to one.
+
+Motifs needed a change to be nameable at all. Material selection deliberately
+avoids what has been heard recently, so the same seed gave different listeners
+different tunes. The search now runs over *seeds* rather than over motifs —
+identical behaviour, identical history-avoidance, but the winner is a number
+that can be written down.
+
+**Quantising has to happen when a recipe is made, not when it is encoded.**
+Rounding a knob to 1/255 is inaudible, but `compositionSettings` compares
+those values against seeded randoms, so a difference of a thousandth flips one
+comparison and the divergence cascades through the whole score. Shared tunes
+were *nearly* right until the rounding moved to the point the recipe is
+created. Verified end to end in the browser: 2,690 notes, identical.
+
+A link describes a tune; it never carries one. The code is decoded and
+composed locally, so the worst a hostile link can do is fail to decode — which
+is why decoding returns null rather than throwing, and why an unknown version
+is refused rather than guessed at.
+
+This unblocks **65**: a like needs a tune with a name you can point at, and
+now every tune has one.

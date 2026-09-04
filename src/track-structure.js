@@ -24,6 +24,10 @@ function bagPicker (values) {
   };
 }
 
+/** The section plan a form implies. A link carries the form and rebuilds
+    these, rather than spending bytes on something already determined. */
+export const sectionsFor = style => [...(FORMS[style] ?? FORMS.tune)];
+
 export function createStructurePicker () {
   const opening = bagPicker (OPENINGS);
   const meter = bagPicker (['4/4', '4/4', '6/8']);

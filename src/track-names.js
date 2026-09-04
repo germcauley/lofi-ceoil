@@ -4,6 +4,15 @@ import { phraseTitles } from './data/track-title-phrases.js';
 
 const ENGLISH = [...ENGLISH_TITLES, ...phraseTitles()];
 
+// One stable ordering of every title, so a share link can name one in two
+// bytes. Appending to either list is safe; reordering changes what an existing
+// link means.
+const ALL = [...IRISH_TITLES, ...ENGLISH];
+
+export const titleAt = index => ({ ...(ALL[index] ?? ALL[0]) });
+export const titleIndexOf = title => ALL.findIndex (entry => entry.title === title);
+export const titleCount = () => ALL.length;
+
 // An Irish title, shown with its translation underneath, is the most visible
 // thing about this that says what it is — so it is not left to the size of the
 // pools to decide how often one appears. There are four times as many English

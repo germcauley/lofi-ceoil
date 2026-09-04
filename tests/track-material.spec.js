@@ -18,11 +18,15 @@ function sequence (...motifs) {
   return () => motifs[index++ % motifs.length];
 }
 
+// The picker also reports the seed its winner came from, so a track can be
+// written down as a link. These tests are about which motifs it chooses.
+const motifsOf = ({ motifA, motifB }) => ({ motifA, motifB });
+
 test ('recent material survives reload and recognises swapped, transposed motifs', () => {
   const storage = memoryStorage();
   createTrackMaterialPicker ({ storage, generateMotif: sequence (a, b) })();
   const next = createTrackMaterialPicker ({ storage, generateMotif: sequence (transpose (b), transpose (a), c, d) });
-  expect (next()).toEqual ({ motifA: c, motifB: d });
+  expect (motifsOf (next())).toEqual ({ motifA: c, motifB: d });
 });
 
 test ('similar contours with identical rhythms are not treated as fresh ideas', () => {
@@ -31,15 +35,15 @@ test ('similar contours with identical rhythms are not treated as fresh ideas', 
     { ...a, offsets: [0, 2, 3, 1] }, { ...b, offsets: [0, -2, -3] },
     c, d
   ) });
-  expect (next()).toEqual ({ motifA: a, motifB: b });
-  expect (next()).toEqual ({ motifA: c, motifB: d });
+  expect (motifsOf (next())).toEqual ({ motifA: a, motifB: b });
+  expect (motifsOf (next())).toEqual ({ motifA: c, motifB: d });
 });
 
 test ('generation remains bounded when randomness or storage is unhelpful', () => {
   let calls = 0;
   const storage = { getItem () { throw new Error ('unavailable'); }, setItem () { throw new Error ('full'); } };
   const next = createTrackMaterialPicker ({ storage, generateMotif: () => { calls++; return a; } });
-  expect (next()).toEqual ({ motifA: a, motifB: a });
+  expect (motifsOf (next())).toEqual ({ motifA: a, motifB: a });
   expect (calls).toBe (128);
 });
 
