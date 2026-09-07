@@ -20,6 +20,13 @@ const DEGREE = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
 // Types worth deriving separately. Everything else still counts towards the
 // overall table but does not get one of its own.
 const TYPES = ['jig', 'reel', 'slip jig', 'polka', 'hornpipe', 'waltz'];
+
+// Chord symbols, for the harmony table. ABC carries them in quotes; roughly
+// nine per cent of settings have them, contributed by whoever typed the
+// setting — so this samples what accompanists play rather than the tunes
+// themselves. Enough to weight existing choices with, not to invent new ones.
+const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const CHORD = /^([A-G])([b#]?)(m|min|maj|dim|aug|sus\d?)?(\d*)(\/[A-G][b#]?)?$/;
 const MODES = ['major', 'minor', 'dorian', 'mixolydian'];
 
 /** ABC body to a list of parts, each a list of melodic events.
@@ -156,6 +163,22 @@ function* rows (text) {
   if (field || row.length) { row.push (field); yield row; }
 }
 
+/** Chord symbols in one setting, as semitones above its own tonic paired with
+    whether they are minor. Absolute letters are useless across keys; a degree
+    is the same fact in every one of them. */
+function chordsOf (abc, tonic) {
+  const found = [];
+  for (const [, symbol] of abc.matchAll (/"([^"]*)"/g)) {
+    const match = CHORD.exec (symbol.trim());
+    if (! match) continue;
+    const accidental = match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0;
+    const root = ((PITCH[match[1]] + accidental - tonic) % 12 + 12) % 12;
+    const quality = match[3] ?? '';
+    found.push (`${root}:${quality.startsWith ('m') && ! quality.startsWith ('maj') ? 'min' : 'maj'}`);
+  }
+  return found;
+}
+
 const path = process.argv[2];
 if (! path) { console.error ('usage: node tools/derive-tune-stats.mjs <tunes.csv>'); process.exit (1); }
 
@@ -165,6 +188,7 @@ const column = Object.fromEntries (header.map ((name, i) => [name, i]));
 
 const buckets = { overall: tally() };
 const modeCounts = {};
+const harmony = {};
 let skipped = 0;
 
 for (const row of iterator) {
@@ -174,6 +198,16 @@ for (const row of iterator) {
   const tonic = DEGREE[mode[0]?.toUpperCase()] ?? null;
   const parts = parseAbc (row[column.abc]);
   if (! parts.length) { skipped++; continue; }
+
+  if (family && tonic !== null && PITCH[mode[0]?.toUpperCase()] !== undefined) {
+    // Chords are semitone arithmetic; `tonic` above is a diatonic index, and
+    // mixing the two silently produced a table where the tonic was not even
+    // the commonest chord in major.
+    const tonicPitch = PITCH[mode[0]?.toUpperCase()];
+    for (const chord of chordsOf (row[column.abc], tonicPitch)) {
+      (harmony[family] ??= {})[chord] = (harmony[family][chord] ?? 0) + 1;
+    }
+  }
 
   record (buckets.overall, parts, tonic);
   if (TYPES.includes (type)) {
@@ -189,11 +223,21 @@ const share = counts => {
     .map (([name, n]) => [name, Number ((n / total).toFixed (4))]));
 };
 
+const chordShare = counts => {
+  const total = Object.values (counts).reduce ((sum, n) => sum + n, 0);
+  return Object.fromEntries (Object.entries (counts)
+    .filter (([, n]) => n / total >= 0.002)
+    .sort ((a, b) => b[1] - a[1])
+    .map (([chord, n]) => [chord, Number ((n / total).toFixed (5))]));
+};
+
 const output = {
   source: 'thesession.org via github.com/adactio/TheSession-data, ODbL',
   derived: new Date().toISOString().slice (0, 10),
   note: 'Distributions only. No tune, setting or phrase from the corpus is reproduced here.',
-  types: {}
+  types: {},
+  // Semitones above the tonic, and whether the chord is minor.
+  harmony: Object.fromEntries (Object.entries (harmony).map (([mode, counts]) => [mode, chordShare (counts)]))
 };
 
 for (const [name, bucket] of Object.entries (buckets)) {

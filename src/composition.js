@@ -6,6 +6,7 @@ import { clampTempo } from './track-tempo.js';
 import { coordinateBassWithKick, makeRoomForMelody, addTransitionFill } from './ensemble.js';
 import { openingPlan } from './track-structure.js';
 import { PROGRESSIONS, noteNameToMidi, findPivot } from './theory.js';
+import { pickProgression } from './harmony.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, durationSeconds, ARP_PATTERNS } from './parts.js';
 
 export const COMPOSITION_VERSION = 1;
@@ -150,10 +151,10 @@ export function composeTrack (input) {
   for (let turnIndex = 0; turnIndex < recipe.turns; turnIndex++) {
     if (pendingKey) {
       rootMidi = pendingKey.root; scale = pendingKey.scale; pendingKey = null;
-      progression = pick (PROGRESSIONS[scale]); saved = null; context.previousVoicing = null;
+      progression = pickProgression (scale, random); saved = null; context.previousVoicing = null;
     } else if (! structured && turnIndex > 0 && random() < 0.1) {
       scale = pick (Object.keys (PROGRESSIONS).filter (name => name !== scale));
-      progression = pick (PROGRESSIONS[scale]); context.previousVoicing = null;
+      progression = pickProgression (scale, random); context.previousVoicing = null;
     }
     const energy = nextEnergy (arc, random);
     const settings = compositionSettings (recipe, energy);
@@ -238,7 +239,7 @@ export function composeTrack (input) {
         voicingBefore: context.previousVoicing ? [...context.previousVoicing] : null };
       bar.notes = writeBarNotes (bar, context, seededRandom (bar.noteSeed));
       score.bars.push (bar);
-      if (! structured && position > 0 && position % 8 === 0 && random() < 0.35) progression = pick (PROGRESSIONS[scale]);
+      if (! structured && position > 0 && position % 8 === 0 && random() < 0.35) progression = pickProgression (scale, random);
     }
   }
   score.barCount = score.bars.length;

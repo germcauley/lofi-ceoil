@@ -93,7 +93,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **54. Arpeggiated chord accompaniment**
 - [x] **55. Sampled nylon-string guitar**
 - [x] **56. 6/8 jig feel — first pass**
-- [~] **57. Learn from a corpus of real tunes** *(melody done; harmony measured, not yet applied)*
+- [x] **57. Learn from a corpus of real tunes** *(melody and harmony)*
 - [x] **58. Two traditions: Irish and pop/rock** — *built, then rejected*
 - [x] **59. A melodic grammar measured from the repertoire**
 - [x] **60. Cadence targets, and the notes the pool leaves out**
@@ -1495,17 +1495,34 @@ wrong is that a progression is chosen **uniformly** from its mode's list, so
 the shuttle that real tunes reach for a third of the time is played as often
 as anything else.
 
-### What to do about it, and what not to
+### What was done about it, and what was not
 
 Not replace the tables. They are hand-written, they sound good, and the corpus
 agrees with them; the royal road comment in `theory.js` is a deliberate taste
 decision that no dataset should overrule.
 
-The light touch is to **weight the existing choices** by how well each
-progression's chords match the measured frequencies for its mode — the same
-move already made for cadences in **60**, where formulas stayed and only their
-odds changed. That keeps every chord somebody chose and makes only their
-distribution honest.
+The light touch, and the one taken: **weight the existing choices** by how well
+each progression's chords match the measured frequencies for its mode — the
+same move already made for cadences in **60**, where the formulas stayed and
+only their odds changed. Every chord somebody chose survives; only the
+distribution is now honest.
+
+`src/harmony.js` scores each progression and all seven places that used to draw
+uniformly now draw by weight. In dorian the shuttle goes from one in seven to
+about one in five, and the i-IV vamp drops to eleven per cent; in major, I-IV-V
+and the I-IV vamp lead at about eleven per cent each while the royal road
+halves to four. Nothing is ruled out — a floor keeps every hand-written
+progression reachable, because a table measured from nine per cent of the
+corpus should bias an ear rather than overrule it.
+
+Two details that decided the shape. The score is a **geometric** mean of its
+chords' frequencies, not an arithmetic one: every progression contains the
+tonic, and the tonic dominates every mode, so an average was swamped by the
+chord they all share and separated the two dorian vamps by a few points when
+the corpus separates their second chords by nearly four to one. And chord
+symbols are semitones above the tonic, which is not the diatonic index used
+elsewhere in the derivation — mixing the two produced a first attempt in which
+the tonic was not even the commonest chord in major.
 
 Worth knowing before doing it: chord symbols are contributed by whoever typed
 the setting, so this is a sample of what accompanists play rather than of the

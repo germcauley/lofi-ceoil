@@ -14,6 +14,7 @@ import { createTrackNamer } from './track-names.js';
 import { createTrackMaterialPicker } from './track-material.js';
 import { decodeTrack, encodeTrack, quantiseRecipe } from './track-link.js';
 import { createListeningLog } from './listening.js';
+import { pickProgression } from './harmony.js';
 import { createStructurePicker } from './track-structure.js';
 import { composeTrack, reviseComposition, COMPOSITION_VERSION } from './composition.js';
 import { playScoreBar } from './score-player.js';
@@ -305,8 +306,7 @@ export function createEngine () {
     state.pendingKey = null;
     state.pivot = null;
 
-    const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
-    state.progression = set[Math.floor (Math.random() * set.length)];
+    state.progression = pickProgression (state.scale);
     state.previousVoicing = null;
     state.form = null;
     if (state.track) state.track.progression = state.progression;
@@ -434,10 +434,8 @@ export function createEngine () {
 
     // Give the new tune its own harmonic opening too, even if it stays in
     // the same key. Both the outgoing harmony and last opening are avoided.
-    const progressions = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
-    const choices = progressions.filter (progression =>
-      progression.name !== state.progression.name && progression.name !== previousOpeningProgression);
-    state.progression = pickFrom (choices.length ? choices : progressions);
+    state.progression = pickProgression (state.scale, Math.random,
+      [state.progression.name, previousOpeningProgression]);
     previousOpeningProgression = state.progression.name;
     state.track.progression = state.progression;
     state.previousVoicing = null;
@@ -622,8 +620,7 @@ export function createEngine () {
         state.scale = target.scale;
         state.tracksInMode = target.scale === previousScale ? state.tracksInMode + 1 : 0;
 
-        const set = PROGRESSIONS[state.scale] ?? PROGRESSIONS.minor;
-        state.progression = set[Math.floor (Math.random() * set.length)];
+        state.progression = pickProgression (state.scale);
 
         if (state.onKey) {
           const name = NOTE_NAMES[state.rootMidi % 12];
@@ -941,8 +938,7 @@ export function createEngine () {
 
       // Each mode has its own progressions, because the chords that define a
       // mode only exist in that mode.
-      const set = PROGRESSIONS[name] ?? PROGRESSIONS.minor;
-      state.progression = set[Math.floor (Math.random() * set.length)];
+      state.progression = pickProgression (name);
       state.previousVoicing = null;
       if (state.track) {
         state.track.progression = state.progression;
