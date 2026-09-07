@@ -1346,41 +1346,45 @@ share one. After it exists, hosting can move underneath it as often as we like
 and no link ever notices. Before it exists, every link shared is hostage to
 where the site happens to sit today.
 
-And once the domain is ours, the tidy architecture is available for nothing.
-Put the domain's DNS on Cloudflare, proxied, still pointing at GitHub Pages —
-the site does not move and the deploy does not change — and then a Worker
-route on `/api/*` of that same domain is **same origin**. No CORS, no
-preflight, no second hostname to keep alive. The one thing to watch is the SSL
-mode, which needs to be Full so Cloudflare talks to GitHub over HTTPS rather
-than looping.
+### Cloudflare, all of it
 
-That gives all three: the site stays where it is, the API is same-origin, and
-the links are permanent from the first one ever shared.
+Vercel was considered and is the nicer developer experience, but its Hobby
+plan is personal and non-commercial only — commercial use means Pro at twenty
+dollars a month. Cloudflare's free tier permits commercial use outright, and
+this is a project that might one day earn something. That single line settles
+it; nothing technical separated them for a workload this small.
 
-### Shape
+With the domain in hand, there is no proxying trick to set up and no SSL mode
+to get wrong. The whole thing lives in one account:
 
 | Piece | What | Why |
 | --- | --- | --- |
-| Domain | Bought first, DNS on Cloudflare, proxied | Makes every link permanent |
-| Site | GitHub Pages, unchanged, behind the domain | Nothing about the deploy changes |
-| API | Cloudflare Worker on `/api/*` of the same domain | Same origin, so no CORS at all |
-| Database | D1 (SQLite) | Matches the shape; queries are plain SQL |
+| Domain | Bought first, DNS on Cloudflare | Makes every link permanent |
+| Site | Cloudflare Pages, git-connected to this repo | Same build, same push-to-deploy |
+| API | Pages Functions at `/api/*` | Same origin natively, so no CORS at all |
+| Database | D1 (SQLite) | First-party, plain SQL, no second account |
 
-Two tables. One row per tune ever heard, keyed by its link code, with the
-attributes already decoded so queries do not have to decode them. One row per
-listening event: outcome, how long it was heard, how far through it got, how
-many tracks into the session it was, the local hour, whether it came from the
-unbiased control distribution, and a random per-browser identifier that is not
-a person.
+Two small changes come with leaving GitHub Pages, and neither should happen
+until the domain is ready: `vite.config.js` drops its `/lofi-ceoil/` base back
+to `/`, and `.github/workflows/deploy.yml` goes away.
 
-That control-group flag is not an afterthought. It is the thing that makes any
-of the rest of it mean something, for the reasons set out in **65**.
+### Whether the free tier is actually enough
+
+It is, by a wide margin. D1 allows five million row reads and a hundred
+thousand row writes a day, with five gigabytes of storage. One listening event
+is one row, so a hundred thousand writes is a hundred thousand tracks listened
+to in a day — far more attention than this is likely to get, and if it ever
+gets that much, paying for it will be the least of the good news. Worth
+knowing that since September 2026 exceeding those limits returns errors rather
+than quietly degrading, which is another reason the client must treat a failed
+write as unremarkable.
 
 ### Order, so nothing breaks
 
-0. **Buy the domain and point it at the current site.** Cheap, quick, and
-   everything else is easier once it is done. Nothing else on this list should
-   be promoted anywhere until a link minted today still works in a year.
+0. **Buy the domain, put its DNS on Cloudflare, and deploy the site to Pages
+   behind it.** Cheap, quick, and everything else is easier once it is done.
+   Nothing here should be promoted anywhere until a link minted today still
+   works in a year.
 1. **A local listening log.** No server at all. Proves the data model and is
    useful on its own — it can already say whether you skip jigs faster than
    reels.
