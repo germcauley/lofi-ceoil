@@ -8,23 +8,33 @@ A browser instrument that generates endless lofi with an Irish accent, and lets 
 
 ![The Lofi Ceoil panel](docs/panel.png)
 
-The music is generated in the browser with [Tone.js](https://tonejs.github.io/), using synthesis and a small library of piano, whistle and harp samples. There is no server. Samples are decoded and cached before playback so new tracks can start without another download.
+The music is generated in the browser with [Tone.js](https://tonejs.github.io/), using synthesis and a small library of samples — piano, harp, nylon guitar, vibraphone, marimba, kalimba, glockenspiel and recorder. There is no server, and nothing you do here leaves your browser. Samples are decoded and cached before playback so new tracks can start without another download.
 
 ## What it actually does
 
 Most generative lofi toys roll new random notes every bar, which produces noodling rather than music. This one writes **phrases**.
 
+**The melody is measured, not guessed.** The grammar behind it comes from [The Session](https://thesession.org)'s public tune dump — 55,246 settings and 6.6 million notes of Irish traditional music — reduced offline to a few kilobytes of distributions. It knows how often a tune steps rather than leaps, that real tunes fall more than they rise, and what tends to follow a leap: after a fall of a fifth the repertoire almost stops descending and turns back up instead. It knows where parts come to rest — the tonic 42% of the time in jigs, the fifth 15% — and how often the second half of a tune restates the first before going elsewhere. Nothing from the corpus is reproduced or shipped; what travels is how often a shape occurs, which is a fact about the repertoire rather than anyone's transcription. See `src/data/TUNE-STATS-ATTRIBUTION.md`.
+
+**Ornamentation is articulation, not decoration.** A player has no volume control and no sustain, so cuts, taps, rolls and crans are how one note is separated from the next and how a long note is kept alive. A roll fills a long note and sounds it three times with a cut and a tap between — in a jig, the whole dotted crotchet. A cut always separates two notes of the same pitch, because there is no other way to sound one twice.
+
 It plays in **tracks**. Each track holds its material for two to four turns — a tune played several times through, as a set does — then a new one begins, at its own tempo. Underneath, the arrangement, the energy arc, the voices and the counter textures keep moving.
 
 **Rhythm varies between tracks:** two 4/4 tracks and one 6/8 jig-feel track per shuffled group. Jigs have six-quaver melody and backing patterns, with tempo counted as two main pulses per bar (minimum 74 BPM). The score summary shows the meter.
 
-Every track has a **wistful title** — *the light you left on*, *we took the long way home*, *an evening i wish i could post to you*. The panel and browser tab follow the current track. A pool of 256 complete titles ships with the app, with no repeats until the whole pool has played and no runtime API calls.
+Every track has a **title**, in Irish or English — *Trasna na dtonnta* (across the waves), *Cois farraige* (by the sea), *a jumper on the radiator*, *the bus is late again*. Irish titles are shown with their translation underneath. The panel and browser tab follow the current track. 643 titles ship with the app and no runtime API calls are made; each language keeps its own shuffled deck, so a name does not come round again for roughly 260 tracks.
 
 **New tracks are checked against recent music.** The generator remembers the last 128 motif pairs in this browser, rejects recent reused openings, and spaces out matching rhythms and melodic contours. Changing key or swapping the A and B parts does not make an old tune count as new. Each track also chooses a different opening progression, alongside its own voices and settings. If browser storage is unavailable, the memory lasts for the current session.
 
 **Each track is written before it plays.** A complete score holds all 64–128 bars of notes, percussion, harmony, arrangement and planned voices. **Replay tune** restarts those notes; **save score** downloads the versioned recipe, full score and edits as JSON. The last score remains available after stopping. Replay uses the current sound and tempo controls; the saved composition does not capture continuous noise or effect tails as audio.
 
-Note-related knob changes, key and mode changes rewrite upcoming bars at the next bar boundary, with revision history retained in the score. WAV, MIDI, stems and score import are still on the roadmap.
+**Save midi** writes the tune as a standard MIDI file — format 1, one track per voice, drums on channel 10 — so it can be opened, re-voiced and finished somewhere else. A MIDI file is the tune; a recording would only be one performance of it.
+
+**Copy link** puts the tune in a URL, about sixty-six characters of it. Opening that link plays the same tune note for note. The link carries a recipe rather than any audio, and whoever opens it regenerates every note locally, so nothing is uploaded and no server is involved.
+
+**What you keep** appears once you have listened to a few tracks: how many played out rather than being cut short, and which kinds of tune you let run longest. It is worked out from a log kept in your own browser, it is sent nowhere, and there is a button to delete it.
+
+Note-related knob changes, key and mode changes rewrite upcoming bars at the next bar boundary, with revision history retained in the score. WAV, stems and score import are still on the roadmap.
 
 Within a track it works from **motifs**. Each track invents two one-bar cells and develops each into an eight-bar part — the length an Irish tune actually comes in — then chooses **AABA**, **ABAB**, or **AABB**, so a full turn is 32 bars. A phrase is built by applying named operations to its motif — *repeat*, *sequence*, *inversion*, *augmentation*, *truncate-and-extend* — so the randomness sits in which operation is chosen, never in which note comes next. Every result is coherent because it is a transformation of material already accepted.
 
@@ -71,7 +81,7 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
-**Voices are switchable while it plays.** The lead can be a `vibraphone`, a `marimba`, a `kalimba`, a `piano` or a `harp`, with a synthesised harp kept alongside the sampled one; the keys a `rhodes`, a `felt` piano, a `piano` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Most are synthesised — a soft attack, a little chorus or detune, and a lowpass under the raw oscillator do most of the work of not sounding synthetic. The piano is **sampled**, because FM only gets so close to a struck string; its samples share the cache used by the whistle and harp.
+**Voices are switchable while it plays.** The lead can be a `guitar`, `vibraphone`, `marimba`, `kalimba`, `piano` or `harp`, with a synthesised harp kept alongside the sampled one; the keys a `rhodes`, a `felt` piano, a `piano`, a `guitar` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Several are **sampled** — the piano, harp, guitar, vibraphone, marimba and kalimba — because synthesis only gets so close to a struck or plucked string; they share one decoded cache. The rest are synthesised, where a soft attack, a little chorus or detune and a lowpass under the raw oscillator do most of the work of not sounding synthetic.
 
 All three rows default to `auto`, choosing fresh instruments for each track. A dot shows which instrument is playing. The **arrangement also picks the voice**: a part that follows a drop comes back on a different instrument, which is what gives a section return its lift. The chord voice changes less often than the lead, because if both change at once nothing carries across the seam, and the bass least often of all — it is the foundation. Pick a voice by hand and it stays put.
 
@@ -182,6 +192,8 @@ MIT. The code is original; nothing is derived from another generator.
 
 The piano samples are from the [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander Holm, CC-BY 3.0.
 
-The whistle and harp samples are from the [Versilian Community Sample Library](https://github.com/sgossner/VCSL) by Versilian Studios, CC0.
+The harp, vibraphone, marimba, kalimba, glockenspiel and recorder samples are from the [Versilian Community Sample Library](https://github.com/sgossner/VCSL) by Versilian Studios, CC0.
+
+Melodic statistics are derived from data dumps of [The Session](https://thesession.org), made available under the Open Database License. No tune, setting or phrase from it is reproduced here; see `src/data/TUNE-STATS-ATTRIBUTION.md` for the full list of alterations and how to regenerate them.
 
 The nylon-string guitar recordings are by [quartertone](https://freesound.org/people/quartertone/packs/11573/), distributed and prepared by [Nicholaus P. Brosowsky / tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Ten selected notes were level-adjusted and re-encoded locally; full provenance is in `public/samples/guitar/ATTRIBUTION.md`. Select **guitar** in the lead or chord voice row; it is also included in auto selection and works with arpeggiated accompaniment.
