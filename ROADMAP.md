@@ -1332,26 +1332,38 @@ push to main. It is a folder of static files, and the README says plainly that
 there is no server. Everything below adds a server *beside* that, and none of
 it may make the static site stop working on its own.
 
-### The decision that matters: do not move the site
+### The decision that matters: get the domain before the links
 
-The tidy-looking option is to move hosting to Cloudflare Pages and put the API
-on the same origin under `/api`, which removes CORS entirely. It is the wrong
-trade here, because it changes the site's URL — and we have just spent the
-effort to make every tune a shareable link. Links that rot are worse than a
-preflight request.
+The first version of this item argued for staying on `github.io`, on the
+grounds that moving the site would break the links we had just built. That
+reasoning does not survive the plan to take a custom domain, because **a
+custom domain breaks them too**. The question was never whether to move; it
+was whether links get minted on a throwaway URL first.
 
-So: **the site stays where it is, and the API lives on its own origin.** A
-Cloudflare Worker with a D1 database, called cross-origin. CORS is a dozen
-lines in one place and a preflight the browser caches. Revisit same-origin
-only if a custom domain is ever adopted, at which point both can point at it
-and the old links can redirect rather than break.
+So the order inverts. The domain is not a finishing touch — it is the thing
+that makes a link durable, and it should come before anyone is invited to
+share one. After it exists, hosting can move underneath it as often as we like
+and no link ever notices. Before it exists, every link shared is hostage to
+where the site happens to sit today.
+
+And once the domain is ours, the tidy architecture is available for nothing.
+Put the domain's DNS on Cloudflare, proxied, still pointing at GitHub Pages —
+the site does not move and the deploy does not change — and then a Worker
+route on `/api/*` of that same domain is **same origin**. No CORS, no
+preflight, no second hostname to keep alive. The one thing to watch is the SSL
+mode, which needs to be Full so Cloudflare talks to GitHub over HTTPS rather
+than looping.
+
+That gives all three: the site stays where it is, the API is same-origin, and
+the links are permanent from the first one ever shared.
 
 ### Shape
 
 | Piece | What | Why |
 | --- | --- | --- |
-| Site | GitHub Pages, unchanged | The URL is load-bearing now |
-| API | Cloudflare Worker, `POST /play`, `GET /stats` | Free tier is ample; no cold starts |
+| Domain | Bought first, DNS on Cloudflare, proxied | Makes every link permanent |
+| Site | GitHub Pages, unchanged, behind the domain | Nothing about the deploy changes |
+| API | Cloudflare Worker on `/api/*` of the same domain | Same origin, so no CORS at all |
 | Database | D1 (SQLite) | Matches the shape; queries are plain SQL |
 
 Two tables. One row per tune ever heard, keyed by its link code, with the
@@ -1366,6 +1378,9 @@ of the rest of it mean something, for the reasons set out in **65**.
 
 ### Order, so nothing breaks
 
+0. **Buy the domain and point it at the current site.** Cheap, quick, and
+   everything else is easier once it is done. Nothing else on this list should
+   be promoted anywhere until a link minted today still works in a year.
 1. **A local listening log.** No server at all. Proves the data model and is
    useful on its own — it can already say whether you skip jigs faster than
    reels.
