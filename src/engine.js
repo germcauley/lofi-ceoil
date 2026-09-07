@@ -13,6 +13,7 @@ import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
 import { createTrackMaterialPicker } from './track-material.js';
 import { decodeTrack, encodeTrack, quantiseRecipe } from './track-link.js';
+import { createListeningLog } from './listening.js';
 import { createStructurePicker } from './track-structure.js';
 import { composeTrack, reviseComposition, COMPOSITION_VERSION } from './composition.js';
 import { playScoreBar } from './score-player.js';
@@ -26,6 +27,7 @@ export function createEngine () {
   const chain = createChain();
   const nextTrackTitle = createTrackNamer();
   const nextTrackMaterial = createTrackMaterialPicker();
+  const listening = createListeningLog();
   const nextStructure = createStructurePicker();
   let previousOpeningProgression = null;
   let previousTempoOffset = null;
@@ -520,9 +522,32 @@ export function createEngine () {
     };
   }
 
+  /** Close off whatever is playing, once.
+
+      A skip closes the track before the transport is torn down, and the new
+      track's `startTrack` runs afterwards — so without a single guarded exit
+      the same track would be recorded twice, once as skipped and again as
+      finished. */
+  function closeTrack (outcome) {
+    if (! listening.listening) return;
+    // readClock reports { elapsedSeconds, resting }, not a number. Reading it
+    // as one fails silently and records every track as zero seconds long,
+    // which looks like data rather than like a bug.
+    const heard = playbackTimeline.readClock (Tone.immediate())?.elapsedSeconds;
+    listening.ended (outcome, {
+      seconds: Number.isFinite (heard) ? Math.max (0, heard) : 0,
+      barsHeard: Math.max (0, state.barIndex - trackBeganAtBar)
+    });
+  }
+
+  let trackBeganAtBar = 0;
+
   function buildForm () {
     if (! state.track || state.track.turnsLeft <= 0
-        || state.track.turn >= state.track.composition.turns.length) startTrack();
+        || state.track.turn >= state.track.composition.turns.length) {
+      closeTrack ('finished');
+      startTrack();
+    }
     const track = state.track;
     const turn = track.composition.turns[track.turn];
     track.turn++;
@@ -623,6 +648,11 @@ export function createEngine () {
       announcedTrack = state.track;
       const track = { title: state.track.title, titleEnglish: state.track.titleEnglish,
         titleLanguage: state.track.titleLanguage, number: state.trackNumber };
+      // Counted from where it is actually audible, not from where it was
+      // planned: the two differ by however long the samples took to load.
+      trackBeganAtBar = state.barIndex;
+      listening.began ({ code: encodeTrack (state.track.composition.recipe),
+        title: state.track.title, bars: state.track.composition.bars.length });
       Tone.getDraw().schedule (() => state.onTrack?.(track), time);
     }
 
@@ -722,6 +752,7 @@ export function createEngine () {
   function stop () {
     if (! state.running) return;
 
+    closeTrack ('stopped');
     Tone.getTransport().stop();
     if (scheduleId !== null) Tone.getTransport().clear (scheduleId);
     scheduleId = null;
@@ -873,6 +904,8 @@ export function createEngine () {
         are reused. */
     skip () {
       if (! state.running || state.skipRequested) return;
+      // Before the clock is reset, or how long they listened is lost.
+      closeTrack ('skipped');
       setReplayPending (null);
       state.skipRequested = true;
       playbackTimeline.reset();
@@ -1049,7 +1082,7 @@ export function createEngine () {
   }
 
   return { state, controls, start, stop, chain, analyser, getLevel, getSpectrum, replay,
-    linkForCurrentTrack, openLink,
+    linkForCurrentTrack, openLink, listening,
     isReplayQueued: () => Boolean (replayPending),
     getTrackTime: () => playbackTimeline.readClock (Tone.immediate()),
     getTempo: () => Tone.getTransport().bpm.getValueAtTime (Tone.immediate()) / meterInfo (state.meter).pulseBeats,

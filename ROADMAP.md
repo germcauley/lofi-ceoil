@@ -103,6 +103,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [ ] **61. Dungeon synth — a side project off this engine**
 - [x] **66. A tune has a link**
 - [ ] **65. Live, with a database of what people like**
+- [x] **68. A local listening log**
 - [ ] **67. How the live version actually gets built**
 ---
 
@@ -1385,9 +1386,7 @@ write as unremarkable.
    behind it.** Cheap, quick, and everything else is easier once it is done.
    Nothing here should be promoted anywhere until a link minted today still
    works in a year.
-1. **A local listening log.** No server at all. Proves the data model and is
-   useful on its own — it can already say whether you skip jigs faster than
-   reels.
+1. **A local listening log.** Done — see **68**.
 2. **The Worker and D1, write-only.** The page posts outcomes and ignores the
    response. If the API is down, unreachable or blocked, the music does not
    notice.
@@ -1408,3 +1407,36 @@ right default and is enough for everything we want to learn: no accounts, no
 personal data, a random identifier at most, and a plain sentence on the page
 saying what is recorded. Collecting nothing about people is much easier than
 holding it well.
+
+## 68. A local listening log — done
+
+Every track now records how it ended: `skipped`, `stopped`, or `finished`
+because it played itself out and another began. With it goes how long it was
+actually heard, how far through it got, where in the sitting it fell, and the
+local hour.
+
+Nothing is sent anywhere. The log lives in `localStorage` and that is the
+whole of it — which is the honest first step rather than a placeholder, since
+it settles the shape of the data with no hosting, no endpoint and nobody
+else's information to look after. When there is a database, this is what it
+stores.
+
+The last three fields are there because they are confounds, not because they
+are interesting. A tune heard fifth in a sitting, or at one in the morning, is
+judged differently from the same tune heard first, or at noon — and a model
+given the outcome without the circumstance will happily learn the circumstance
+instead.
+
+`summarise` deliberately reports rates rather than counts, for the reason set
+out in **65**: a tune played more collects more of everything, so totals rank
+the popular rather than the good. Groups with fewer than five plays behind
+them are left out entirely, because ranking on three is how you confidently
+learn noise.
+
+Two things worth recording from building it. Closing a track goes through one
+guarded exit, because a skip closes the outgoing track and the incoming one's
+start runs afterwards — without the guard the same track lands twice, once
+skipped and once finished. And `readClock` returns `{ elapsedSeconds }` rather
+than a number, so reading it as one recorded every track as zero seconds long:
+not an error, just a column of zeroes that looks like data. A browser test now
+plays, skips and stops a real session and checks the seconds are real.
