@@ -103,6 +103,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [ ] **61. Dungeon synth — a side project off this engine**
 - [x] **66. A tune has a link**
 - [ ] **65. Live, with a database of what people like**
+- [ ] **67. How the live version actually gets built**
 ---
 
 ## 1. Chord voice leading — done
@@ -1318,3 +1319,73 @@ is refused rather than guessed at.
 
 This unblocks **65**: a like needs a tune with a name you can point at, and
 now every tune has one.
+
+## 67. How the live version actually gets built
+
+**65** says what we want. This says how, because the how has one decision in
+it that is easy to get wrong and expensive to undo.
+
+### What is already true
+
+The site is live at `germcauley.github.io/lofi-ceoil` and redeploys on every
+push to main. It is a folder of static files, and the README says plainly that
+there is no server. Everything below adds a server *beside* that, and none of
+it may make the static site stop working on its own.
+
+### The decision that matters: do not move the site
+
+The tidy-looking option is to move hosting to Cloudflare Pages and put the API
+on the same origin under `/api`, which removes CORS entirely. It is the wrong
+trade here, because it changes the site's URL — and we have just spent the
+effort to make every tune a shareable link. Links that rot are worse than a
+preflight request.
+
+So: **the site stays where it is, and the API lives on its own origin.** A
+Cloudflare Worker with a D1 database, called cross-origin. CORS is a dozen
+lines in one place and a preflight the browser caches. Revisit same-origin
+only if a custom domain is ever adopted, at which point both can point at it
+and the old links can redirect rather than break.
+
+### Shape
+
+| Piece | What | Why |
+| --- | --- | --- |
+| Site | GitHub Pages, unchanged | The URL is load-bearing now |
+| API | Cloudflare Worker, `POST /play`, `GET /stats` | Free tier is ample; no cold starts |
+| Database | D1 (SQLite) | Matches the shape; queries are plain SQL |
+
+Two tables. One row per tune ever heard, keyed by its link code, with the
+attributes already decoded so queries do not have to decode them. One row per
+listening event: outcome, how long it was heard, how far through it got, how
+many tracks into the session it was, the local hour, whether it came from the
+unbiased control distribution, and a random per-browser identifier that is not
+a person.
+
+That control-group flag is not an afterthought. It is the thing that makes any
+of the rest of it mean something, for the reasons set out in **65**.
+
+### Order, so nothing breaks
+
+1. **A local listening log.** No server at all. Proves the data model and is
+   useful on its own — it can already say whether you skip jigs faster than
+   reels.
+2. **The Worker and D1, write-only.** The page posts outcomes and ignores the
+   response. If the API is down, unreachable or blocked, the music does not
+   notice.
+3. **A stats endpoint and a readout**, so there is something to look at while
+   data accumulates.
+4. **Only then, bias generation** — with the exploration share held back as a
+   control, and measured against it.
+
+Each step is revertible and none of them changes what the generator sounds
+like until the last.
+
+### What it costs, honestly
+
+Free at this scale, and Cloudflare's limits are generous rather than
+unlimited. A public write endpoint needs rate limiting and a size cap, and the
+posted code must be checked to decode before it is stored. Anonymity is the
+right default and is enough for everything we want to learn: no accounts, no
+personal data, a random identifier at most, and a plain sentence on the page
+saying what is recorded. Collecting nothing about people is much easier than
+holding it well.
