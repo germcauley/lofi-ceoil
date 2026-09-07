@@ -8,6 +8,7 @@ import { createPianoRoll } from './piano-roll.js';
 import { NOTE_NAMES } from './theory.js';
 import { summarise } from './listening.js';
 import { decodeTrack } from './track-link.js';
+import { scoreToMidi, midiFilename } from './midi.js';
 import { MIN_TEMPO, DEFAULT_TEMPO } from './track-tempo.js';
 
 const engine = createEngine();
@@ -285,6 +286,7 @@ skipButton.addEventListener ('click', () => {
 const replayButton = document.getElementById ('replayButton');
 const saveScoreButton = document.getElementById ('saveScoreButton');
 const copyLinkButton = document.getElementById ('copyLinkButton');
+const saveMidiButton = document.getElementById ('saveMidiButton');
 const scoreSummary = document.getElementById ('scoreSummary');
 
 function updateReplayButton () {
@@ -304,6 +306,7 @@ function updateScoreSummary () {
   updateReplayButton();
   saveScoreButton.disabled = false;
   copyLinkButton.disabled = false;
+  saveMidiButton.disabled = false;
   const edit = score.revisions?.length ? ' · edited' : '';
   scoreSummary.textContent = `${score.recipe.structure.meter === '6/8' ? '6/8 jig' : '4/4'} · ${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
 }
@@ -328,6 +331,25 @@ replayButton.addEventListener ('click', async () => {
     playButton.disabled = false;
     updateReplayButton();
   }
+});
+
+/** Hands a generated file to the browser, and tidies up after itself. */
+function download (blob, filename) {
+  const url = URL.createObjectURL (blob);
+  const link = document.createElement ('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout (() => URL.revokeObjectURL (url), 1000);
+}
+
+// A MIDI file is the tune rather than a recording of it: it opens anywhere,
+// on any instruments, and can be edited and finished somewhere else.
+saveMidiButton.addEventListener ('click', () => {
+  const score = engine.getComposition();
+  if (! score) return;
+  download (new Blob ([scoreToMidi (score)], { type: 'audio/midi' }),
+    midiFilename (score.recipe.title));
 });
 
 saveScoreButton.addEventListener ('click', () => {

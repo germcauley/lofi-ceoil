@@ -54,7 +54,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **15. More bass voices**
 - [x] **16. Radio mode**
 - [x] **17. Generated tune names**
-- [ ] **18. Save the current tune**
+- [~] **18. Save the current tune** *(MIDI done; WAV still open)*
 - [ ] **19. Notation of the current tune** *(backlog)*
 - [x] **20. Sampled whistle and harp**
 - [ ] **21. More styles — slowed and reverb, trance, minimalism**
@@ -105,6 +105,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [ ] **65. Live, with a database of what people like**
 - [x] **68. A local listening log**
 - [x] **69. A readout of what you keep**
+- [x] **70. MIDI export**
 - [ ] **67. How the live version actually gets built**
 ---
 
@@ -986,8 +987,9 @@ Everything generated so far is gone the moment it plays. Nothing can be shared,
 which is why nobody has heard this.
 
 - **A tune has a permalink.** Done — see **66**.
-- **18. Save the current tune** — WAV, and MIDI, which matters more: MIDI means
-  the tunes can leave and be used elsewhere.
+- **18. Save the current tune** — MIDI done, see **70**. WAV still open, and
+  the lesser half: a WAV is a recording of one performance, a MIDI file is the
+  tune.
 - **19. Notation** — the tunes are already stored as degrees and durations, and
   ABC is the format the tradition actually uses. A tune that can be printed as
   ABC is a tune a musician can play.
@@ -1509,3 +1511,41 @@ Worth knowing before doing it: chord symbols are contributed by whoever typed
 the setting, so this is a sample of what accompanists play rather than of the
 tunes themselves, and it is nine per cent of the corpus rather than all of it.
 Good enough to weight with. Not good enough to overrule an ear with.
+
+## 70. MIDI export — done
+
+**save midi** writes the playing tune as a standard MIDI file. It is the
+cheapest useful thing the composition layer can produce, because a score is
+already very nearly the format: a note is `{ role, midi, at, duration,
+velocity }` with times in quarter-note beats. No library — a few hundred bytes
+of header and a run of events, written by hand rather than taking a dependency
+for something this size.
+
+Format 1, so the parts arrive separable: a conductor track carrying the title,
+time signature and tempo map, then one track per voice, with drums on channel
+10 and a General MIDI program per voice so the file opens sounding roughly
+right somewhere that knows nothing about this project.
+
+Three real faults, all found by reading the bytes back with a parser written
+independently of the writer — which is the only way this kind of thing gets
+checked honestly:
+
+- **The time signature said 8/4.** The numerator was taken from the bar's
+  length in eighths rather than from the meter, so common time came out as
+  eight quarter-notes.
+- **Twenty-eight notes went missing.** Two notes of the same pitch overlapping
+  on one channel is ambiguous in MIDI: one note-off closes whichever the reader
+  thinks is open and the other hangs, which editors show as a stuck note. Notes
+  are now gathered before they are written, and an earlier one is clipped where
+  the next begins.
+- **The kick landed on note 24.** It is played by a pitched synth and carries a
+  note of its own, well below General MIDI's percussion range, so on channel 10
+  it would have been silence. The percussion map now wins for drum roles: that
+  pitch is a synthesis detail, not a note anybody wrote.
+
+Accents in filenames are folded rather than replaced, because nearly half the
+titles are Irish and `Sc-al.mid` is a poor way to treat "Scéal".
+
+The last one is worth remembering as a habit: the test's reader had its own bug
+— `at + u32()` reads the position before the read advances it, so every track
+ended four bytes early. Two statements, not one.
