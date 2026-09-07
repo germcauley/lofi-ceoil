@@ -133,3 +133,49 @@ test ('the engine records a real session, with the time actually listened', asyn
   }
   await page.evaluate (() => window.lofi.chain.input.context.close());
 });
+
+test ('the readout appears only once it has something to say', async ({ page }) => {
+  await page.goto ('/');
+  const bay = page.locator ('#listeningBay');
+  const detail = page.locator ('#listeningDetail');
+
+  // Nothing behind it yet: a rate off three tracks would be invented.
+  await expect (bay).toBeHidden();
+
+  // The readout refreshes as tracks come and go, so playback has to be under
+  // way for the skip button to do anything at all.
+  await page.click ('#playButton');
+  await page.waitForFunction (() => window.lofi.state.track);
+  await page.evaluate (() => window.lofi.listening.clear());
+
+  const write = (outcome, seconds, barsHeard, times) => page.evaluate (
+    ({ outcome, seconds, barsHeard, times }) => {
+      const log = window.lofi.listening;
+      // A real code, so the readout can decode a tune's attributes from it.
+      const code = window.lofi.linkForCurrentTrack()
+        ?? 'AQSfjc29DADHNgADAwACCQQBAAgBgFCIgIyZJE2AR0pFTUdZAJtZrni1gIYDAwICbw';
+      for (let i = 0; i < times; i++) {
+        log.began ({ code, title: 'x', bars: 96 });
+        log.ended (outcome, { seconds, barsHeard });
+      }
+    }, { outcome, seconds, barsHeard, times });
+
+  await write ('skipped', 6, 3, 8);
+  await page.evaluate (() => document.getElementById ('skipButton').click());
+  await expect (bay).toBeVisible();
+
+  // Before anything has played out, ranking by that would read "played out
+  // most — reels 0%", which is worse than saying nothing.
+  await expect (detail).toContainText ('nothing has played out yet');
+  await expect (detail).toContainText ('sent nowhere');
+
+  await write ('finished', 240, 96, 6);
+  await page.evaluate (() => document.getElementById ('skipButton').click());
+  await expect (detail).toContainText ('play out most');
+
+  // And it can be deleted, since it is the listener's own listening.
+  await page.click ('#forgetListeningButton');
+  await expect (bay).toBeHidden();
+  expect (await page.evaluate (() => window.lofi.listening.entries().length)).toBe (0);
+  await page.evaluate (() => window.lofi.chain.input.context.close());
+});

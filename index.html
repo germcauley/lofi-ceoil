@@ -91,6 +91,20 @@
         </div>
       </div>
 
+      <!-- Only appears once there is enough listening behind it to mean
+           anything. Everything here is worked out in this browser and stays
+           in it. -->
+      <div class="score-bay" id="listeningBay" aria-label="What you have been listening to" hidden>
+        <div class="score-copy">
+          <span class="score-label">what you keep</span>
+          <span id="listeningSummary"></span>
+          <span class="listening-note" id="listeningDetail"></span>
+        </div>
+        <div class="score-actions">
+          <button id="forgetListeningButton" class="skip" title="Delete the listening log kept in this browser">forget</button>
+        </div>
+      </div>
+
       <!-- Hidden for now. The code stays wired up, so removing `hidden` brings
            it back without touching anything else. -->
       <section class="piano-roll" id="pianoRoll" aria-labelledby="rollTitle" hidden>

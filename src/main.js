@@ -6,6 +6,8 @@ import { createKnob } from './knob.js';
 import { createMeter } from './meter.js';
 import { createPianoRoll } from './piano-roll.js';
 import { NOTE_NAMES } from './theory.js';
+import { summarise } from './listening.js';
+import { decodeTrack } from './track-link.js';
 import { MIN_TEMPO, DEFAULT_TEMPO } from './track-tempo.js';
 
 const engine = createEngine();
@@ -178,6 +180,8 @@ engine.state.onTrack = ({ title, titleEnglish, titleLanguage, number }) => {
   trackNumber.textContent = `track ${String (number).padStart (3, '0')}`;
   document.title = `${title} · Lofi Ceoil`;
   updateScoreSummary();
+  // The outgoing track was written to the log a moment ago.
+  showListening();
 };
 
 
@@ -229,6 +233,7 @@ playButton.addEventListener ('click', async () => {
   if (engine.state.running) {
     engine.stop();
     stopMeter();
+    showListening();
     updateTrackTime();
 
     document.body.classList.remove ('running');
@@ -272,6 +277,7 @@ skipButton.addEventListener ('click', () => {
   if (! engine.state.running) return;
 
   engine.controls.skip();
+  showListening();
   status.textContent = 'new track';
   setTimeout (() => { if (engine.state.running) status.textContent = 'running'; }, 1400);
 });
@@ -387,3 +393,62 @@ if (shared) {
     trackTitle.textContent = 'press start for a new tune';
   }
 }
+
+// --------------------------------------------------------- what you keep
+
+// A link carries everything about a tune, so the log can be read back in
+// musical terms without having stored any of them: decode the code and the
+// attributes fall out.
+const attributesOf = code => {
+  const recipe = decodeTrack (code);
+  if (! recipe) return {};
+  return {
+    meter: recipe.structure.meter === '6/8' ? 'jigs' : 'reels',
+    mode: recipe.scale,
+    lead: recipe.voices.lead
+  };
+};
+
+const listeningBay = document.getElementById ('listeningBay');
+const listeningSummary = document.getElementById ('listeningSummary');
+const listeningDetail = document.getElementById ('listeningDetail');
+
+function showListening () {
+  const summary = summarise (engine.listening.entries(), attributesOf);
+
+  // Nothing worth saying yet. Reporting a rate off three tracks would be
+  // making something up.
+  if (summary.plays < 5) { listeningBay.hidden = true; return; }
+  listeningBay.hidden = false;
+
+  const percent = value => `${Math.round (value * 100)}%`;
+  listeningSummary.textContent =
+    `${summary.plays} tracks · ${summary.minutes} minutes · ${percent (summary.keep)} played out`;
+
+  // Rates, not counts: a tune heard more collects more of everything. And
+  // only groups with enough behind them, which summarise has already filtered.
+  //
+  // Before anything has been left to play out, ranking by that says "played
+  // out most — reels 0%", which is worse than saying nothing. Until then the
+  // honest measure is how long you stayed.
+  const anyKept = summary.by.some (group => group.keep > 0);
+  const best = summary.by
+    .slice()
+    .sort ((a, b) => anyKept ? b.keep - a.keep : b.averageSeconds - a.averageSeconds)
+    .slice (0, 3)
+    .map (group => anyKept
+      ? `${group.value} ${percent (group.keep)}`
+      : `${group.value} ${group.averageSeconds}s`);
+
+  const kept = 'kept in this browser, sent nowhere.';
+  listeningDetail.textContent = ! best.length ? kept
+    : anyKept ? `you let these play out most — ${best.join (' · ')}. ${kept}`
+    : `nothing has played out yet; you stay longest with ${best.join (' · ')}. ${kept}`;
+}
+
+document.getElementById ('forgetListeningButton').addEventListener ('click', () => {
+  engine.listening.clear();
+  showListening();
+});
+
+showListening();

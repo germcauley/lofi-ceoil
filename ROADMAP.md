@@ -104,6 +104,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **66. A tune has a link**
 - [ ] **65. Live, with a database of what people like**
 - [x] **68. A local listening log**
+- [x] **69. A readout of what you keep**
 - [ ] **67. How the live version actually gets built**
 ---
 
@@ -1390,8 +1391,10 @@ write as unremarkable.
 2. **The Worker and D1, write-only.** The page posts outcomes and ignores the
    response. If the API is down, unreachable or blocked, the music does not
    notice.
-3. **A stats endpoint and a readout**, so there is something to look at while
-   data accumulates.
+3. **A stats endpoint**, so there is something to look at while data
+   accumulates. The readout itself is already built — see **69** — and reads
+   the local log; pointing it at aggregate figures is a change of source, not
+   of design.
 4. **Only then, bias generation** — with the exploration share held back as a
    control, and measured against it.
 
@@ -1440,3 +1443,28 @@ skipped and once finished. And `readClock` returns `{ elapsedSeconds }` rather
 than a number, so reading it as one recorded every track as zero seconds long:
 not an error, just a column of zeroes that looks like data. A browser test now
 plays, skips and stops a real session and checks the seconds are real.
+
+## 69. A readout of what you keep — done
+
+The log from **68** was only reachable from the console. It now has a panel:
+how many tracks, how many minutes, what share played out rather than being cut
+short, and which kinds of tune you let run longest.
+
+It appears only once five tracks are behind it, and groups need five plays of
+their own before they are named — the same rule `summarise` already applies,
+for the same reason. A rate off three tracks is invented rather than measured.
+
+Attributes come from decoding the link, not from anything stored. A tune's
+code carries its meter, mode and voices, so the readout can talk about jigs
+and reels and harps without the log ever having recorded one.
+
+The wording has a case worth keeping. Before anything has played out, ranking
+by that produces "you let these play out most — reels 0%", which is worse than
+saying nothing; until then it ranks by how long you stayed instead. And it
+says plainly on the panel that this is kept in the browser and sent nowhere,
+with a button to delete it, because that is true now and the honest thing to
+say while it stays true.
+
+One real bug found by the test: `.score-bay` sets a `display`, which beats the
+browser's default rule for `[hidden]`, so the panel was rendering as an empty
+box whenever it had nothing to say. `[hidden]` is now enforced.
