@@ -93,7 +93,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **54. Arpeggiated chord accompaniment**
 - [x] **55. Sampled nylon-string guitar**
 - [x] **56. 6/8 jig feel — first pass**
-- [~] **57. Learn from a corpus of real tunes** *(melody done; harmony still open)*
+- [~] **57. Learn from a corpus of real tunes** *(melody done; harmony measured, not yet applied)*
 - [x] **58. Two traditions: Irish and pop/rock** — *built, then rejected*
 - [x] **59. A melodic grammar measured from the repertoire**
 - [x] **60. Cadence targets, and the notes the pool leaves out**
@@ -1468,3 +1468,44 @@ say while it stays true.
 One real bug found by the test: `.score-bay` sets a `display`, which beats the
 browser's default rule for `[hidden]`, so the panel was rendering as an empty
 box whenever it had nothing to say. `[hidden]` is now enforced.
+
+## 57b. What the corpus says about harmony
+
+The assumption behind leaving harmony alone was that The Session is a melody
+corpus and has no chords in it. That is not quite true: ABC carries chord
+symbols in quotes, and the parser was throwing them away.
+
+**8.9% of settings carry them** — 4,905 tunes, 118,497 chord marks. Converted
+to degrees relative to each setting's own tonic, 4,871 of them are usable, and
+the picture is coherent and clearly mode-specific:
+
+| mode | commonest chords | commonest move |
+| --- | --- | --- |
+| major | I 40% · V 25% · IV 17% · vi 6% · ii 6% | V→I 19%, I→V 13%, I→IV 13% |
+| dorian | i 36% · ♭VII 27% · v 11% · ♭III 8% · IV 7% | i↔♭VII, 17% each way |
+| minor | i 33% · ♭VII 20% · ♭III 11% · ♭VI 9% · V 8% | ♭VII→i 10%, i→♭VII 9% |
+| mixolydian | I 45% · ♭VII 22% · IV 13% · v 9% | I↔♭VII, ~17% each way |
+
+The double-tonic shuttle is measurably the single commonest gesture in both
+dorian and mixolydian. The hand-written tables already contain it — `i-VII
+vamp` and `I-VII vamp` are both there — so the tables are not wrong. What is
+wrong is that a progression is chosen **uniformly** from its mode's list, so
+the shuttle that real tunes reach for a third of the time is played as often
+as anything else.
+
+### What to do about it, and what not to
+
+Not replace the tables. They are hand-written, they sound good, and the corpus
+agrees with them; the royal road comment in `theory.js` is a deliberate taste
+decision that no dataset should overrule.
+
+The light touch is to **weight the existing choices** by how well each
+progression's chords match the measured frequencies for its mode — the same
+move already made for cadences in **60**, where formulas stayed and only their
+odds changed. That keeps every chord somebody chose and makes only their
+distribution honest.
+
+Worth knowing before doing it: chord symbols are contributed by whoever typed
+the setting, so this is a sample of what accompanists play rather than of the
+tunes themselves, and it is nine per cent of the corpus rather than all of it.
+Good enough to weight with. Not good enough to overrule an ear with.
