@@ -30,6 +30,20 @@ export function createChain () {
   // moves them, so they cost nothing when unused.
   const sweepLow = new Tone.Filter ({ type: 'lowpass', frequency: 20000, rolloff: -24, Q: 1.1 });
   const sweepHigh = new Tone.Filter ({ type: 'highpass', frequency: 20, rolloff: -24, Q: 1.1 });
+  // The echo is a send rather than a stage in the chain, because a delay
+  // across the whole mix smears the bass and drums into porridge. Only the
+  // melodic voices are fed into it, so the low end stays dry and the tune is
+  // the thing that repeats.
+  const echoSend = new Tone.Gain (0);
+  // Echoes with full low end pile up. Thinning them first is most of what
+  // keeps a long feedback tail from turning into mud.
+  const echoTrim = new Tone.Filter ({ type: 'highpass', frequency: 320, rolloff: -12 });
+  const echoDelay = new Tone.FeedbackDelay ({ delayTime: 0.5, feedback: 0.36, wet: 1 });
+  // Movement on the repeats only. The dry signal never touches this, so it
+  // colours the tail without smearing the note that caused it.
+  const echoPhase = new Tone.Phaser ({ frequency: 0.22, octaves: 2, baseFrequency: 500 });
+  const echoReturn = new Tone.Gain (1);
+
   const reverb = new Tone.Reverb ({ decay: 3.2, wet: 0.28, preDelay: 0.02 });
 
   // Catches the peaks that saturation and the noise bed add, so the output
@@ -48,6 +62,15 @@ export function createChain () {
   wobble.connect (tone);
   tone.connect (sweepHigh);
   sweepHigh.connect (sweepLow);
+  // The return lands after the sweeps so a filter sweep takes the echoes with
+  // it, and before the reverb so repeats sit in the same room as everything
+  // else rather than in front of it.
+  echoSend.connect (echoTrim);
+  echoTrim.connect (echoDelay);
+  echoDelay.connect (echoPhase);
+  echoPhase.connect (echoReturn);
+  echoReturn.connect (reverb);
+
   sweepLow.connect (reverb);
   reverb.connect (limiter);
   limiter.connect (master);
@@ -66,6 +89,26 @@ export function createChain () {
     reverb,
     limiter,
     master,
+    echoSend,
+    echoDelay,
+
+    /** How much of the melodic voices is fed to the echo. */
+    setEcho (amount, when = Tone.now()) {
+      echoSend.gain.rampTo (Math.max (0, Math.min (1, amount)) * 0.5, 0.4, when);
+      // More echo wants a longer tail, or it reads as a slapback rather than
+      // something the tune disappears into.
+      echoDelay.feedback.rampTo (0.24 + Math.max (0, Math.min (1, amount)) * 0.3, 0.4, when);
+    },
+
+    /** A dotted eighth at the current tempo — the classic lofi echo, and the
+        one that locks to the beat rather than fighting it. Set explicitly
+        rather than in note notation, because a delay written as `8n.` is
+        resolved once against whatever the tempo happened to be and then never
+        follows it again. */
+    setEchoTempo (tempo) {
+      if (! (tempo > 0)) return;
+      echoDelay.delayTime.rampTo (Math.min (1.5, 0.75 * 60 / tempo), 0.3);
+    },
 
     /** A filter sweep aimed at a section boundary.
 

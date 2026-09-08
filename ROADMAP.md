@@ -78,7 +78,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **39. Replay should queue, not interrupt**
 - [ ] **40. Irish forms with a hip-hop backing** *(6/8 first pass done)*
 - [x] **41. Filter sweeps across a section boundary**
-- [ ] **42. More of the effects palette**
+- [~] **42. More of the effects palette** *(echo done; more still open)*
 - [x] **43. Mix corrections**
 - [ ] **44. The piano roll** *(built, currently hidden)*
 - [x] **45. New lead voices**
@@ -1604,3 +1604,36 @@ notice travels but the share-alike does not. Worth stating plainly on the
 endpoint rather than leaving people to guess.
 
 Do it when **67** is running and there is a reason. Not before.
+
+## 42b. The echo — done
+
+A tempo-synced delay, on the **echo** knob. A dotted eighth at the track's own
+tempo, so it locks to the beat rather than fighting it, and it follows the
+tempo from track to track rather than being fixed at whatever the tempo
+happened to be when the chain was built — which is what writing the delay as
+`8n.` would have done, since that is resolved once and then never again.
+
+**It is a send, not a stage.** A delay across the whole mix smears the bass and
+drums into porridge, so only the lead, the supporting line and the counter are
+fed into it; the low end stays dry and the tune is the thing that repeats. The
+send is thinned with a highpass first, because echoes with full low end pile
+up, and the repeats pass through a slow phaser on the way back — movement on
+the tail only, never on the note that caused it. The return lands after the
+filter sweeps, so a sweep takes the echoes with it, and before the reverb, so
+repeats sit in the same room as everything else.
+
+More echo also lengthens the tail, because a fixed short feedback reads as
+slapback rather than as something a tune disappears into.
+
+### The trap this hit, worth remembering
+
+Adding a knob to the tone list looked harmless and was not. The link codec
+writes the knobs in order, in the middle of the layout, so appending one
+shifted the variations, the voices and the title by a byte each — and an
+existing link still decoded, describing a *different tune*. Silently wrong is
+worse than broken.
+
+Knobs added after the format exists now go at the very end of the byte layout,
+where a shorter old link simply runs out and the missing values read as
+nought. A real pre-echo link is kept verbatim in the tests and decoded, because
+the only way to know old links still work is to keep one and try it.

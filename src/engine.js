@@ -72,6 +72,9 @@ export function createEngine () {
   function connectInstruments () {
     [keys, lead, bass, drone, pluck, support].forEach (part => part.output.connect (instrumentBus));
     drums.outputs.forEach (out => out.connect (instrumentBus));
+    // The echo is fed by the melodic voices only. Sending the bass, drone or
+    // drums into a delay is how a mix turns to porridge.
+    [lead, support, pluck].forEach (part => part.output.connect (chain.echoSend));
     // Into the limiter, not past it. The surface stays outside the sidechain
     // and the tape path — a record does not pump and is not the tape — but it
     // must not be the one thing that can spike above everything else.
@@ -132,7 +135,7 @@ export function createEngine () {
     user: {
       density: 0.5, counter: 0.55, brightness: 0.29, swing: 0.28,
       ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27, support: 0.5,
-      drive: 0.3, space: 0.28, pump: 0.35
+      drive: 0.3, space: 0.28, pump: 0.35, echo: 0.22
     },
 
     // Where we are in a long arc, and how far it is allowed to swing things.
@@ -363,6 +366,10 @@ export function createEngine () {
     chain.wobble.frequency.rampTo (0.4 + value ('wobble') * 1.6, 1);
     chain.reverb.wet.rampTo (value ('space'), 1);
     chain.saturation.distortion = value ('drive') * 0.6;
+    chain.setEcho (value ('echo'));
+    // The delay is a dotted eighth, so it has to follow the track's tempo
+    // rather than whatever the tempo was when the chain was built.
+    chain.setEchoTempo (state.tempo);
   }
 
   /** Starts a new track: new material, a new tempo, and a fresh run of turns.
@@ -796,6 +803,9 @@ export function createEngine () {
     const next = { ...table[name](), name };
     pendingVoices[kind] = next;
     next.output.connect (instrumentBus);
+    // A swapped voice has to keep its place in the send, or the echo quietly
+    // stops following the tune.
+    if (kind === 'lead' || kind === 'support' || kind === 'pluck') next.output.connect (chain.echoSend);
 
     const commit = () => {
       if (token !== swapTokens[kind]) return;
@@ -884,6 +894,7 @@ export function createEngine () {
     space (value) { state.user.space = value; applySettings(); },
     drive (value) { state.user.drive = value; applySettings(); },
     pump (value) { state.user.pump = value; applySettings(); },
+    echo (value) { state.user.echo = value; applySettings(); },
 
     volume (value) {
       chain.master.gain.rampTo (value, 0.2);

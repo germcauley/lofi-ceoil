@@ -42,6 +42,15 @@ const ARCS = ['swell', 'build', 'ebb', 'plateau'];
 // changes the sound rather than the tune. Both are carried, in that order.
 const SCORE_KNOBS = ['density', 'counter', 'ornament', 'drone', 'dust', 'support', 'swing'];
 const TONE_KNOBS = ['brightness', 'wobble', 'drive', 'space', 'pump', 'volume'];
+
+// Knobs added after the format existed go at the very end of the layout, not
+// at the end of a list in the middle of it. Appending to TONE_KNOBS looks
+// harmless and is not: everything written after the knob block — the
+// variations, the voices, the title — shifts by a byte, so an existing link
+// still decodes and quietly describes a different tune, which is worse than
+// failing. Anything here is read only if the bytes are there, so an older and
+// shorter link keeps every value it had and takes nought for the rest.
+const LATE_KNOBS = ['echo'];
 const KNOBS = [...SCORE_KNOBS, ...TONE_KNOBS];
 
 const VOICES = {
@@ -74,7 +83,9 @@ const unsigned = value => (value - 128) / 255;
     link describes. */
 export function quantiseRecipe (recipe) {
   const user = { ...recipe.user };
-  for (const knob of KNOBS) if (user[knob] !== undefined) user[knob] = unbyte (byte (user[knob]));
+  for (const knob of [...KNOBS, ...LATE_KNOBS]) {
+    if (user[knob] !== undefined) user[knob] = unbyte (byte (user[knob]));
+  }
 
   const variation = { ...recipe.variation };
   for (const knob of SCORE_KNOBS) {
@@ -126,6 +137,7 @@ export function packRecipe (recipe) {
   for (const knob of SCORE_KNOBS) w.u8 (signed (recipe.variation?.[knob]));
   for (const role of ['lead', 'keys', 'bass']) w.u8 (index (VOICES[role], recipe.voices?.[role]));
   w.u16 (Math.max (0, titleIndexOf (recipe.title)));
+  for (const knob of LATE_KNOBS) w.u8 (byte (recipe.user?.[knob]));
 
   return Uint8Array.from (w.bytes);
 }
@@ -161,6 +173,7 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
   const voices = {};
   for (const role of ['lead', 'keys', 'bass']) voices[role] = VOICES[role][r.u8()] ?? VOICES[role][0];
   const title = titleAt (r.u16());
+  for (const knob of LATE_KNOBS) user[knob] = unbyte (r.u8());
 
   const table = PROGRESSIONS[scale] ?? PROGRESSIONS.minor;
 

@@ -125,7 +125,9 @@ test ('the engine records a real session, with the time actually listened', asyn
   // looks like data rather than like a bug.
   expect (entries[0].seconds).toBeGreaterThan (1);
   for (const entry of entries) {
-    expect (entry.code).toHaveLength (66);
+    // A shape, not an exact length: the link format grows when a knob is
+    // added, and this test is about the log rather than the codec.
+    expect (entry.code).toMatch (/^[A-Za-z0-9_-]{40,120}$/);
     expect (entry.fraction).toBeGreaterThanOrEqual (0);
     expect (entry.fraction).toBeLessThanOrEqual (1);
     expect (entry.hour).toBeGreaterThanOrEqual (0);
