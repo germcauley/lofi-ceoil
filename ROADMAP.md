@@ -1670,3 +1670,46 @@ enters and was bringing drums in at bar six even on a track scored to have
 none. And the **drum-continuity rule**, which stops a breakdown running on too
 long, was dragging the kit back into tracks that were meant to be without it —
 a silent kit is a choice, not a breakdown.
+
+## 73. Irish notes, lofi sound — the palette
+
+The aim, stated plainly: **Irish melodies and harmony, in a lofi style.** The
+composition side is there. The sound was not, and comparing against
+`jacbz/Lofi` — the project this was measured against — says why.
+
+Its whole instrument list is `guitar-acoustic`, `guitar-bass`,
+`guitar-electric`, `harp`, `piano`, `piano-electric`, `piano-soft`. Seven
+sampled voices, all keyboard, guitar or harp. Its drums are **recorded loops**
+at fixed tempos, not synthesised hits.
+
+So two gaps, and this item closes the second one.
+
+### The palette leaned bell
+
+Automatic selection drew evenly over the lead voices, and three of the seven
+were struck metal — vibraphone, marimba, kalimba, with glockenspiel on the
+supporting line. A third of tracks opened on a bell, which reads as world
+music or as a toy whatever the notes are doing.
+
+Selection is now weighted, in `voice-palette.js`. An electric piano and a
+felt piano join the lead voices, and warm ones lead: rhodes 19%, guitar 19%,
+harp 16%, felt 15%, piano 12% — struck metal down from 33% to 15%. Nothing is
+removed and every voice stays selectable by hand, because a bell is lovely
+once in a while and awful every time.
+
+Two things worth keeping in mind. The weights live in their own module free of
+Tone, because composition needs them for a mid-track swap and composition is
+pure — importing the instruments there would drag an audio library into the
+one part of this that runs anywhere. And the new voices are **appended** to
+`LEAD_VOICES`, never inserted: a voice is stored in a link as its position in
+that table, so inserting two at the front would have silently changed the lead
+of every link ever shared.
+
+### Still open: the drums
+
+Ours are synthesised — a membrane synth kick, noise synths for snare and hats
+— and that is most of the remaining distance. The choice is sampled one-shots
+against recorded loops. Loops sound instantly right and cost the rest: a loop
+is locked to its own tempo and to 4/4, so it would undo the 68–92 spread from
+**72**, the 6/8 jigs, and much of what the scorings act on. One-shots keep the
+sequencer and everything built on it.

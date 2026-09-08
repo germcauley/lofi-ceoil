@@ -275,6 +275,9 @@ function piano () {
 // whistle — are gone. Both were the wrong side of the line samples drew: an
 // oscillator can suggest a struck or plucked string, but a bowed or blown one
 // gives itself away immediately.
+// Order is part of the link format — a voice is stored as its position here —
+// so new voices are appended and never inserted. `voice-palette.js` decides
+// how often each is reached for; this decides only what exists.
 export const LEAD_VOICES = {
   guitar,
   vibraphone,
@@ -282,7 +285,9 @@ export const LEAD_VOICES = {
   kalimba,
   piano,
   harp: harpSampled,
-  'harp (synth)': harpSynth
+  'harp (synth)': harpSynth,
+  rhodes,
+  felt
 };
 
 /** Voices for the supporting line. Anything that can decorate without

@@ -7,6 +7,7 @@ import { coordinateBassWithKick, makeRoomForMelody, addTransitionFill } from './
 import { openingPlan } from './track-structure.js';
 import { PROGRESSIONS, noteNameToMidi, findPivot } from './theory.js';
 import { pickProgression } from './harmony.js';
+import { pickVoice } from './voice-palette.js';
 import { playChord, playBass, playDrums, playMelody, playCounter, playSupport, playDrone, durationSeconds, ARP_PATTERNS } from './parts.js';
 
 export const COMPOSITION_VERSION = 1;
@@ -214,7 +215,9 @@ export function composeTrack (input) {
         for (const [role, probability] of [['lead', 1], ['keys', 0.4], ['bass', 0.25]]) {
           if (recipe.auto[role] && ! (structured && role === 'lead') && random() < probability) {
             const options = recipe.voiceOptions[role].filter (name => name !== voices[role]);
-            voices[role] = pick (options);
+            // Weighted like the track's own choice, or a mid-track swap would
+            // quietly undo the palette every time it fired.
+            voices[role] = pickVoice (role, options, random);
           }
         }
       }

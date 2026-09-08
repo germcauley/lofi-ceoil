@@ -134,8 +134,10 @@ function mountVoiceChooser (id, names, initial, apply, autoFlag) {
     });
 }
 
+// Listed warmest first, which is also commonest — the row reads as the
+// palette rather than as an alphabet.
 mountVoiceChooser ('leadVoiceRow',
-  ['vibraphone', 'marimba', 'kalimba', 'piano', 'guitar', 'harp', 'harp (synth)'],
+  ['rhodes', 'felt', 'guitar', 'harp', 'piano', 'vibraphone', 'marimba', 'kalimba', 'harp (synth)'],
   'auto', value => engine.controls.leadVoice (value), 'autoVoice');
 
 mountVoiceChooser ('keysVoiceRow',

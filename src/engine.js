@@ -4,6 +4,7 @@ import { meterInfo } from './musical-meter.js';
 
 import * as Tone from 'tone';
 import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, SUPPORT_VOICES, createDrums, createDrone, createPluck, createVinyl, preloadSamples } from './instruments.js';
+import { pickVoice } from './voice-palette.js';
 
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
@@ -483,7 +484,7 @@ export function createEngine () {
       Rows the listener has pinned by hand are left alone. */
   function chooseTrackVoices () {
     if (state.autoVoice) {
-      swapVoice ('lead', pickFrom (LEAD_VOICE_NAMES.filter (n => n !== state.leadVoice)));
+      swapVoice ('lead', pickVoice ('lead', LEAD_VOICE_NAMES.filter (n => n !== state.leadVoice)));
     }
 
     if (state.autoKeysVoice) {
@@ -493,11 +494,11 @@ export function createEngine () {
       const options = KEYS_VOICE_NAMES.filter (n =>
         n !== state.keysVoice && ! (leadIsPiano && n === 'piano'));
 
-      swapVoice ('keys', pickFrom (options));
+      swapVoice ('keys', pickVoice ('keys', options));
     }
 
     if (state.autoBassVoice) {
-      swapVoice ('bass', pickFrom (BASS_VOICE_NAMES.filter (n => n !== state.bassVoice)));
+      swapVoice ('bass', pickVoice ('bass', BASS_VOICE_NAMES.filter (n => n !== state.bassVoice)));
     }
   }
 
