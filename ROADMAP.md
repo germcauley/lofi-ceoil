@@ -107,6 +107,7 @@ The composition plan supplies a shared foundation for the visualiser (**33**), n
 - [x] **69. A readout of what you keep**
 - [x] **70. MIDI export**
 - [ ] **67. How the live version actually gets built**
+- [ ] **71. An API that serves tunes**
 ---
 
 ## 1. Chord voice leading — done
@@ -1566,3 +1567,40 @@ titles are Irish and `Sc-al.mid` is a poor way to treat "Scéal".
 The last one is worth remembering as a habit: the test's reader had its own bug
 — `at + u32()` reads the position before the read advances it, so every track
 ended four bytes early. Two statements, not one.
+
+## 71. An API that serves tunes
+
+Somebody asking for a tune over HTTP and getting one back.
+
+**The reason this is nearly free is already true.** `composeTrack` is pure
+JavaScript — no audio context, no DOM, no browser. The tests already run it in
+Node. It drops straight into the Worker that **67** is going to stand up
+anyway, so `GET /tune` returning a score, or a MIDI file, is a small addition
+to infrastructure that has to exist for other reasons.
+
+Notation only, though, and that limit is not arbitrary:
+
+- **MIDI and JSON are cheap and clean.** A few milliseconds of pure
+  computation, and the output carries no samples — so it inherits no sample
+  licences and needs no attribution beyond the corpus notice.
+- **Audio is a different project.** Rendering a WAV needs Tone.js and an audio
+  context, which means a headless browser per request or a second synthesis
+  path written from scratch. Slow, expensive to host, and the output would
+  carry the sample licences with it — the Salamander piano is CC-BY and wants
+  crediting wherever it ends up.
+
+### Why it should not jump the queue
+
+An API serves consumers; **65** is about learning from listeners. Those are
+different products, and the second is the one this project is actually for.
+Building the API first would split the effort before anyone has heard the
+thing at all.
+
+There is also a real question about what the output is licensed as, which
+should be answered before anyone can build on it rather than after. The tunes
+are generated, the grammar behind them is derived from an ODbL database, and
+what comes out is a produced work rather than a derivative database — so the
+notice travels but the share-alike does not. Worth stating plainly on the
+endpoint rather than leaving people to guess.
+
+Do it when **67** is running and there is a reason. Not before.
