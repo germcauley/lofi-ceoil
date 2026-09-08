@@ -475,6 +475,13 @@ export function createDrums () {
     }
   });
 
+  // Everything meets at one gain so the kit can be turned down or off as a
+  // kit. The per-role levels above are the balance between the pieces; this
+  // is how much of the whole thing you want.
+  const level = new Tone.Gain (1);
+  const voices = { kick: kickVoice, snare: snareVoice, ghost: ghostVoice, hat: hatVoice };
+  Object.values (voices).forEach (voice => voice.connect (level));
+
   return {
     kick: role (kickVoice, pickers.kick),
     snare: role (snareVoice, pickers.snare),
@@ -482,9 +489,18 @@ export function createDrums () {
     // An open hat now and again, which is most of what stops a hat pattern
     // sounding like a metronome.
     hat: role (hatVoice, pickers.hat, 0.07),
-    outputs: [kickVoice, snareVoice, ghostVoice, hatVoice],
+    voices,
+    level,
+    outputs: [level],
+
+    /** Nought is properly silent, not merely quiet. */
+    setLevel (amount, when = Tone.now()) {
+      level.gain.rampTo (Math.max (0, Math.min (1, amount)), 0.25, when);
+    },
+
     dispose () {
-      [kickVoice, snareVoice, ghostVoice, hatVoice].forEach (node => node.dispose());
+      Object.values (voices).forEach (node => node.dispose());
+      level.dispose();
     }
   };
 }

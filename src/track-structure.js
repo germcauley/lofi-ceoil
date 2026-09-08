@@ -6,7 +6,11 @@ const OPENINGS = ['melody', 'chords', 'layered', 'rhythm', 'full'];
 // lead sounded in 98% of bars, the drone 96%, the bass 88%, the drums 76%.
 // One texture, whatever else varied, and the main reason a long listen went
 // flat. A set has airs and duos in it, not only full arrangements.
-const SCORINGS = ['full', 'full', 'full', 'full', 'duo', 'duo', 'bare', 'driving'];
+// Kit-less tracks were 36% of the draw, which is too many to listen through:
+// an air is a relief when it is occasional and a shrug when it is common.
+// One in five now, with more of the kit-forward kind to balance it.
+const SCORINGS = ['full', 'full', 'full', 'full', 'full',
+  'driving', 'driving', 'driving', 'duo', 'bare'];
 const FORMS = {
   tune: ['A', 'A', 'B', 'A'],
   riff: ['A', 'B', 'A', 'B'],

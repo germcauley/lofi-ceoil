@@ -81,7 +81,7 @@ Chords **voice-lead**: each voice moves to the nearest tone of the next chord an
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
 
-**Tracks are scored, not just arranged.** Some are *bare* — an air, no kit and no comping, the tune over a drone. Some are a *duo*, a tune and an accompaniment. Some are *driving*, with the kit in throughout. Most are *full*. Measured, that runs from about eight notes a bar to twenty-four, and tempo spreads from 68 to 92, so an hour of it does not settle into one texture at one speed.
+**Tracks are scored, not just arranged.** Some are *bare* — an air, no kit and no comping, the tune over a drone. Some are a *duo*, a tune and an accompaniment. Some are *driving*, with the kit in throughout. Most are *full*. Measured, that runs from about eight notes a bar to twenty-four, and tempo spreads from 68 to 98, so an hour of it does not settle into one texture at one speed. Roughly one track in five has no kit; the **drums** knob turns the kit down or off entirely whenever you want.
 
 **The kit is sampled.** Synthesised drums were most of what stopped this sounding like lofi: a membrane synth makes a clean, even thump and a noise synth makes a hiss with an envelope on it, and no amount of tape treatment downstream fixes a snare that was never a snare. These are recordings — concert instruments, trimmed hard and rolled off until they behave like a kit — left to the tape path to age, which is how lofi drums are actually made. Two of each of kick, snare and hat alternate, so a run of hats is not one sample repeated.
 

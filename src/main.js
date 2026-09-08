@@ -38,6 +38,7 @@ const TONE_KNOBS = [
   { id: 'space', label: 'space', min: 0, max: 1, step: 0.01, value: 0.28 },
   { id: 'pump', label: 'pump', min: 0, max: 1, step: 0.01, value: 0.35 },
   { id: 'echo', label: 'echo', min: 0, max: 1, step: 0.01, value: 0.22 },
+  { id: 'drums', label: 'drums', min: 0, max: 1, step: 0.01, value: 1 },
   { id: 'volume', label: 'level', min: 0, max: 1, step: 0.01, value: 0.9 }
 ];
 

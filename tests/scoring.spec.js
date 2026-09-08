@@ -107,3 +107,32 @@ test ('a link carries the scoring, and older links read as full', () => {
   expect (decodeTrack (older).structure.scoring).toBe ('full');
   expect (decodeTrack (older).title).toBe ('humming in the rain');
 });
+
+test ('most tracks have a kit, and some are brisk', () => {
+  // Kit-less tracks were 36% of the draw, which is too many to listen
+  // through: an air is a relief when it is occasional and a shrug when it is
+  // common.
+  const next = createStructurePicker();
+  const counts = {};
+  for (let i = 0; i < 120; i++) {
+    const { scoring } = next();
+    counts[scoring] = (counts[scoring] ?? 0) + 1;
+  }
+  const kitless = (counts.duo ?? 0) + (counts.bare ?? 0);
+  expect (kitless / 120).toBeLessThan (0.28);
+  expect (kitless / 120).toBeGreaterThan (0.1);
+  // Both still appear — the point was fewer, not none.
+  expect (counts.duo).toBeGreaterThan (0);
+  expect (counts.bare).toBeGreaterThan (0);
+
+  // And nothing was ever brisk: the high end of the tempo range reaches
+  // further than the low, so an occasional track sits near the top.
+  let previous = null;
+  const tempos = [];
+  for (let i = 0; i < 120; i++) {
+    previous = chooseTempoOffset (previous, 80, 0.5);
+    tempos.push (clampTempo (80 + previous * 0.5));
+  }
+  expect (Math.max (...tempos)).toBeGreaterThan (92);
+  expect (tempos.filter (tempo => tempo > 90).length / 120).toBeGreaterThan (0.05);
+});

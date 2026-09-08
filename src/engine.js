@@ -136,7 +136,7 @@ export function createEngine () {
     user: {
       density: 0.5, counter: 0.55, brightness: 0.29, swing: 0.28,
       ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27, support: 0.5,
-      drive: 0.3, space: 0.28, pump: 0.35, echo: 0.22
+      drive: 0.3, space: 0.28, pump: 0.35, echo: 0.22, drums: 1
     },
 
     // Where we are in a long arc, and how far it is allowed to swing things.
@@ -367,6 +367,9 @@ export function createEngine () {
     chain.wobble.frequency.rampTo (0.4 + value ('wobble') * 1.6, 1);
     chain.reverb.wet.rampTo (value ('space'), 1);
     chain.saturation.distortion = value ('drive') * 0.6;
+    // Not run through `value`: the arc and the track's variation move the
+    // texture already, and a listener who turns the kit off means off.
+    drums.setLevel (state.user.drums ?? 1);
     chain.setEcho (value ('echo'));
     // The delay is a dotted eighth, so it has to follow the track's tempo
     // rather than whatever the tempo was when the chain was built.
@@ -896,6 +899,7 @@ export function createEngine () {
     drive (value) { state.user.drive = value; applySettings(); },
     pump (value) { state.user.pump = value; applySettings(); },
     echo (value) { state.user.echo = value; applySettings(); },
+    drums (value) { state.user.drums = value; applySettings(); },
 
     volume (value) {
       chain.master.gain.rampTo (value, 0.2);

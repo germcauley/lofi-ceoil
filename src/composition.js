@@ -76,7 +76,9 @@ function arrangement (energy, random, scoring = 'full') {
     // but a track scored without drums is not a breakdown, and is left alone.
     drumsFrom: ! plan.drums ? 8
       : plan.drums === 'always' ? 0
-      : (part === 0 && bare) || random() > 0.55 + energy * 0.45 ? 8 : part === 0 ? 4 : 0,
+      // Was 0.55 + energy * 0.45, which left roughly a fifth of parts without
+      // a kit on top of the tracks scored to have none.
+      : (part === 0 && bare) || random() > 0.74 + energy * 0.26 ? 8 : part === 0 ? 4 : 0,
     drumsUntil: part === 3 ? 6 : 8,
     silentKit: ! plan.drums,
     counter: ! (part === 0 && bare), emptyBar: random() < 0.35 ? 7 : -1,

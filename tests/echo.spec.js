@@ -105,3 +105,21 @@ test ('the delay follows the tempo from track to track', async ({ page }) => {
   for (const { tempo, delay } of seen) expect (delay).toBeCloseTo (0.75 * 60 / tempo, 2);
   await page.evaluate (() => window.lofi.chain.input.context.close());
 });
+
+test ('a link that predates a knob reads what that knob meant then', () => {
+  // A missing byte reads as nought, and nought is not always right. No echo
+  // is correct for a tune written before the echo existed; no drums is not —
+  // that tune had drums, and silence would be a wrong reading rather than a
+  // missing one.
+  const decoded = decodeTrack (BEFORE_ECHO);
+  expect (decoded.user.echo).toBe (0);
+  expect (decoded.user.drums).toBe (1);
+  expect (decoded.structure.scoring).toBe ('full');
+
+  // And a link written now carries both back exactly.
+  const now = { ...recipe() };
+  now.user = { ...now.user, echo: 0.5, drums: 0.25 };
+  const round = decodeTrack (encodeTrack (quantiseRecipe (now)));
+  expect (round.user.echo).toBeCloseTo (0.5, 2);
+  expect (round.user.drums).toBeCloseTo (0.25, 2);
+});

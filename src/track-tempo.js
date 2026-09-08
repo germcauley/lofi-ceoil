@@ -11,7 +11,10 @@ export const clampTempo = value => Math.max (MIN_TEMPO, Math.min (100, value));
 export function chooseTempoOffset (previous, base, drift, random = Math.random) {
   // Offsets are scaled by drift before they are heard, so these have to be
   // twice what the audible spread should be.
-  const offsets = [-24, -16, -8, -4, 0, 4, 8, 16, 24];
+  // The high end goes further than the low: nothing was ever brisk, and one
+  // track in ten sitting near the top of the range is what stops a long
+  // listen feeling uniformly slow.
+  const offsets = [-24, -16, -8, -4, 0, 4, 8, 16, 24, 36];
   const audible = offset => clampTempo (base + offset * drift);
   const minimum = 8 * drift;
   const choices = previous == null ? offsets : offsets.filter (offset =>

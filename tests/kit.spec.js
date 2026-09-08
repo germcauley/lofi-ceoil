@@ -9,22 +9,54 @@ test ('the kit is sampled, and each role is its own voice at its own level', asy
     const drums = window.lofi.state.drums;
     return {
       roles: ['kick', 'snare', 'ghost', 'hat'].map (role => typeof drums[role]?.triggerAttackRelease),
+      // One sampler per role. Sharing one across them would send every hit
+      // through every role's gain, so a hat would arrive at the volume of a
+      // kick.
+      distinctVoices: new Set (Object.values (drums.voices)).size,
+      volumes: ['kick', 'snare', 'ghost', 'hat'].map (role => Math.round (drums.voices[role].volume.value)),
+      // They meet at one gain, so the kit can be turned down as a kit.
       outputs: drums.outputs.length,
-      // Sharing one sampler across the roles would send every hit through
-      // every role's gain, so a hat would arrive at the volume of a kick.
-      distinctOutputs: new Set (drums.outputs).size,
-      volumes: drums.outputs.map (out => Math.round (out.volume?.value ?? 0))
+      level: drums.level.gain.value
     };
   });
 
   expect (kit.roles).toEqual (['function', 'function', 'function', 'function']);
-  expect (kit.outputs).toBe (4);
-  expect (kit.distinctOutputs).toBe (4);
+  expect (kit.distinctVoices).toBe (4);
+  expect (kit.outputs).toBe (1);
+  expect (kit.level).toBe (1);
+
   // A kit is not levelled flat: the kick carries and the hats sit back.
   const [kick, snare, ghost, hat] = kit.volumes;
   expect (kick).toBeGreaterThan (snare);
   expect (snare).toBeGreaterThan (hat);
   expect (ghost).toBeLessThan (snare);
+  await page.evaluate (() => window.lofi.chain.input.context.close());
+});
+
+test ('the drums knob turns the kit off, and nought means silent', async ({ page }) => {
+  await page.goto ('/');
+  await page.click ('#playButton');
+  await page.waitForFunction (() => window.lofi.state.track);
+
+  const readings = await page.evaluate (async () => {
+    const engine = window.lofi;
+    const level = () => engine.state.drums.level.gain.value;
+    engine.controls.drums (0);
+    await new Promise (resolve => setTimeout (resolve, 500));
+    const off = level();
+    engine.controls.drums (0.5);
+    await new Promise (resolve => setTimeout (resolve, 500));
+    const half = level();
+    engine.controls.drums (1);
+    await new Promise (resolve => setTimeout (resolve, 500));
+    return { off, half, on: level() };
+  });
+
+  // Properly silent, not merely quiet.
+  expect (readings.off).toBe (0);
+  expect (readings.half).toBeGreaterThan (0);
+  expect (readings.half).toBeLessThan (readings.on);
+  expect (readings.on).toBe (1);
   await page.evaluate (() => window.lofi.chain.input.context.close());
 });
 

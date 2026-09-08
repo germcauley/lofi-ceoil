@@ -50,7 +50,15 @@ const TONE_KNOBS = ['brightness', 'wobble', 'drive', 'space', 'pump', 'volume'];
 // still decodes and quietly describes a different tune, which is worse than
 // failing. Anything here is read only if the bytes are there, so an older and
 // shorter link keeps every value it had and takes nought for the rest.
-const LATE_KNOBS = ['echo'];
+// Late knobs carry what a link that predates them should mean, because a
+// missing byte reads as nought and nought is not always the right answer:
+// no echo is right for a tune written before the echo existed, but no drums
+// is not — that link had drums, and silence would be a wrong reading rather
+// than a missing one.
+const LATE_KNOBS = [
+  { name: 'echo', whenAbsent: 0 },
+  { name: 'drums', whenAbsent: 1 }
+];
 
 // Likewise appended at the end of the layout rather than beside the other
 // structure fields. Index nought is `full`, which is what every track written
@@ -88,7 +96,7 @@ const unsigned = value => (value - 128) / 255;
     link describes. */
 export function quantiseRecipe (recipe) {
   const user = { ...recipe.user };
-  for (const knob of [...KNOBS, ...LATE_KNOBS]) {
+  for (const knob of [...KNOBS, ...LATE_KNOBS.map (late => late.name)]) {
     if (user[knob] !== undefined) user[knob] = unbyte (byte (user[knob]));
   }
 
@@ -110,6 +118,8 @@ class Writer {
 class Reader {
   constructor (bytes) { this.bytes = bytes; this.at = 0; }
   u8 () { return this.bytes[this.at++] ?? 0; }
+  get spent () { return this.at > this.bytes.length; }
+  has (count = 1) { return this.at + count <= this.bytes.length; }
   u16 () { return (this.u8() << 8) | this.u8(); }
   u32 () { return ((this.u16() * 65536) + this.u16()) >>> 0; }
 }
@@ -142,7 +152,7 @@ export function packRecipe (recipe) {
   for (const knob of SCORE_KNOBS) w.u8 (signed (recipe.variation?.[knob]));
   for (const role of ['lead', 'keys', 'bass']) w.u8 (index (VOICES[role], recipe.voices?.[role]));
   w.u16 (Math.max (0, titleIndexOf (recipe.title)));
-  for (const knob of LATE_KNOBS) w.u8 (byte (recipe.user?.[knob]));
+  for (const { name } of LATE_KNOBS) w.u8 (byte (recipe.user?.[name]));
   w.u8 (index (SCORINGS, recipe.structure?.scoring));
 
   return Uint8Array.from (w.bytes);
@@ -179,8 +189,8 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
   const voices = {};
   for (const role of ['lead', 'keys', 'bass']) voices[role] = VOICES[role][r.u8()] ?? VOICES[role][0];
   const title = titleAt (r.u16());
-  for (const knob of LATE_KNOBS) user[knob] = unbyte (r.u8());
-  const scoring = SCORINGS[r.u8()] ?? 'full';
+  for (const { name, whenAbsent } of LATE_KNOBS) user[name] = r.has() ? unbyte (r.u8()) : whenAbsent;
+  const scoring = r.has() ? (SCORINGS[r.u8()] ?? 'full') : 'full';
 
   const table = PROGRESSIONS[scale] ?? PROGRESSIONS.minor;
 

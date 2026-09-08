@@ -1727,3 +1727,32 @@ not one sample repeated, and an open hat turns up about one hat in fourteen.
 Levels were set by measurement, not by ear: at the first attempt the kick's
 transient came within a decibel of the whole mix peak. It now sits 5.8 dB
 under it. The whole kit is 32 KB.
+
+## 74. Tuning the variety by ear — done
+
+The scorings and the wider tempo from **72** worked, and then overshot in one
+direction and undershot in another. Measured over thirty tracks: **36% had no
+kit at all**, and only three in twenty-eight sat above 88 beats a minute.
+
+An air is a relief when it is occasional and a shrug when it is common, so
+kit-less tracks are now one in five rather than one in three, with more of the
+kit-forward kind to balance them. Within a scored track, drums used to drop
+out of roughly a fifth of parts on top of that; that threshold moved too.
+Measured after: 23% kit-less, and the kit present in most bars of the rest.
+
+The tempo range now reaches further up than down — an occasional track near
+96 rather than a ceiling of 92 — because nothing was ever brisk and a long
+listen felt uniformly slow.
+
+And the kit has a **drums** knob. All four roles meet at one gain, so it turns
+the kit down as a kit rather than one piece at a time, and nought is properly
+silent rather than merely quiet. The per-role levels stay what they are: that
+is the balance between the pieces, this is how much of the whole thing you
+want.
+
+One trap worth recording. The knob is carried in a link like the others, and a
+link written before it lacks the byte — which reads as nought, which would
+have meant **muted**. Absent is not the same as off: no echo is right for a
+tune that predates the echo, no drums is not, because that tune had drums.
+Late knobs now carry what their absence should mean, and the reader
+distinguishes a byte that is nought from a byte that is not there.
