@@ -1637,3 +1637,36 @@ Knobs added after the format exists now go at the very end of the byte layout,
 where a shorter old link simply runs out and the missing values read as
 nought. A real pre-echo link is kept verbatim in the tests and decoded, because
 the only way to know old links still work is to keep one and try it.
+
+## 72. Why an hour of it sounded like one track — done
+
+The complaint was that it sounds fine but goes samey, and the first instinct
+was that the generator needed to be less mechanical. Measuring said otherwise.
+Across twenty-four consecutive tracks it produced twenty-one distinct
+progressions, twenty-six comping patterns, twenty bass patterns, ten roots,
+five openings and four forms. It is not short of ideas.
+
+Two things never varied, and both were configuration rather than method:
+
+**Tempo lived in a twelve-beat band.** 74 to 86, mean 80.7. Offsets of at most
+twelve were scaled by drift before being heard, so nothing was ever slow or
+brisk. The offsets are now twice as wide and the floor is 62 rather than 74,
+which puts tracks between roughly 68 and 92 — and makes a slow air reachable
+at all.
+
+**Every track was the full band.** The lead sounded in 98% of bars, the drone
+96%, the bass 88%, the keys 80% and the drums 76%. Whatever else varied, the
+texture did not, and one texture for an hour is most of what makes a long
+listen go flat.
+
+Tracks now carry a **scoring**: `bare` is an air with no kit and no comping,
+the tune over a drone; `duo` is a tune and an accompaniment with no kit;
+`driving` keeps the kit in throughout; `full` is what everything used to be,
+and stays the commonest. Measured, that is 8.2 notes a bar against 24.3 — a
+three-fold spread where there was none.
+
+Two things had to give way for it. The **opening** decides when each part
+enters and was bringing drums in at bar six even on a track scored to have
+none. And the **drum-continuity rule**, which stops a breakdown running on too
+long, was dragging the kit back into tracks that were meant to be without it —
+a silent kit is a choice, not a breakdown.

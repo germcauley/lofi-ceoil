@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { MIN_TEMPO } from '../src/track-tempo.js';
 import { chooseTempoOffset, clampTempo } from '../src/track-tempo.js';
 
 test ('adjacent default tempos differ by at least four BPM, including at the range edges', () => {
@@ -26,9 +27,11 @@ test ('live tempo readout follows new tracks and zero drift uses the exact knob 
   await expect (page.locator ('#tempoReadout')).toHaveText (`${second.toFixed (1)} bpm`);
   await page.evaluate (() => { window.lofi.controls.arc (0); window.lofi.controls.tempo (79); });
   await expect (page.locator ('#tempoReadout')).toHaveText ('79.0 bpm');
-  await page.evaluate (() => window.lofi.controls.tempo (50));
-  await expect (page.locator ('#tempoReadout')).toHaveText ('74.0 bpm');
-  await expect (page.locator ('[aria-label="tempo"]')).toHaveAttribute ('aria-valuemin', '74');
+  // Below the floor clamps to it. The floor is a constant, not 74 — it was
+  // lowered so a slow air is reachable.
+  await page.evaluate (() => window.lofi.controls.tempo (40));
+  await expect (page.locator ('#tempoReadout')).toHaveText (`${MIN_TEMPO.toFixed (1)} bpm`);
+  await expect (page.locator ('[aria-label="tempo"]')).toHaveAttribute ('aria-valuemin', String (MIN_TEMPO));
   await page.click ('#playButton');
   await expect (page.locator ('#tempoReadout')).toHaveText ('— bpm');
   await page.evaluate (() => window.lofi.chain.input.context.close());

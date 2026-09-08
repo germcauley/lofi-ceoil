@@ -9,19 +9,26 @@ test ('openings vary their low-end entrance and give the tune a stable repeat', 
   await page.goto ('/');
   const result = await page.evaluate (async () => {
     const e = window.lofi;
-    const { LEAD_VOICES } = await import ('/src/instruments.js');
-    const sample = LEAD_VOICES.piano();
+    const { LEAD_VOICES, KEYS_VOICES, BASS_VOICES } = await import ('/src/instruments.js');
+    // One of every voice, not just the piano. Voices are chosen automatically
+    // per track, and a class whose prototype was never patched records no
+    // notes at all — which reads as an opening that played nothing. Sparse
+    // scorings have no drums or keys to mask that.
+    const samples = [...Object.values (LEAD_VOICES), ...Object.values (KEYS_VOICES),
+      ...Object.values (BASS_VOICES)].map (make => make());
+    const sample = samples[0];
     let seed = 721;
     Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
     const notes = [];
     // Observe actual instrument scheduling, including replacement voices on skip.
     const prototypes = new Set();
-    for (const voice of [e.state.bass, e.state.drone, e.state.lead, e.state.keys, e.state.drums.kick, e.state.drums.snare, sample.voice]) {
+    for (const voice of [e.state.bass, e.state.drone, e.state.lead, e.state.keys,
+      e.state.drums.kick, e.state.drums.snare, ...samples.map (one => one.voice)]) {
       let proto = Object.getPrototypeOf (voice);
       while (! Object.hasOwn (proto, 'triggerAttackRelease')) proto = Object.getPrototypeOf (proto);
       prototypes.add (proto);
     }
-    sample.dispose();
+    samples.forEach (one => one.dispose());
     for (const proto of prototypes) {
       const original = proto.triggerAttackRelease;
       proto.triggerAttackRelease = function (...args) {
@@ -38,7 +45,15 @@ test ('openings vary their low-end entrance and give the tune a stable repeat', 
     while (! e.state.track) await new Promise (r => setTimeout (r, 20));
     for (let i = 0; i < 12; i++) {
       if (i) { notes.length = 0; e.controls.skip(); }
+      // Wait for the track to actually play something rather than for a fixed
+      // slice of time. Tracks now range down to sixty-two beats a minute,
+      // where a bar lasts nearly four seconds and a short window can catch no
+      // notes at all — which looks like an opening that plays nothing.
+      const deadline = Date.now() + 8000;
+      while (! notes.length && Date.now() < deadline) await new Promise (r => setTimeout (r, 25));
       openings.push ({
+        scoring: e.state.track.structure?.scoring,
+        tempo: Math.round (e.state.tempo),
         low: notes.some (role => ['bass', 'drone', 'kick'].includes (role)),
         roles: [...new Set (notes)].sort().join (','),
         repeat: signature (e.state.form[0]) === signature (e.state.form[e.state.track.structure?.sections.indexOf ('A', 1) ?? 1])
@@ -50,8 +65,8 @@ test ('openings vary their low-end entrance and give the tune a stable repeat', 
     return openings;
   });
   expect (failures).toEqual ([]);
+  console.log ('Opening audit:', JSON.stringify (result));
   expect (result.every (opening => opening.roles.length > 0)).toBe (true);
-  console.log ('Opening audit:', result);
   expect (result.filter (opening => ! opening.low).length).toBeGreaterThanOrEqual (4);
   expect (new Set (result.map (opening => opening.roles)).size).toBeGreaterThanOrEqual (3);
   expect (result.filter (opening => opening.repeat).length).toBeGreaterThanOrEqual (6);

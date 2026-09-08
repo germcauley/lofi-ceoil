@@ -51,6 +51,11 @@ const TONE_KNOBS = ['brightness', 'wobble', 'drive', 'space', 'pump', 'volume'];
 // failing. Anything here is read only if the bytes are there, so an older and
 // shorter link keeps every value it had and takes nought for the rest.
 const LATE_KNOBS = ['echo'];
+
+// Likewise appended at the end of the layout rather than beside the other
+// structure fields. Index nought is `full`, which is what every track written
+// before scorings existed was.
+const SCORINGS = ['full', 'duo', 'bare', 'driving'];
 const KNOBS = [...SCORE_KNOBS, ...TONE_KNOBS];
 
 const VOICES = {
@@ -138,6 +143,7 @@ export function packRecipe (recipe) {
   for (const role of ['lead', 'keys', 'bass']) w.u8 (index (VOICES[role], recipe.voices?.[role]));
   w.u16 (Math.max (0, titleIndexOf (recipe.title)));
   for (const knob of LATE_KNOBS) w.u8 (byte (recipe.user?.[knob]));
+  w.u8 (index (SCORINGS, recipe.structure?.scoring));
 
   return Uint8Array.from (w.bytes);
 }
@@ -174,6 +180,7 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
   for (const role of ['lead', 'keys', 'bass']) voices[role] = VOICES[role][r.u8()] ?? VOICES[role][0];
   const title = titleAt (r.u16());
   for (const knob of LATE_KNOBS) user[knob] = unbyte (r.u8());
+  const scoring = SCORINGS[r.u8()] ?? 'full';
 
   const table = PROGRESSIONS[scale] ?? PROGRESSIONS.minor;
 
@@ -181,7 +188,7 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
     version: COMPOSITION_VERSION, seed, materialSeed,
     title: title.title, titleEnglish: title.titleEnglish, titleLanguage: title.titleLanguage,
     rootMidi, scale,
-    structure: { style, opening, meter, chordHold, sections: sectionsFor (style) },
+    structure: { style, opening, meter, chordHold, scoring, sections: sectionsFor (style) },
     ...motifsFor (materialSeed),
     progression: table[progressionAt] ?? table[0],
     turns, turnsSinceEnding,

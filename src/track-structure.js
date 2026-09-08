@@ -1,6 +1,12 @@
 // Choose entrances without letting a run of random draws sound like one preset.
 // These plans belong to a track; its intro happens once, not on every turn.
 const OPENINGS = ['melody', 'chords', 'layered', 'rhythm', 'full'];
+
+// How much of the band plays at all. Every track used to be everybody: the
+// lead sounded in 98% of bars, the drone 96%, the bass 88%, the drums 76%.
+// One texture, whatever else varied, and the main reason a long listen went
+// flat. A set has airs and duos in it, not only full arrangements.
+const SCORINGS = ['full', 'full', 'full', 'full', 'duo', 'duo', 'bare', 'driving'];
 const FORMS = {
   tune: ['A', 'A', 'B', 'A'],
   riff: ['A', 'B', 'A', 'B'],
@@ -32,9 +38,11 @@ export function createStructurePicker () {
   const opening = bagPicker (OPENINGS);
   const meter = bagPicker (['4/4', '4/4', '6/8']);
   const style = bagPicker (Object.keys (FORMS));
+  const scoring = bagPicker (SCORINGS);
   return () => {
     const kind = style();
-    return { meter: meter(), opening: opening(), style: kind, sections: [...FORMS[kind]], chordHold: Math.random() < 0.6 ? 2 : 1 };
+    return { meter: meter(), opening: opening(), style: kind, scoring: scoring(),
+      sections: [...FORMS[kind]], chordHold: Math.random() < 0.6 ? 2 : 1 };
   };
 }
 

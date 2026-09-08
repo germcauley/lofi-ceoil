@@ -40,17 +40,44 @@ export function compositionSettings (recipe, energy) {
   };
 }
 
-function arrangement (energy, random) {
+/** How much of the band plays, for a whole track.
+
+    Everything used to be a full arrangement: measured across two dozen tracks
+    the lead sounded in 98% of bars, the drone 96%, the bass 88% and the drums
+    76%. Every other choice varied — twenty-one progressions, twenty-six comping
+    patterns — but the texture never did, and one texture for an hour is most of
+    what makes a long listen go flat.
+
+    `bare` is an air: no drums at all and no comping, the tune carried by the
+    lead over the drone. `duo` is a tune and an accompaniment with no kit.
+    `driving` keeps the kit in throughout. `full` is what everything used to
+    be. */
+const SCORINGS = {
+  bare:    { drums: false, chords: false, bassPatterns: ['held', 'sparse', 'none'] },
+  duo:     { drums: false, chords: true,  bassPatterns: ['held', 'root', 'sparse'] },
+  driving: { drums: 'always', chords: true },
+  full:    { drums: true, chords: true }
+};
+
+function arrangement (energy, random, scoring = 'full') {
   const pick = options => options[Math.floor (random() * options.length)];
-  const bare = random() < 0.45 + (0.5 - energy) * 0.5;
+  const plan = SCORINGS[scoring] ?? SCORINGS.full;
+  const bare = plan.drums !== 'always' && random() < 0.45 + (0.5 - energy) * 0.5;
+
   return [0, 1, 2, 3].map (part => ({
-    bass: part === 0 && bare ? 'none' : pick (energy > 0.5
-      ? ['walk', 'octave', 'anticipate', 'rootFifth'] : ['held', 'root', 'sparse']),
-    chordsFrom: part === 0 && bare ? 2 : 0,
+    bass: plan.bassPatterns ? pick (plan.bassPatterns)
+      : part === 0 && bare ? 'none' : pick (energy > 0.5
+        ? ['walk', 'octave', 'anticipate', 'rootFifth'] : ['held', 'root', 'sparse']),
+    // 8 means never, for a bar count of eight.
+    chordsFrom: ! plan.chords ? 8 : part === 0 && bare ? 2 : 0,
     // 8 requests a drumless part. The continuity pass below shortens these
-    // breaks so the arc cannot leave the track without a beat for too long.
-    drumsFrom: (part === 0 && bare) || random() > 0.55 + energy * 0.45 ? 8 : part === 0 ? 4 : 0,
+    // breaks so the arc cannot leave the track without a beat for too long —
+    // but a track scored without drums is not a breakdown, and is left alone.
+    drumsFrom: ! plan.drums ? 8
+      : plan.drums === 'always' ? 0
+      : (part === 0 && bare) || random() > 0.55 + energy * 0.45 ? 8 : part === 0 ? 4 : 0,
     drumsUntil: part === 3 ? 6 : 8,
+    silentKit: ! plan.drums,
     counter: ! (part === 0 && bare), emptyBar: random() < 0.35 ? 7 : -1,
     comp: pick (energy > 0.5 ? ['bouzouki', 'boomChuck', 'anticipate', 'offbeat']
       : ['sustain', 'stab', 'offbeat', 'suspension']),
@@ -176,7 +203,7 @@ export function composeTrack (input) {
     })
       : [a, melody.developPhrase (scale, size, recipe.motifA), b, melody.developPhrase (scale, size, recipe.motifB, 0.28, shift)];
     if (recipe.structure.meter === '6/8') phrases = phrases.map (jigPhrase);
-    const plans = arrangement (recipe.arcDepth > 0 ? energy : 0.5, random);
+    const plans = arrangement (recipe.arcDepth > 0 ? energy : 0.5, random, recipe.structure.scoring);
     const counterBySection = {};
     const counters = phrases.map ((phrase, i) => {
       const name = recipe.structure.sections[i];
@@ -194,9 +221,18 @@ export function composeTrack (input) {
       Object.assign (plan, { leadVoice: voices.lead, keysVoice: voices.keys, bassVoice: voices.bass });
       if (structured) plan.chordHold = recipe.structure.sections[i] === 'A' ? recipe.structure.chordHold : 1;
     });
-    if (turnIndex === 0) Object.assign (plans[0], openingPlan (recipe.structure), {
-      bass: pick (['held', 'root', 'sparse']), emptyBar: -1, counter: true
-    });
+    if (turnIndex === 0) {
+      const opening = { ...openingPlan (recipe.structure) };
+      // The opening says when each part enters. On a track scored without a
+      // kit it must not be the one thing that brings drums in anyway — which
+      // it was, at bar six of the first part, in a tune that was meant to be
+      // an air.
+      if (plans[0].silentKit) { opening.drumsFrom = 8; delete opening.kickFrom; }
+      if (plans[0].chordsFrom >= 8) opening.chordsFrom = 8;
+      Object.assign (plans[0], opening, {
+        bass: pick (['held', 'root', 'sparse']), emptyBar: -1, counter: true
+      });
+    }
     // At most one inner section per turn: an alternative accompaniment, not
     // another layer. Slow pads retain their original chord articulation.
     if (random() < 0.6) {
@@ -207,7 +243,9 @@ export function composeTrack (input) {
       // Count the silence across the whole track, including turn boundaries.
       // A breakdown gets at most four bars before the groove returns; only
       // the track's opening and final wind-down can take longer.
-      if (turnIndex > 0 || i > 0) {
+      // A track scored without a kit is a choice, not a breakdown that has run
+      // on too long, so the continuity rule does not drag the drums back in.
+      if (! plan.silentKit && (turnIndex > 0 || i > 0)) {
         plan.drumsFrom = Math.min (plan.drumsFrom, Math.max (0, 4 - trailingDrumRest));
       }
       const lastDrumBar = plan.emptyBar === plan.drumsUntil - 1
