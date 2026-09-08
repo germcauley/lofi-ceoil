@@ -1705,11 +1705,25 @@ one part of this that runs anywhere. And the new voices are **appended** to
 that table, so inserting two at the front would have silently changed the lead
 of every link ever shared.
 
-### Still open: the drums
+### The drums — done, as one-shots
 
-Ours are synthesised — a membrane synth kick, noise synths for snare and hats
-— and that is most of the remaining distance. The choice is sampled one-shots
-against recorded loops. Loops sound instantly right and cost the rest: a loop
-is locked to its own tempo and to 4/4, so it would undo the 68–92 spread from
-**72**, the 6/8 jigs, and much of what the scorings act on. One-shots keep the
-sequencer and everything built on it.
+One-shots rather than loops, because a loop is locked to its own tempo and to
+4/4: it would have undone the 68–92 spread from **72**, the 6/8 jigs, and much
+of what the scorings act on. Sampling the hits keeps the sequencer and
+everything built on top of it.
+
+Seven recordings from VCSL — two kicks, two snares, two closed hats, an open
+hat — which are concert instruments and behave like it: the bass drum rings
+for over a second and a half. Each was trimmed hard, rolled off and levelled
+to the same −6 dBFS peak as the rest of the library. That shaping is the
+point rather than a compromise: lofi drums are taken and treated, not
+designed.
+
+Each role gets its own sampler at its own level. One sampler shared between
+them would send every hit through every role's gain, so a hat would arrive at
+the volume of a kick. Two recordings of each alternate, so a run of hats is
+not one sample repeated, and an open hat turns up about one hat in fourteen.
+
+Levels were set by measurement, not by ear: at the first attempt the kick's
+transient came within a decibel of the whole mix peak. It now sits 5.8 dB
+under it. The whole kit is 32 KB.

@@ -57,7 +57,16 @@ const SAMPLE_MAPS = {
   vibraphone: { A5: 'A5.mp3', B4: 'B4.mp3', C4: 'C4.mp3', C6: 'C6.mp3', D5: 'D5.mp3', E4: 'E4.mp3', F5: 'F5.mp3', G4: 'G4.mp3' },
   kalimba: { 'A#4': 'As4.mp3', 'A#5': 'As5.mp3', 'C#4': 'Cs4.mp3', 'C#5': 'Cs5.mp3', 'C#6': 'Cs6.mp3', F4: 'F4.mp3', F5: 'F5.mp3' },
   glockenspiel: { C6: 'C6.mp3', C7: 'C7.mp3', C8: 'C8.mp3', G5: 'G5.mp3', G6: 'G6.mp3', G7: 'G7.mp3' },
-  marimba: { B5: 'B5.mp3', C5: 'C5.mp3', F4: 'F4.mp3', F6: 'F6.mp3', G3: 'G3.mp3', G5: 'G5.mp3' }
+  marimba: { B5: 'B5.mp3', C5: 'C5.mp3', F4: 'F4.mp3', F6: 'F6.mp3', G3: 'G3.mp3', G5: 'G5.mp3' },
+
+  // The kit. Notes here are slots rather than pitches: a one-shot is mapped to
+  // a note so a Sampler will play it, and two of each are kept so repeated
+  // hits alternate instead of being the same recording twice.
+  kit: {
+    C1: 'kick0.mp3', 'C#1': 'kick1.mp3',
+    C2: 'snare0.mp3', 'C#2': 'snare1.mp3',
+    C3: 'hat0.mp3', 'C#3': 'hat1.mp3', D3: 'hatopen.mp3'
+  }
 };
 
 // Cache decoded AudioBuffers, not voices: a skip needs fresh scheduling
@@ -393,49 +402,89 @@ export function createPluck () {
   return instrument (voice);
 }
 
+/** The kit.
+ *
+ *  Synthesised drums were most of what stopped this sounding like lofi. A
+ *  membrane synth makes a clean, even thump and a noise synth makes a hiss
+ *  with an envelope on it; both are recognisably generated, and no amount of
+ *  tape treatment downstream fixes a snare that was never a snare.
+ *
+ *  These are recordings — concert instruments, trimmed hard and rolled off
+ *  until they behave like a kit, and then left to the tape path to age. That
+ *  is how lofi drums are actually made: taken and treated, not designed.
+ *
+ *  The buffers are decoded before playback starts, alongside every other
+ *  sample, so the kit is never silent on the first bar. If they somehow are
+ *  not there, `Tone.Sampler` simply plays nothing rather than throwing.
+ */
 export function createDrums () {
-  const kick = new Tone.MembraneSynth ({
-    pitchDecay: 0.05,
-    octaves: 4,
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.001, decay: 0.42, sustain: 0.01, release: 1.2 },
-    volume: -6
+  /** One role of the kit: its own sampler over its own notes, at its own
+      level. Sharing a single sampler across the roles would send every hit
+      through every role's gain, so a hat would arrive at the volume of a
+      kick. The decoded buffers are shared, so this costs nothing to download.
+
+      Levels are set here because the samples are all levelled to the same
+      peak and a kit is not: a hat as loud as a kick is a cymbal solo. */
+  const bank = (notes, volume) => {
+    const cached = sampleBuffers.get ('kit');
+    const urls = cached ? Object.fromEntries (notes.filter (n => cached[n]).map (n => [n, cached[n]])) : {};
+    const voice = new Tone.Sampler ({ urls, attack: 0, release: 0.6, volume });
+    if (! cached) {
+      loadSamples ('kit').then (buffers => {
+        if (voice.disposed) return;
+        for (const note of notes) if (buffers[note]) voice.add (note, buffers[note]);
+      }).catch (() => {});
+    }
+    return voice;
+  };
+
+  // Measured against the mix rather than guessed: at −3 the kick's transient
+  // was topping the whole track, within a decibel of the mix peak. Drums in
+  // this music are present, not in front.
+  const kickVoice = bank (['C1', 'C#1'], -7);
+  const snareVoice = bank (['C2', 'C#2'], -13);
+  const ghostVoice = bank (['C2', 'C#2'], -25);
+  const hatVoice = bank (['C3', 'C#3', 'D3'], -21);
+
+  // Round robin. Alternating two recordings is what stops a run of hats
+  // sounding like one sample repeated, which is the giveaway of a machine.
+  const alternate = notes => {
+    let at = 0;
+    return () => notes[at++ % notes.length];
+  };
+
+  const pickers = {
+    kick: alternate (['C1', 'C#1']),
+    snare: alternate (['C2', 'C#2']),
+    ghost: alternate (['C#2', 'C2']),
+    hat: alternate (['C3', 'C#3'])
+  };
+
+  /** A role in the shape the score player expects: a duration, a time and a
+      velocity, with any pitch ignored — a kick is a kick whatever note the
+      score happens to carry for it, and the score does carry one, because the
+      kick used to be a pitched synth. */
+  const role = (voice, pick, openChance = 0) => ({
+    triggerAttackRelease (...args) {
+      const [duration, time, velocity] = typeof args[0] === 'string' ? args.slice (1) : args;
+      const note = openChance && Math.random() < openChance ? 'D3' : pick();
+      try {
+        voice.triggerAttackRelease (note, Math.max (0.05, duration ?? 0.2), time,
+          Math.max (0.02, Math.min (1, velocity ?? 0.7)));
+      } catch { /* one hit that cannot be scheduled is not worth the bar */ }
+    }
   });
-
-  const snare = new Tone.NoiseSynth ({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
-    volume: -16
-  });
-
-  const snareFilter = new Tone.Filter ({ type: 'bandpass', frequency: 1900, Q: 0.8 });
-  snare.connect (snareFilter);
-
-  // Ghost notes get their own voice. NoiseSynth wraps a single noise source,
-  // so sharing one with the backbeat means a ghost landing next to a snare hit
-  // fights it for the voice.
-  const ghost = new Tone.NoiseSynth ({
-    noise: { type: 'pink' },
-    envelope: { attack: 0.001, decay: 0.09, sustain: 0 },
-    volume: -26
-  });
-
-  const ghostFilter = new Tone.Filter ({ type: 'bandpass', frequency: 1400, Q: 1.2 });
-  ghost.connect (ghostFilter);
-
-  const hat = new Tone.NoiseSynth ({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.045, sustain: 0 },
-    volume: -30
-  });
-
-  const hatFilter = new Tone.Filter ({ type: 'highpass', frequency: 7000 });
-  hat.connect (hatFilter);
 
   return {
-    kick, snare, ghost, hat, outputs: [kick, snareFilter, ghostFilter, hatFilter],
+    kick: role (kickVoice, pickers.kick),
+    snare: role (snareVoice, pickers.snare),
+    ghost: role (ghostVoice, pickers.ghost),
+    // An open hat now and again, which is most of what stops a hat pattern
+    // sounding like a metronome.
+    hat: role (hatVoice, pickers.hat, 0.07),
+    outputs: [kickVoice, snareVoice, ghostVoice, hatVoice],
     dispose () {
-      [kick, snare, ghost, hat, snareFilter, ghostFilter, hatFilter].forEach (node => node.dispose());
+      [kickVoice, snareVoice, ghostVoice, hatVoice].forEach (node => node.dispose());
     }
   };
 }

@@ -8,7 +8,7 @@ A browser instrument that generates endless lofi with an Irish accent, and lets 
 
 ![The Lofi Ceoil panel](docs/panel.png)
 
-The music is generated in the browser with [Tone.js](https://tonejs.github.io/), using synthesis and a small library of samples — piano, harp, nylon guitar, vibraphone, marimba, kalimba, glockenspiel and recorder. There is no server, and nothing you do here leaves your browser. Samples are decoded and cached before playback so new tracks can start without another download.
+The music is generated in the browser with [Tone.js](https://tonejs.github.io/), using synthesis and a small library of samples — piano, harp, nylon guitar, vibraphone, marimba, kalimba, glockenspiel, recorder, and a sampled drum kit. There is no server, and nothing you do here leaves your browser. Samples are decoded and cached before playback so new tracks can start without another download.
 
 ## What it actually does
 
@@ -80,6 +80,10 @@ The keys pick a **backing** per part — sustained, stabbed, offbeat, driving bo
 Chords **voice-lead**: each voice moves to the nearest tone of the next chord and common tones stay put, which averages a little over one semitone of movement per voice. Re-voicing each chord independently is what makes block chords sound blocky. A pipe-like drone holds the fifth. The drums swing, humanise their timing, and duck the whole mix on every kick.
 
 Then the tape path ruins it pleasantly: saturation, parallel bitcrushing, wow and flutter, a lowpass, reverb, and a bed of vinyl hiss and crackle that never pumps, because a record surface doesn't.
+
+**Tracks are scored, not just arranged.** Some are *bare* — an air, no kit and no comping, the tune over a drone. Some are a *duo*, a tune and an accompaniment. Some are *driving*, with the kit in throughout. Most are *full*. Measured, that runs from about eight notes a bar to twenty-four, and tempo spreads from 68 to 92, so an hour of it does not settle into one texture at one speed.
+
+**The kit is sampled.** Synthesised drums were most of what stopped this sounding like lofi: a membrane synth makes a clean, even thump and a noise synth makes a hiss with an envelope on it, and no amount of tape treatment downstream fixes a snare that was never a snare. These are recordings — concert instruments, trimmed hard and rolled off until they behave like a kit — left to the tape path to age, which is how lofi drums are actually made. Two of each of kick, snare and hat alternate, so a run of hats is not one sample repeated.
 
 **Voices are switchable while it plays.** The lead can be a `guitar`, `vibraphone`, `marimba`, `kalimba`, `piano` or `harp`, with a synthesised harp kept alongside the sampled one; the keys a `rhodes`, a `felt` piano, a `piano`, a `guitar` or a `pad`; the bass `round`, `upright`, `sub` or `electric`. Several are **sampled** — the piano, harp, guitar, vibraphone, marimba and kalimba — because synthesis only gets so close to a struck or plucked string; they share one decoded cache. The rest are synthesised, where a soft attack, a little chorus or detune and a lowpass under the raw oscillator do most of the work of not sounding synthetic.
 
@@ -192,7 +196,7 @@ MIT. The code is original; nothing is derived from another generator.
 
 The piano samples are from the [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander Holm, CC-BY 3.0.
 
-The harp, vibraphone, marimba, kalimba, glockenspiel and recorder samples are from the [Versilian Community Sample Library](https://github.com/sgossner/VCSL) by Versilian Studios, CC0.
+The harp, vibraphone, marimba, kalimba, glockenspiel, recorder and drum kit samples are from the [Versilian Community Sample Library](https://github.com/sgossner/VCSL) by Versilian Studios, CC0. The kit was trimmed and levelled locally; what was changed is listed in `public/samples/kit/ATTRIBUTION.md`.
 
 Melodic statistics are derived from data dumps of [The Session](https://thesession.org), made available under the Open Database License. No tune, setting or phrase from it is reproduced here; see `src/data/TUNE-STATS-ATTRIBUTION.md` for the full list of alterations and how to regenerate them.
 
