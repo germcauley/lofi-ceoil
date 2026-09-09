@@ -1,8 +1,12 @@
-import { createMelodyGenerator } from './melody.js';
+import { createMelodyGenerator, MATERIAL_VERSION } from './melody.js';
 import { seededRandom } from './composition.js';
 
-// A motif from a given generator, so a seed can produce one on demand.
-const motifFrom = random => createMelodyGenerator (random).createMotif();
+// A motif from a given generator, so a seed can produce one on demand. The
+// material version decides which set of rhythmic cells it draws from, and it
+// has to be passed in rather than assumed: a track generated before the
+// running line existed must keep regenerating the tune it actually played.
+const motifFrom = (random, material) =>
+  createMelodyGenerator (random, '4/4', material).createMotif();
 
 const HISTORY_KEY = 'lofi-ceoil.recent-material.v1';
 const HISTORY_LIMIT = 128;
@@ -68,10 +72,12 @@ export function createTrackMaterialPicker ({ storage, generateMotif = motifFrom 
 
       `materialSeed` replays a known winner and skips the search entirely,
       which is what opening a shared tune does. */
-  return function nextMaterial ({ seed = (Math.random() * 4294967296) >>> 0, materialSeed } = {}) {
+  return function nextMaterial ({ seed = (Math.random() * 4294967296) >>> 0,
+    materialSeed, material = MATERIAL_VERSION } = {}) {
     if (materialSeed !== undefined) {
       const random = seededRandom (materialSeed);
-      return { motifA: generateMotif (random), motifB: generateMotif (random), materialSeed };
+      return { motifA: generateMotif (random, material),
+        motifB: generateMotif (random, material), materialSeed, material };
     }
 
     let best;
@@ -84,8 +90,8 @@ export function createTrackMaterialPicker ({ storage, generateMotif = motifFrom 
       // is a number we can write down.
       const candidateSeed = (seed + Math.imul (attempt, 0x9E3779B1)) >>> 0;
       const random = seededRandom (candidateSeed);
-      const motifA = generateMotif (random);
-      const motifB = generateMotif (random);
+      const motifA = generateMotif (random, material);
+      const motifB = generateMotif (random, material);
       const a = describe (motifA);
       const b = describe (motifB);
       const record = { motifs: [a.exact, b.exact], shapes: [a.shape, b.shape], rhythms: [a.rhythm, b.rhythm] };
@@ -99,6 +105,6 @@ export function createTrackMaterialPicker ({ storage, generateMotif = motifFrom 
     history.push (best.record);
     history = history.slice (-HISTORY_LIMIT);
     try { storage?.setItem (HISTORY_KEY, JSON.stringify (history)); } catch {}
-    return { motifA: best.motifA, motifB: best.motifB, materialSeed: best.materialSeed };
+    return { motifA: best.motifA, motifB: best.motifB, materialSeed: best.materialSeed, material };
   };
 }

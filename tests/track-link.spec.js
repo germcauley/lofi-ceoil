@@ -16,6 +16,10 @@ function recipeFor (overrides = {}) {
   return quantiseRecipe ({
     version: 1, seed: 1234567890, materialSeed: material.materialSeed,
     motifA: material.motifA, motifB: material.motifB,
+    // The seed alone does not name a tune: it names one against a cell table.
+    // A recipe carrying motifs made from one version and claiming another
+    // regenerates somebody else's melody, which is what this caught.
+    material: material.material,
     title: title.title, titleEnglish: title.titleEnglish, titleLanguage: title.titleLanguage,
     rootMidi: 50, scale: 'dorian',
     structure: { style: 'tune', opening: 'melody', meter: '4/4', chordHold: 2,
@@ -93,14 +97,17 @@ const TAIL = [
   { name: 'echo', absent: 0 },
   { name: 'drums', absent: 1 },
   { name: 'scoring', absent: 'full', on: 'structure' },
-  { name: 'width', absent: 0 }
+  { name: 'width', absent: 0 },
+  { name: 'material', absent: 1, on: 'recipe' }
 ];
 
 test ('a link that predates a field reads what its absence should mean', () => {
   const bytes = packRecipe (recipeFor());
   const full = unpackRecipe (bytes, { voiceOptions });
   const valueOf = (recipe, field) =>
-    field.on === 'structure' ? recipe.structure[field.name] : recipe.user[field.name];
+    field.on === 'structure' ? recipe.structure[field.name]
+      : field.on === 'recipe' ? recipe[field.name]
+      : recipe.user[field.name];
 
   // Walk the tail backwards a byte at a time, which is exactly what an older
   // link is.
@@ -118,10 +125,18 @@ test ('a link that predates a field reads what its absence should mean', () => {
       expect (valueOf (older, field)).toBe (valueOf (full, field));
     }
     expect (older.title).toBe (full.title);
-    expect (older.motifA).toEqual (full.motifA);
     expect (older.progression.name).toBe (full.progression.name);
     expect (older.voices).toEqual (full.voices);
     expect (older.user.volume).toBe (full.user.volume);
+    // The motifs are the exception, and deliberately so: `material` names the
+    // cell table the seed was drawn against, so a link without that byte is
+    // not the same tune missing a setting — it is the older tune, which is
+    // exactly what a link written back then played.
+    if (TAIL.slice (0, kept).some (field => field.name === 'material')) {
+      expect (older.motifA).toEqual (full.motifA);
+    } else {
+      expect (older.material).toBe (1);
+    }
   }
 });
 

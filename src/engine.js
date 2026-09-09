@@ -13,6 +13,7 @@ const SUPPORT_VOICE_NAMES = Object.keys (SUPPORT_VOICES);
 import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
 import { placementAt, DEFAULT_WIDTH } from './stereo.js';
+import { MATERIAL_VERSION } from './melody.js';
 import { createTrackMaterialPicker } from './track-material.js';
 import { decodeTrack, encodeTrack, quantiseRecipe } from './track-link.js';
 import { createListeningLog } from './listening.js';
@@ -428,6 +429,7 @@ export function createEngine () {
       previousTempoOffset = recipe.tempoOffset;
       state.trackNumber++;
       state.track = { title: recipe.title, titleEnglish: recipe.titleEnglish ?? null,
+        material: recipe.material ?? 1,
         titleLanguage: recipe.titleLanguage ?? 'en', structure: recipe.structure, motifA: recipe.motifA,
         motifB: recipe.motifB, variation: recipe.variation, tempoOffset: recipe.tempoOffset,
         size: gappedPool (recipe.scale).length, turn: 0, turnsLeft: recipe.turns,
@@ -502,6 +504,9 @@ export function createEngine () {
       version: COMPOSITION_VERSION, seed: Math.floor (Math.random() * 4294967296),
       title: track.title, titleEnglish: track.titleEnglish, titleLanguage: track.titleLanguage,
       rootMidi: state.rootMidi, scale: state.scale, materialSeed: track.materialSeed,
+      // Which cell table the motifs came from. Without it a link is a seed
+      // with no table behind it, and would replay somebody else's tune.
+      material: track.material ?? MATERIAL_VERSION,
       structure: track.structure, motifA: track.motifA, motifB: track.motifB,
       progression: state.progression, turns: track.turnsLeft,
       variation: track.variation, user: { ...state.user }, tempoUser: state.tempoUser,

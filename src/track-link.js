@@ -27,8 +27,8 @@ import { COMPOSITION_VERSION } from './composition.js';
 
 // Replaying a known seed needs no history, and must not write any: opening
 // somebody else's link should not change what your own next track avoids.
-const motifsFor = materialSeed =>
-  createTrackMaterialPicker ({ storage: null }) ({ materialSeed });
+const motifsFor = (materialSeed, material) =>
+  createTrackMaterialPicker ({ storage: null }) ({ materialSeed, material });
 
 export const LINK_VERSION = 1;
 
@@ -75,7 +75,16 @@ const TAIL = [
     read: value => SCORINGS[value] ?? 'full' },
   // Absent means mono, because a track written before the panners existed was
   // mono — there was not a single panner in the graph.
-  { name: 'width', whenAbsent: 0, write: user => byte (user.width), read: value => unbyte (value) }
+  { name: 'width', whenAbsent: 0, write: user => byte (user.width), read: value => unbyte (value) },
+  // Which set of rhythmic cells the tune was written from. Not a knob and not
+  // a setting: a link is a seed, and the seed only means something alongside
+  // the table it was drawn against. Absent is one, because that is the table
+  // every link written before the running line existed was drawn from — and
+  // getting this wrong would not break a link, it would silently hand back a
+  // different tune under the same name, which is worse.
+  { name: 'material', whenAbsent: 1, knob: false,
+    write: (user, recipe) => recipe.material ?? 1,
+    read: value => value || 1 }
 ];
 
 // The knob-shaped tail fields, which are the ones quantising applies to.
@@ -215,7 +224,7 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
     title: title.title, titleEnglish: title.titleEnglish, titleLanguage: title.titleLanguage,
     rootMidi, scale,
     structure: { style, opening, meter, chordHold, scoring, sections: sectionsFor (style) },
-    ...motifsFor (materialSeed),
+    ...motifsFor (materialSeed, tail.material),
     progression: table[progressionAt] ?? table[0],
     turns, turnsSinceEnding,
     arc: { shape: arcShape, length: arcLength, turn: arcTurn },

@@ -63,6 +63,74 @@ const RHYTHMS = [
   { start: 1, lengths: [2, 2, 2] }
 ];
 
+// The running line — the second set of cells, and what a tune actually does.
+//
+// The first set was written by ear, and measuring the corpus showed what that
+// cost. Across 6.6 million notes a session tune averages about one quaver a
+// note and five to seven notes a bar; these cells averaged 2.04 quavers and
+// 3.4 notes. Whatever meter a track claimed, its melodic rhythm was a waltz's,
+// which is most of why the tunes did not sound Irish however modal the pitches
+// were. Half of all jig bars in the repertoire are six notes of identical
+// length. A tune is a line that runs.
+//
+// The cells are chosen by what they become rather than by how they read here,
+// because a 6/8 track puts every phrase through `jigPhrase`, which folds four
+// quavers into three. A cell of eight even quavers comes out the far side as
+// six even quavers — the commonest bar in the whole jig repertoire, 48% of
+// them — and one with a single long note lands on the next commonest. Each was
+// checked against the corpus in both meters; the weights follow how often the
+// resulting bar actually occurs.
+//
+// Not all the way to the corpus, though. A session tune never stops, and a
+// lofi track has to breathe, so a fifth of these still start late or hold a
+// long note. That is the one place this departs from the measurement on
+// purpose.
+const TUNE_CELLS = [
+  // Running. In 6/8 all of these become the even bar.
+  { start: 0, lengths: [1, 1, 1, 1, 1, 1, 1, 1], weight: 8 },
+  { start: 0, lengths: [1, 1, 2, 1, 1, 2], weight: 7 },
+  { start: 0, lengths: [1, 1, 1, 1, 1, 1, 2], weight: 5 },
+  { start: 0, lengths: [1, 1, 2, 1, 1, 1, 1], weight: 4 },
+
+  // One long note in the bar, which is the next commonest shape in both
+  // repertoires — a jig's `1 1 1 2 1` and `2 1 1 1 1`.
+  { start: 0, lengths: [1, 1, 1, 1, 2, 1, 1], weight: 7 },
+  { start: 0, lengths: [2, 1, 1, 1, 1, 1, 1], weight: 7 },
+  { start: 0, lengths: [1, 1, 1, 1, 2, 2], weight: 5 },
+  { start: 0, lengths: [3, 1, 1, 1, 1, 1], weight: 4 },
+  { start: 0, lengths: [2, 1, 1, 2, 1, 1], weight: 4 },
+  { start: 0, lengths: [1, 1, 1, 1, 3, 1], weight: 3 },
+
+  // Coming to rest, which is how a phrase ends.
+  { start: 0, lengths: [1, 1, 1, 1, 4], weight: 4 },
+  { start: 0, lengths: [4, 1, 1, 1, 1], weight: 3 },
+
+  // Room to breathe. The departure from the corpus, and the reason the tunes
+  // are still listenable for an hour.
+  { start: 1, lengths: [1, 1, 1, 1, 1, 1, 1], weight: 4 },
+  { start: 1, lengths: [1, 1, 1, 2, 1, 1], weight: 3 },
+  { start: 2, lengths: [1, 1, 1, 1, 2], weight: 3 },
+  { start: 2, lengths: [2, 1, 1, 2], weight: 2 },
+  { start: 3, lengths: [1, 1, 1, 2], weight: 2 },
+  { start: 0, lengths: [2, 2, 2, 2], weight: 2 },
+  { start: 0, lengths: [3, 1, 2, 2], weight: 2 },
+  { start: 2, lengths: [3, 3], weight: 2 }
+];
+
+// A cumulative ladder over the weights, built once.
+const TUNE_LADDER = (() => {
+  const total = TUNE_CELLS.reduce ((sum, cell) => sum + cell.weight, 0);
+  let running = 0;
+  return TUNE_CELLS.map (cell => [cell, (running += cell.weight) / total]);
+})();
+
+/** How a track's material is generated. The number is carried in a link,
+    because a tune is regenerated from its seed and the cell list is indexed by
+    a draw from that seed: changing the list, reordering it, or even weighting
+    the draw changes what every link ever shared plays. One is the cells above
+    it; two is the running line. */
+export const MATERIAL_VERSION = 2;
+
 // Stock closes. Trad tunes reuse the same handful constantly — that is a
 // feature, not a limitation, and it is what makes an ending sound idiomatic
 // rather than merely final.
@@ -147,10 +215,20 @@ function stepWithin (from, interval) {
   return Math.max (MOTIF_LOW, Math.min (MOTIF_HIGH, forward));
 }
 
-export function createMelodyGenerator (random = () => Math.random(), meter = '4/4') {
+export function createMelodyGenerator (random = () => Math.random(), meter = '4/4', material = 1) {
   const pick = arr => arr[Math.floor (random() * arr.length)];
   const chance = p => random() < p;
   const grammar = grammarFor (meter);
+
+  /** One rhythmic cell. Both versions spend exactly one draw here, so the rest
+      of a motif's random sequence is the same either way and only the rhythm
+      differs between them. */
+  function pickCell () {
+    if (material < 2) return pick (RHYTHMS);
+    const roll = random();
+    for (const [cell, cumulative] of TUNE_LADDER) if (roll < cumulative) return cell;
+    return TUNE_CELLS[0];
+  }
 
   /** Weighted melodic interval in scale steps, measured from real tunes
       rather than tuned by ear.
@@ -182,7 +260,7 @@ export function createMelodyGenerator (random = () => Math.random(), meter = '4/
     // wandering by a step — makes every bar derived from it inert. Worth
     // rejecting and redrawing rather than accepting whatever comes out.
     for (let attempt = 0; attempt < 20; attempt++) {
-      const cell = pick (RHYTHMS);
+      const cell = pickCell();
       const offsets = [0];
       let lastStep = null;
 

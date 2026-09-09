@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { createMelodyGenerator } from '../src/melody.js';
 import { TUNE_STATS } from '../src/data/tune-stats.js';
+import { composeTrack } from '../src/composition.js';
+import { createTrackMaterialPicker } from '../src/track-material.js';
+import { PROGRESSIONS } from '../src/theory.js';
 
 const seeded = seed => () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -229,4 +232,64 @@ test ('the answer restates the question, then goes somewhere else', () => {
   expect (holds / parts).toBeGreaterThan (0.15);
   expect (third / parts).toBeGreaterThan (0.1);
   expect (third / parts).toBeLessThan (0.35);
+});
+
+/** The corpus said a tune is a running line, and the cells were rewritten to
+    be one. The risk in taking a number off a measurement is that you build to
+    the average — every bar with the same count, which is not a tune, it is a
+    metronome with pitches.
+
+    So what matters is not the mean but the spread around it: the table holds
+    cells from two notes to eight, weighted by how often the bar they produce
+    occurs in the repertoire, and everything downstream — development, the
+    answering phrase, cadences — moves it again. */
+test ('the running line is a spread, not an average', () => {
+  const picker = createTrackMaterialPicker ({ storage: null });
+  const drawn = new Set();
+  const perBar = [];
+  const perTrack = [];
+
+  for (let i = 0; i < 24; i++) {
+    const material = picker ({ seed: (i * 2654435761) >>> 0 });
+    for (const motif of [material.motifA, material.motifB]) {
+      drawn.add (JSON.stringify ([motif.start, motif.rhythm]));
+    }
+
+    const score = composeTrack ({
+      version: 1, seed: (i * 40503) >>> 0, materialSeed: material.materialSeed,
+      material: material.material, motifA: material.motifA, motifB: material.motifB,
+      title: 'spread', rootMidi: 50, scale: 'dorian',
+      structure: { style: 'tune', opening: 'melody', meter: i % 3 === 2 ? '6/8' : '4/4',
+        chordHold: 2, sections: ['A', 'A', 'B', 'A'] },
+      progression: PROGRESSIONS.dorian[0], turns: 2, turnsSinceEnding: 0,
+      variation: {}, tempoOffset: 0, tempoUser: 80, arcDepth: 0.5,
+      arc: { shape: 'swell', length: 8, turn: 0 },
+      user: { density: 0.5, counter: 0.55, ornament: 0.6, support: 0.5, drone: 0.25,
+        dust: 0.3, swing: 0.28 },
+      voices: { lead: 'vibraphone', keys: 'rhodes', bass: 'round' },
+      auto: { lead: true, keys: true, bass: true },
+      voiceOptions: { lead: ['vibraphone', 'harp'], keys: ['rhodes', 'felt'], bass: ['round', 'upright'] }
+    });
+
+    const sounding = score.bars
+      .map (bar => bar.notes.filter (note => note.role === 'lead').length)
+      .filter (count => count > 0);
+    perBar.push (...sounding);
+    perTrack.push (sounding.reduce ((sum, count) => sum + count, 0) / sounding.length);
+  }
+
+  // Most of the table gets used, rather than a couple of heavy cells winning
+  // every draw.
+  expect (drawn.size).toBeGreaterThan (12);
+
+  // Bars are not all the same size, and neither are tracks.
+  const sorted = [...perBar].sort ((a, b) => a - b);
+  expect (sorted[0]).toBeLessThan (3);
+  expect (sorted.at (-1)).toBeGreaterThan (8);
+  expect (new Set (perBar).size).toBeGreaterThan (6);
+  expect (Math.max (...perTrack) - Math.min (...perTrack)).toBeGreaterThan (2);
+
+  // And the line does run: the median bar carries more notes than the old
+  // cells averaged over a whole bar, which was 3.4.
+  expect (sorted[Math.floor (sorted.length / 2)]).toBeGreaterThan (3.4);
 });
