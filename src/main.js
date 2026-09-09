@@ -113,7 +113,8 @@ engine.state.onKey = (note, scale) => {
 const voiceRows = {
   lead: { id: 'leadVoiceRow', autoFlag: 'autoVoice' },
   keys: { id: 'keysVoiceRow', autoFlag: 'autoKeysVoice' },
-  bass: { id: 'bassVoiceRow', autoFlag: 'autoBassVoice' }
+  bass: { id: 'bassVoiceRow', autoFlag: 'autoBassVoice' },
+  counter: { id: 'counterVoiceRow', autoFlag: 'autoCounterVoice' }
 };
 
 function showVoice (kind) {
@@ -150,6 +151,10 @@ mountVoiceChooser ('keysVoiceRow',
 mountVoiceChooser ('bassVoiceRow',
   ['round', 'upright', 'sub', 'electric'],
   'auto', value => engine.controls.bassVoice (value), 'autoBassVoice');
+
+mountVoiceChooser ('counterVoiceRow',
+  ['pluck', 'harp', 'guitar', 'piano', 'kalimba', 'glockenspiel', 'marimba'],
+  'auto', value => engine.controls.counterVoice (value), 'autoCounterVoice');
 
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);

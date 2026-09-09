@@ -19,7 +19,9 @@
 // is what LIST_FINGERPRINT in the tests is there to catch.
 
 import { PROGRESSIONS } from './theory.js';
-import { LEAD_VOICES, KEYS_VOICES, BASS_VOICES } from './instruments.js';
+import { LEAD_VOICES, KEYS_VOICES, BASS_VOICES, COUNTER_VOICES } from './instruments.js';
+
+const COUNTER_NAMES = Object.keys (COUNTER_VOICES);
 import { titleAt, titleIndexOf } from './track-names.js';
 import { sectionsFor } from './track-structure.js';
 import { createTrackMaterialPicker } from './track-material.js';
@@ -84,7 +86,12 @@ const TAIL = [
   // different tune under the same name, which is worse.
   { name: 'material', whenAbsent: 1, knob: false,
     write: (user, recipe) => recipe.material ?? 1,
-    read: value => value || 1 }
+    read: value => value || 1 },
+  // The counter line's voice. Index nought is the pluck, which is what every
+  // track written before this table existed played — it was the only one.
+  { name: 'counterVoice', whenAbsent: COUNTER_NAMES[0], knob: false,
+    write: (user, recipe) => index (COUNTER_NAMES, recipe.counterVoice),
+    read: value => COUNTER_NAMES[value] ?? COUNTER_NAMES[0] }
 ];
 
 // The knob-shaped tail fields, which are the ones quantising applies to.
@@ -229,7 +236,7 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
     turns, turnsSinceEnding,
     arc: { shape: arcShape, length: arcLength, turn: arcTurn },
     arcDepth, tempoUser, tempoOffset,
-    user, variation, voices,
+    user, variation, voices, counterVoice: tail.counterVoice,
     auto: { lead: true, keys: true, bass: true },
     voiceOptions: voiceOptions ?? VOICES
   };

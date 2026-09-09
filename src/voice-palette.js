@@ -22,7 +22,12 @@ export const VOICE_WEIGHTS = {
     vibraphone: 2, marimba: 1, kalimba: 1, 'harp (synth)': 1 },
   keys: { rhodes: 5, felt: 5, guitar: 3, piano: 3, pad: 2 },
   bass: { upright: 4, round: 4, electric: 3, sub: 2 },
-  support: { glockenspiel: 3, vibraphone: 3, kalimba: 2, marimba: 2 }
+  support: { glockenspiel: 3, vibraphone: 3, kalimba: 2, marimba: 2 },
+  // The answering voice. The synthesised pluck was the only one there was for
+  // a long time, so it stays the commonest — but a harp or a picked guitar
+  // answering a rhodes is a better pairing than the pluck is, and neither had
+  // ever been reachable.
+  counter: { pluck: 4, harp: 4, guitar: 3, piano: 3, kalimba: 2, glockenspiel: 2, marimba: 1 }
 };
 
 /** One name, drawn by those weights. */

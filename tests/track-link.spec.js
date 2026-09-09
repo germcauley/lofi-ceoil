@@ -98,7 +98,8 @@ const TAIL = [
   { name: 'drums', absent: 1 },
   { name: 'scoring', absent: 'full', on: 'structure' },
   { name: 'width', absent: 0 },
-  { name: 'material', absent: 1, on: 'recipe' }
+  { name: 'material', absent: 1, on: 'recipe' },
+  { name: 'counterVoice', absent: 'pluck', on: 'recipe' }
 ];
 
 test ('a link that predates a field reads what its absence should mean', () => {

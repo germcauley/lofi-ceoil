@@ -249,13 +249,13 @@ function kalimba ({ volume = -7 } = {}) {
     Its lowest sample already sounds well above where the tune sits, so it can
     only ever decorate. That is the point: it is not a second melody, it is a
     highlight on the first. */
-function glockenspiel () {
-  return sampled ('glockenspiel', { volume: -14, release: 1.8, cutoff: 8000 });
+function glockenspiel ({ volume = -14 } = {}) {
+  return sampled ('glockenspiel', { volume, release: 1.8, cutoff: 8000 });
 }
 
 /** A real folk harp — the instrument this music actually belongs to. */
-function harpSampled () {
-  return sampled ('harp', { volume: -9, release: 1.4, cutoff: 6500 });
+function harpSampled ({ volume = -9 } = {}) {
+  return sampled ('harp', { volume, release: 1.4, cutoff: 6500 });
 }
 
 /** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
@@ -416,17 +416,48 @@ export const BASS_VOICES = {
 };
 
 /** The counter line's voice: a pluck, distinct from whichever lead is chosen. */
-export function createPluck () {
+export function createPluck ({ volume = -17 } = {}) {
   const voice = monotonic (new Tone.PluckSynth ({
     attackNoise: 0.7,
     dampening: 2600,
     resonance: 0.93,
     release: 0.9,
-    volume: -17
+    volume
   }));
 
   return instrument (voice);
 }
+
+/** Voices for the counter line — the second voice, answering the tune.
+ *
+ *  There was one, and it was not a choice: every track since this had a
+ *  counter line at all has played it on the same synthesised pluck, while the
+ *  lead, keys and bass all moved around it. That made the second voice the one
+ *  constant in a mix built to vary.
+ *
+ *  What belongs here is narrower than what belongs on the lead. A counter line
+ *  is short and it is answering rather than speaking, so it wants a voice that
+ *  stops on its own: a pluck, a struck bell, a picked string. A sustaining
+ *  voice in this seat does not answer the tune, it smears across it.
+ *
+ *  Order is part of the link format, like the other tables. */
+/** The guitar with its ring cut short, which is what a counter line wants:
+    the same instrument as the lead guitar would smear across the tune. */
+function guitarPicked ({ volume = -13 } = {}) {
+  return sampled ('guitar', { volume, release: 0.4, cutoff: 5000 });
+}
+
+export const COUNTER_VOICES = {
+  pluck: createPluck,
+  harp: () => harpSampled ({ volume: -15 }),
+  kalimba: () => kalimba ({ volume: -13 }),
+  glockenspiel: () => glockenspiel ({ volume: -19 }),
+  marimba: () => marimba ({ volume: -17 }),
+  guitar: () => guitarPicked ({ volume: -13 }),
+  // Appended, never inserted: a counter voice is stored in a link as its
+  // position in this table.
+  piano: () => sampled ('piano', { volume: -14, release: 0.5, cutoff: 4600 })
+};
 
 /** The kit.
  *

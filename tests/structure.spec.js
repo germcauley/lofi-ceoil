@@ -83,7 +83,14 @@ test ('a track retains its tune across turns and opens only once', async ({ page
     const e = window.lofi;
     // Select a structured, delayed-bass track through the real skip path.
     for (let i = 0; i < 10; i++) {
-      if (e.state.track.structure.style !== 'drift' && e.state.arrangement[0].bassFrom > 0) break;
+      // Also a track short enough that its third turn is its last. The hook
+      // returns in the *final* turn, which is what a return is, and a track is
+      // now two to four turns depending on its tempo and meter — so on a long
+      // one, turn two is a development turn, and development is meant to vary
+      // the hook. Waiting for turn two was asking the right question of the
+      // wrong bar.
+      if (e.state.track.structure.style !== 'drift' && e.state.arrangement[0].bassFrom > 0
+        && e.state.track.composition.turns.length <= 3) break;
       e.controls.skip();
       await new Promise (r => setTimeout (r, 180));
     }

@@ -2077,3 +2077,96 @@ changing the list, reordering it, or even weighting the draw changes what every
 link ever shared plays. Whatever replaces `RHYTHMS` has to arrive as a
 versioned material generator, with the version carried in the link's tail and
 absent meaning the fourteen cells. The tail from **77** is the place for it.
+
+## 79. Making it sound more Irish — the running line, the length and the second voice
+
+Three things, all downstream of the measurement in **78**.
+
+### The tune runs now
+
+The corpus said the generator was playing a waltz whatever meter it claimed:
+2.04 quavers a note and 3.4 notes a bar, against a repertoire averaging about
+one quaver a note and five to seven notes a bar. **78** recorded that and
+deliberately stopped there, because weighting the old cells by corpus
+frequency would have made the melody faster *and* more even at once. The fix
+is not to weight the old cells but to write new ones.
+
+They are chosen by what they *become* rather than by how they read, because a
+6/8 track puts every phrase through `jigPhrase`, which folds four quavers into
+three. A cell of eight even quavers comes out the far side as six even quavers
+— the commonest bar in the entire jig repertoire, 48% of them — and a cell
+with one long note lands on the next commonest. Every candidate was generated,
+mapped through the engine's own remap, and scored against the corpus in both
+meters; the weights follow how often the resulting bar actually occurs. A cell
+earns its place by what a listener hears rather than by how it looks in a
+table.
+
+Not all the way to the corpus, though. A session tune never stops and a lofi
+track has to breathe, so a fifth of the cells still start late or hold a long
+note. That is the one place this departs from the measurement on purpose, and
+it is marked as such in the source.
+
+The mean is not the point and nothing is built to it. Over forty tracks,
+nineteen of the twenty cells get drawn, bars carry between one and eleven lead
+notes with a median of five, and per-track averages span 3.7 to 7.4. A test
+holds that spread rather than the average, because building to an average is
+how you get a metronome with pitches.
+
+**The link problem, solved rather than dodged.** A tune is regenerated from its
+`materialSeed`, and the cell list is indexed by a draw from that seed — so
+changing the list, reordering it, or merely weighting the draw changes what
+every link ever shared plays. The material version now rides in the tail from
+**77**, absent meaning the fourteen cells written by ear, and both versions
+spend exactly one draw choosing a cell so the rest of a motif's random
+sequence is identical either way. Getting this wrong would not have broken a
+link; it would have quietly handed back a different tune under the same name.
+The link test caught it on the first run.
+
+### A track is two to five minutes
+
+How long a track runs is the turn count times the tempo times the meter, and
+only the first of those was ever chosen — two to four turns, drawn from a bag
+without reference to how fast the track was or what meter it was in. Measured
+across the range, that put tracks anywhere from **1.3 minutes to 8.3**. A quick
+jig played twice was over before it began; a slow 4/4 played four times was
+eight and a quarter minutes on one title, which is not a track, it is a side.
+
+The count now comes from the duration: a target is drawn between two and a
+half and five minutes, and the turn count that lands nearest it wins, clamped
+to between two and four and never past the ceiling. The band is now **2.00 to
+4.99 minutes** — the extremes are exact rather than approached, the shortest
+being a 6/8 at sixty-four played twice.
+
+It is also the more musical reading. A set is played round until it has been
+heard, and a quick tune needs more turns to get there than a slow one does: a
+jig at ninety-eight now goes round four times where a 4/4 at sixty-two goes
+round twice.
+
+### The counter line has a voice again
+
+The second voice — the one that answers the tune — had been the same
+synthesised pluck since it existed, while the lead, keys and bass all moved
+around it. That made the answering voice the one constant in a mix built to
+vary, which is the opposite of what it should be.
+
+It has a table now: pluck, harp, guitar, piano, kalimba, glockenspiel,
+marimba, with its own chooser row and its own weights. The table is narrower
+than the lead's on purpose. A counter line is short and it is answering rather
+than speaking, so it wants a voice that stops on its own — a pluck, a struck
+bell, a picked string. A sustaining voice in that seat does not answer the
+tune, it smears across it, which is why the guitar and piano here are the
+short-release versions rather than the lead's.
+
+Chosen once per track rather than moved at section boundaries like the other
+three: a reply that changes instrument halfway through stops reading as a
+reply and starts reading as another part arriving. It never doubles the lead,
+and it rides in the tail with index nought meaning the pluck — which is what
+every track before this played.
+
+### One test had been asking the right question of the wrong bar
+
+Changing the turn distribution broke `a track retains its tune across turns`,
+which waited for turn two and expected the hook back. The hook returns in the
+*final* turn, which is what a return is — turn two is only the final turn on a
+short track, and the old bag made short tracks common enough that nobody
+noticed. It now selects a track short enough for the question it is asking.

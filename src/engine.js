@@ -3,12 +3,14 @@ import { meterInfo } from './musical-meter.js';
 // the knobs write into, and drives the bar-by-bar scheduling.
 
 import * as Tone from 'tone';
-import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, SUPPORT_VOICES, createDrums, createDrone, createPluck, createVinyl, preloadSamples } from './instruments.js';
+import { KEYS_VOICES, LEAD_VOICES, BASS_VOICES, SUPPORT_VOICES, COUNTER_VOICES, createDrums, createDrone, createVinyl, preloadSamples } from './instruments.js';
 import { pickVoice } from './voice-palette.js';
 
 const LEAD_VOICE_NAMES = Object.keys (LEAD_VOICES);
 const KEYS_VOICE_NAMES = Object.keys (KEYS_VOICES);
 const BASS_VOICE_NAMES = Object.keys (BASS_VOICES);
+const COUNTER_VOICE_NAMES = Object.keys (COUNTER_VOICES);
+const VOICE_TABLES = { lead: LEAD_VOICES, keys: KEYS_VOICES, bass: BASS_VOICES, counter: COUNTER_VOICES };
 const SUPPORT_VOICE_NAMES = Object.keys (SUPPORT_VOICES);
 import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
@@ -25,7 +27,7 @@ import { createPlaybackTimeline } from './playback-timeline.js';
 import { PROGRESSIONS, NOTE_NAMES, noteNameToMidi, findPivot } from './theory.js';
 import { gappedPool } from './melody.js';
 import { playVinyl } from './parts.js';
-import { chooseTempoOffset, clampTempo, DEFAULT_TEMPO } from './track-tempo.js';
+import { chooseTempoOffset, clampTempo, turnsFor, barSecondsAt, DEFAULT_TEMPO } from './track-tempo.js';
 
 export function createEngine () {
   const chain = createChain();
@@ -66,7 +68,7 @@ export function createEngine () {
   let drums = createDrums();
   let drone = createDrone();
   let support = { ...SUPPORT_VOICES.glockenspiel(), name: 'glockenspiel' };
-  let pluck = createPluck();
+  let pluck = { ...COUNTER_VOICES.pluck(), name: 'pluck' };
   let vinyl = createVinyl();
 
   // Instruments run through the sidechain so the kick ducks them. The vinyl
@@ -123,6 +125,7 @@ export function createEngine () {
 
     keysVoice: 'rhodes',
     leadVoice: 'vibraphone',
+    counterVoice: 'pluck',
     bassVoice: 'round',
 
     // On by default. A set that plays every track on the same three
@@ -131,6 +134,7 @@ export function createEngine () {
     autoVoice: true,
     autoKeysVoice: true,
     autoBassVoice: true,
+    autoCounterVoice: true,
 
     // Notified when a voice swap starts and when it is ready to play.
     onVoice: null,
@@ -444,6 +448,7 @@ export function createEngine () {
           swapVoice (role, recipe.voices[role]);
         }
       }
+      if (state.autoCounterVoice && recipe.counterVoice) swapVoice ('counter', recipe.counterVoice);
       scoreDirty = false;
       scoreEdits = {};
       lastComposition = composition;
@@ -453,14 +458,23 @@ export function createEngine () {
     const size = gappedPool (state.scale).length;
 
     state.trackNumber++;
+    // Structure and tempo are settled first, because how many times to play
+    // the tune depends on both: a bar of 6/8 at ninety-eight is a fifth of a
+    // bar of 4/4 at sixty-two, and a turn count chosen without knowing that is
+    // a track length chosen blind.
+    const structure = nextStructure();
+    // Distinct neighbouring tempos around the knob's base value. Drift
+    // controls the spread; at zero the knob remains exact.
+    const tempoOffset = chooseTempoOffset (previousTempoOffset, state.tempoUser, state.arcDepth);
+    const barSeconds = barSecondsAt (
+      clampTempo (state.tempoUser + tempoOffset * state.arcDepth), meterInfo (structure.meter));
+
     state.track = {
       ...nextTrackTitle(),
-      structure: nextStructure(),
+      structure,
       turn: 0,
       ...nextTrackMaterial(),
-      // Distinct neighbouring tempos around the knob's base value. Drift
-      // controls the spread; at zero the knob remains exact.
-      tempoOffset: chooseTempoOffset (previousTempoOffset, state.tempoUser, state.arcDepth),
+      tempoOffset,
 
       // How this track differs from where the knobs are set. Signed offsets,
       // scaled by the arc knob when they are applied.
@@ -477,14 +491,9 @@ export function createEngine () {
         density:    (Math.random() - 0.5) * 0.30,
         counter:    (Math.random() - 0.5) * 0.40
       },
-      // A turn is a full thirty-two bar tune, so a track is that tune played
-      // two to four times. Uniform across the three meant a mean of three
-      // turns — nearly five minutes at eighty, and over seven at the bottom of
-      // the tempo range with four turns. That is a long time to look at the
-      // same title, and the title is most of what marks one tune from the
-      // next. Weighted towards two: the long track still happens, but as the
-      // occasional one rather than one in three.
-      turnsLeft: [2, 2, 2, 2, 3, 3, 4][Math.floor (Math.random() * 7)],
+      // How many times round, chosen from how long that actually takes rather
+      // than from a bag. See `turnsFor`.
+      turnsLeft: turnsFor (barSeconds),
       size
     };
 
@@ -507,6 +516,7 @@ export function createEngine () {
       // Which cell table the motifs came from. Without it a link is a seed
       // with no table behind it, and would replay somebody else's tune.
       material: track.material ?? MATERIAL_VERSION,
+      counterVoice: pendingVoices.counter?.name ?? state.counterVoice,
       structure: track.structure, motifA: track.motifA, motifB: track.motifB,
       progression: state.progression, turns: track.turnsLeft,
       variation: track.variation, user: { ...state.user }, tempoUser: state.tempoUser,
@@ -550,6 +560,16 @@ export function createEngine () {
 
     if (state.autoBassVoice) {
       swapVoice ('bass', pickVoice ('bass', BASS_VOICE_NAMES.filter (n => n !== state.bassVoice)));
+    }
+
+    if (state.autoCounterVoice) {
+      // Chosen once for the track rather than moved at section boundaries like
+      // the other three. The counter is the answering voice, and a reply that
+      // changes instrument halfway through stops reading as a reply — it reads
+      // as another part arriving.
+      const options = COUNTER_VOICE_NAMES.filter (n =>
+        n !== state.counterVoice && n !== (pendingVoices.lead?.name ?? state.leadVoice));
+      swapVoice ('counter', pickVoice ('counter', options));
     }
   }
 
@@ -837,13 +857,14 @@ export function createEngine () {
 
   // Each row owns its pending swap: a bass change must not cancel a loading
   // lead. Selecting the current voice also cancels an older pending choice.
-  const pendingVoices = { keys: null, lead: null, bass: null };
-  const swapTokens = { keys: 0, lead: 0, bass: 0 };
+  const pendingVoices = { keys: null, lead: null, bass: null, counter: null };
+  const swapTokens = { keys: 0, lead: 0, bass: 0, counter: 0 };
 
   function swapVoice (kind, name) {
-    const table = kind === 'keys' ? KEYS_VOICES : kind === 'bass' ? BASS_VOICES : LEAD_VOICES;
+    const table = VOICE_TABLES[kind] ?? LEAD_VOICES;
     if (! table[name] || pendingVoices[kind]?.name === name) return;
-    const current = kind === 'keys' ? keys : kind === 'bass' ? bass : lead;
+    const current = kind === 'keys' ? keys : kind === 'bass' ? bass
+      : kind === 'counter' ? pluck : lead;
     const token = ++swapTokens[kind];
     pendingVoices[kind]?.dispose();
     pendingVoices[kind] = null;
@@ -858,15 +879,18 @@ export function createEngine () {
     // move the lead: the place belongs to the part, not to the instrument
     // that happens to be playing it. The panner already feeds the bus and,
     // for the melodic roles, the echo send.
-    next.output.connect (places[kind]);
+    next.output.connect (places[kind === 'counter' ? 'pluck' : kind]);
 
     const commit = () => {
       if (token !== swapTokens[kind]) return;
       pendingVoices[kind] = null;
       if (kind === 'keys') keys = next;
       else if (kind === 'bass') bass = next;
+      else if (kind === 'counter') pluck = next;
       else lead = next;
-      state[kind] = next.voice;
+      // The counter's part is called `pluck` in the state, for the same reason
+      // the table calls its first voice that: it was the only one there is.
+      state[kind === 'counter' ? 'pluck' : kind] = next.voice;
       state[kind + 'Voice'] = name;
       // Notes already scheduled on the outgoing voice may finish their bar.
       setTimeout (() => current.dispose(), 6500);
@@ -916,7 +940,7 @@ export function createEngine () {
     drums = createDrums();
     drone = createDrone();
     support = { ...SUPPORT_VOICES.glockenspiel(), name: 'glockenspiel' };
-    pluck = createPluck();
+    pluck = { ...COUNTER_VOICES[state.counterVoice](), name: state.counterVoice };
     vinyl = createVinyl();
     instrumentBus = new Tone.Gain (1).connect (chain.input);
     connectInstruments();
@@ -1020,6 +1044,11 @@ export function createEngine () {
 
     keysVoice (name) {
       swapVoice ('keys', name);
+    },
+
+    counterVoice (name) {
+      swapVoice ('counter', name);
+      state.autoCounterVoice = false;
     },
 
     bassVoice (name) {
