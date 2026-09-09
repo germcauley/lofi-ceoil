@@ -1989,3 +1989,91 @@ counter swapping sides, the whole picture a little wider on a sparse
 arrangement — but that has to be driven from the recipe rather than from
 `Math.random`, or a shared link would come back placed differently from the
 track it names.
+
+## 78. What the corpus says about rhythm — measured, and not used
+
+The melodic grammar in **59** was measured from the repertoire; the rhythm
+never was. Every interval, transition and cadence came out of 6.6 million
+notes, and then the durations of those same notes were thrown away and the
+tune's rhythm drawn uniformly from fourteen cells written by ear.
+
+The data was already downloaded and the parser already written, so this looked
+like the cheapest remaining win. It measured cleanly, and it says the opposite
+of what it was expected to say.
+
+### What it took
+
+The dump carries no unit note length, and it does not need to: what a bar is
+worth in a setting comes from the bars themselves. Whichever total occurs most
+often *is* a full bar there, and anything else is a pickup, a run-in or a
+transcription that does not add up. Lengths are then scaled to quavers using
+the meter column. Broken rhythm — `A>B`, the dotted pair that is most of a
+hornpipe — changes the two notes either side of it rather than carrying a
+length of its own, so it is read as a token and applied backwards and forwards.
+
+Two things had to be thrown out rather than approximated. Rhythm is counted per
+tune type *in that type's own meter*: a handful of settings filed as reels are
+written in 9/8, and their nine-quaver bars were landing in a table meant to
+describe a reel's eight. And a bar whose lengths do not survive rounding is not
+counted — nine notes across a bar of eight are 0.889 of a quaver each, which
+rounds to a whole one and produces a nine-quaver bar in a table of eight-quaver
+bars. That second one was caught by a test asserting every kept rhythm fills
+its bar exactly, which is the whole derivation in one line.
+
+### What it says
+
+| | even bars | mean note | notes a bar |
+| --- | --- | --- | --- |
+| jig | **50.1%** | 1.12 | 5.3 |
+| hornpipe | 42.2% | 1.12 | 7.2 |
+| reel | 39.8% | 1.13 | 7.1 |
+| polka | 38.9% | 0.95 | 4.2 |
+| waltz | 32.6% | 1.66 | 3.6 |
+| slip jig | 24.5% | 1.19 | 7.6 |
+| **this generator** | 29% | **2.04** | **3.4** |
+
+Half of all jig bars are six notes of identical length. The commonest rhythm in
+every type except the waltz is the bar filled with even quavers, and the top
+dozen or so patterns cover four fifths of the repertoire. A session tune is a
+running line; that is what the tradition *is*.
+
+The generator plays at roughly half that rate, with longer notes and fewer of
+them, and it is *less* even than the corpus rather than more.
+
+### Why the tables are not wired in
+
+Weighting the generator's cells by what the corpus plays would make the melody
+both faster and more even — busier and more monotonous at once, which is the
+opposite of what **72** was trying to fix. The corpus is not a source of
+rhythmic variety, because rhythmic variety is not where a session tune's
+interest lives: it lives in the pitches, which is exactly the part already
+measured and wired in.
+
+So the tables ship and nothing downstream reads them yet. That is the honest
+outcome of the measurement rather than a job left half done — but three real
+things came out of it.
+
+**The generator is playing a waltz.** Whatever meter it claims, its melodic
+rhythm — 2.04 quavers a note, 3.4 notes a bar, 29% even — is the waltz row and
+nothing else. That is a sharper statement of the problem in **40** than anyone
+had before: a jig remapped from an eight-unit bar is not slow, it is in the
+wrong meter.
+
+**Each type now has a rhythm to generate from natively**, which is most of what
+**40** was missing. The slip jig being the least even of the six at 24.5% is
+worth knowing before writing one.
+
+**And the polka is genuinely a different instrument.** Nearly thirty percent of
+its notes are semiquavers, against three percent in jigs, and the generator has
+no sub-quaver resolution in its rhythms at all. Adding it is a prerequisite for
+polkas and for the hornpipe's dotted pair, which is 7.4% of hornpipe bars on
+its own and the most characteristic thing about the type.
+
+### The link problem, before anyone starts
+
+The cells cannot simply be swapped. A track's tune is regenerated from its
+`materialSeed`, and the cell list is indexed by a draw from that seed — so
+changing the list, reordering it, or even weighting the draw changes what every
+link ever shared plays. Whatever replaces `RHYTHMS` has to arrive as a
+versioned material generator, with the version carried in the link's tail and
+absent meaning the fourteen cells. The tail from **77** is the place for it.
