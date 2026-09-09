@@ -1914,3 +1914,78 @@ slowed, or the ornaments and the swing land wrong.
 *Provenance.* Traditional tunes are overwhelmingly public domain and the
 corpus is ODbL, but someone pasting a tune written in 2019 is a different
 matter. Worth saying so plainly next to the box rather than in a licence file.
+
+## 77. Where each part sits — the stereo image — done
+
+Everything was in the middle. Not narrow: actually mono, with not a single
+panner anywhere in the graph, so whatever width came out did so by accident,
+from the chorus on two of the keys voices and from the reverb. Nine parts
+stacked in one spot fight each other for the same space, and the usual
+response to that is to reach for the levels — which does not help, because the
+problem was never loudness. **73** and **75** were both partly this.
+
+Three rules make the table in `src/stereo.js`.
+
+The low end is centred. The kick and the bass carry most of the energy, and
+moving either off centre unbalances the mix and spends headroom on one side
+for nothing. The snare stays with them, because it is the other half of the
+backbeat.
+
+Parts that answer each other go opposite ways. The counter line exists to
+reply to the tune, and a reply is far easier to follow from the other side of
+the room; the support sparkle sits opposite as well, which is also what stops
+it merging into the lead. Same for the hats against the ghost notes, either
+side of the backbeat.
+
+Everything else is a small offset. A part hard left is a novelty; a part
+fifteen percent left is a part with its own place, which is what is wanted —
+nothing in the table exceeds 0.42.
+
+The panners live in the engine rather than in the instruments, because
+placement is a decision about the arrangement and not a property of a rhodes:
+the same voice is placed one way as the tune and another way as the chords
+behind it. A swapped voice goes into its role's panner rather than into the
+bus, so changing the lead sound does not move the lead. The echo send is fed
+after the panner, so a repeat comes back from where the note was.
+
+Two things had to be checked rather than assumed. The panners are rebuilt with
+the instrument bus even though a panner has no scheduling timeline to retire —
+a shared one would carry both the retiring voices and the new ones, and the
+fade that retires the old bank works by fading that bus, so sound arriving
+through a panner wired to the new bus would skip the fade and arrive at full
+level. And the whole tape path sits between the panners and the speakers:
+saturation, bitcrush, wobble and four filters, any one of which summing to
+mono would have undone the lot silently. Measured per channel rather than on
+the downmix, because a single analyser on a stereo node reads the sum and
+reports a perfectly centred mix as wide: a hat run comes out 1.46 to 1 between
+the sides, the kick 1.02 to 1, and the width knob at nought puts it back to
+1.00.
+
+That knob is the point of the last one. Some listeners are on a single
+speaker, and a mix that only works wide is a mix with a problem hidden in it.
+It starts at 0.8, because the table is the widest the image should ever get
+and a default at the top of a control leaves nothing to reach for.
+
+### The link's tail, for the third time
+
+Adding `width` uncovered the same fault the mechanism was built to prevent.
+`scoring` was written *after* the late knobs rather than being one of them, so
+appending to that list pushed `scoring` along by a byte — and every track
+shared since scorings existed would have come back as `full`, with a random
+width, its arrangement quietly replaced.
+
+Once is a mistake, three times is a design. There is now one tail rather than a
+tail and a straggler: a single ordered list, one append point, each field
+carrying what its absence should mean, and a test that walks the tail backwards
+a byte at a time and checks both the missing fields and the ones ahead of the
+gap. The test restates the order rather than importing it, because importing
+the list would make it agree with any reordering, which is the one thing it is
+there to refuse.
+
+### Not done here
+
+The image is fixed per role. It could vary per track — the lead and the
+counter swapping sides, the whole picture a little wider on a sparse
+arrangement — but that has to be driven from the recipe rather than from
+`Math.random`, or a shared link would come back placed differently from the
+track it names.

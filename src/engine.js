@@ -12,6 +12,7 @@ const BASS_VOICE_NAMES = Object.keys (BASS_VOICES);
 const SUPPORT_VOICE_NAMES = Object.keys (SUPPORT_VOICES);
 import { createChain } from './effects.js';
 import { createTrackNamer } from './track-names.js';
+import { placementAt, DEFAULT_WIDTH } from './stereo.js';
 import { createTrackMaterialPicker } from './track-material.js';
 import { decodeTrack, encodeTrack, quantiseRecipe } from './track-link.js';
 import { createListeningLog } from './listening.js';
@@ -70,15 +71,38 @@ export function createEngine () {
   // Instruments run through the sidechain so the kick ducks them. The vinyl
   // bed deliberately does not — a record surface does not pump.
   let instrumentBus = new Tone.Gain (1).connect (chain.input);
+
+  // Where each part sits between the speakers. The panners belong here rather
+  // than inside the instruments because placement is a decision about the
+  // arrangement, not a property of a rhodes: the same voice is placed one way
+  // as the tune and another way as the chords behind it.
+  //
+  // They are rebuilt with the bus rather than kept, even though a panner has
+  // no scheduling timeline of its own to retire. A shared panner would carry
+  // both the retiring voices and the new ones, and the fade that retires the
+  // old bank works by fading that bus — sound arriving through a panner wired
+  // to the new bus would skip the fade entirely and arrive at full level.
+  const PLACED = ['keys', 'lead', 'bass', 'drone', 'pluck', 'support'];
+  let places = {};
+  // Read when the panners are built, which happens before `state` exists, so
+  // it cannot be read off the knobs there.
+  let width = DEFAULT_WIDTH;
+
   function connectInstruments () {
-    [keys, lead, bass, drone, pluck, support].forEach (part => part.output.connect (instrumentBus));
+    places = Object.fromEntries (PLACED.map (role =>
+      [role, new Tone.Panner (placementAt (role, width))]));
+    for (const [role, part] of Object.entries ({ keys, lead, bass, drone, pluck, support })) {
+      part.output.connect (places[role]);
+      places[role].connect (instrumentBus);
+    }
     // The kit takes the chain's own entrance rather than the instrument bus:
     // it must not be ducked by its own kick, and it must not be filtered by a
     // tone control set for the melody.
     drums.outputs.forEach (out => out.connect (chain.kitInput));
     // The echo is fed by the melodic voices only. Sending the bass, drone or
-    // drums into a delay is how a mix turns to porridge.
-    [lead, support, pluck].forEach (part => part.output.connect (chain.echoSend));
+    // drums into a delay is how a mix turns to porridge. Fed after the panner,
+    // so a repeat comes back from where the note was rather than the middle.
+    for (const role of ['lead', 'support', 'pluck']) places[role].connect (chain.echoSend);
     // Into the limiter, not past it. The surface stays outside the sidechain
     // and the tape path — a record does not pump and is not the tape — but it
     // must not be the one thing that can spike above everything else.
@@ -139,7 +163,7 @@ export function createEngine () {
     user: {
       density: 0.5, counter: 0.55, brightness: 0.29, swing: 0.28,
       ornament: 0.6, drone: 0.14, dust: 0.3, wobble: 0.27, support: 0.5,
-      drive: 0.3, space: 0.28, pump: 0.35, echo: 0.22, drums: 1
+      drive: 0.3, space: 0.28, pump: 0.35, echo: 0.22, drums: 1, width: DEFAULT_WIDTH
     },
 
     // Where we are in a long arc, and how far it is allowed to swing things.
@@ -374,6 +398,14 @@ export function createEngine () {
     // Not run through `value`: the arc and the track's variation move the
     // texture already, and a listener who turns the kit off means off.
     drums.setLevel (state.user.drums ?? 1);
+    // Not run through `value` either. Where the parts sit is the shape of the
+    // room, not something a track's own character should be moving about
+    // underneath the listener.
+    width = state.user.width ?? DEFAULT_WIDTH;
+    for (const [role, panner] of Object.entries (places)) {
+      panner.pan.rampTo (placementAt (role, width), 0.3);
+    }
+    drums.setWidth (width);
     chain.setEcho (value ('echo'));
     // The delay is a dotted eighth, so it has to follow the track's tempo
     // rather than whatever the tempo was when the chain was built.
@@ -817,10 +849,11 @@ export function createEngine () {
 
     const next = { ...table[name](), name };
     pendingVoices[kind] = next;
-    next.output.connect (instrumentBus);
-    // A swapped voice has to keep its place in the send, or the echo quietly
-    // stops following the tune.
-    if (kind === 'lead' || kind === 'support' || kind === 'pluck') next.output.connect (chain.echoSend);
+    // Into the role's panner, not the bus. Changing the lead sound must not
+    // move the lead: the place belongs to the part, not to the instrument
+    // that happens to be playing it. The panner already feeds the bus and,
+    // for the melodic roles, the echo send.
+    next.output.connect (places[kind]);
 
     const commit = () => {
       if (token !== swapTokens[kind]) return;
@@ -854,6 +887,7 @@ export function createEngine () {
   function replaceInstruments (time) {
     const outgoing = [keys, lead, bass, drums, drone, pluck, support, vinyl];
     const oldBus = instrumentBus;
+    const oldPlaces = Object.values (places);
     const oldVinyl = vinyl;
     for (const kind of Object.keys (pendingVoices)) {
       swapTokens[kind]++;
@@ -867,6 +901,7 @@ export function createEngine () {
     oldVinyl.level.gain.linearRampToValueAtTime (0, time + 0.04);
     setTimeout (() => {
       outgoing.forEach (part => part.dispose());
+      oldPlaces.forEach (panner => panner.dispose());
       oldBus.dispose();
     }, Math.max (0, time - Tone.immediate() + 0.08) * 1000);
 
@@ -911,6 +946,7 @@ export function createEngine () {
     pump (value) { state.user.pump = value; applySettings(); },
     echo (value) { state.user.echo = value; applySettings(); },
     drums (value) { state.user.drums = value; applySettings(); },
+    width (value) { state.user.width = value; applySettings(); },
 
     volume (value) {
       chain.master.gain.rampTo (value, 0.2);

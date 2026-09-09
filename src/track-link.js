@@ -43,28 +43,43 @@ const ARCS = ['swell', 'build', 'ebb', 'plateau'];
 const SCORE_KNOBS = ['density', 'counter', 'ornament', 'drone', 'dust', 'support', 'swing'];
 const TONE_KNOBS = ['brightness', 'wobble', 'drive', 'space', 'pump', 'volume'];
 
-// Knobs added after the format existed go at the very end of the layout, not
-// at the end of a list in the middle of it. Appending to TONE_KNOBS looks
-// harmless and is not: everything written after the knob block — the
-// variations, the voices, the title — shifts by a byte, so an existing link
-// still decodes and quietly describes a different tune, which is worse than
-// failing. Anything here is read only if the bytes are there, so an older and
-// shorter link keeps every value it had and takes nought for the rest.
-// Late knobs carry what a link that predates them should mean, because a
-// missing byte reads as nought and nought is not always the right answer:
-// no echo is right for a tune written before the echo existed, but no drums
-// is not — that link had drums, and silence would be a wrong reading rather
-// than a missing one.
-const LATE_KNOBS = [
-  { name: 'echo', whenAbsent: 0 },
-  { name: 'drums', whenAbsent: 1 }
-];
-
-// Likewise appended at the end of the layout rather than beside the other
-// structure fields. Index nought is `full`, which is what every track written
-// before scorings existed was.
 const SCORINGS = ['full', 'duo', 'bare', 'driving'];
 const KNOBS = [...SCORE_KNOBS, ...TONE_KNOBS];
+
+// The tail. Everything added after links were already being shared lives here,
+// in the order it was added, and nothing anywhere else moves.
+//
+// Appending to a list in the middle of the layout — TONE_KNOBS, say — looks
+// harmless and is not: everything written after it shifts by a byte, so an
+// existing link still decodes and quietly describes a different tune, which is
+// worse than failing outright.
+//
+// There is one tail rather than a tail and then a straggler. `scoring` used to
+// be written after the late knobs instead of being one of them, so adding
+// `width` to that list pushed `scoring` along by a byte — the same fault a
+// byte further down, and this format's third go at setting the same trap. One
+// list, one append point, and a test that walks the tail backwards.
+//
+// Each field says what its absence means, because a missing byte reads as
+// nought and nought is not always the right answer. No echo is right for a
+// tune written before the echo existed; no drums is not, because that link had
+// drums, and silence would be a wrong reading rather than a missing one.
+const TAIL = [
+  { name: 'echo', whenAbsent: 0, write: user => byte (user.echo), read: value => unbyte (value) },
+  { name: 'drums', whenAbsent: 1, write: user => byte (user.drums), read: value => unbyte (value) },
+  // Not a knob: index nought is `full`, which is what every track written
+  // before scorings existed was. It lives on the recipe's structure rather
+  // than in `user`, which is why it carries its own reach.
+  { name: 'scoring', whenAbsent: 'full', knob: false,
+    write: (user, recipe) => index (SCORINGS, recipe.structure?.scoring),
+    read: value => SCORINGS[value] ?? 'full' },
+  // Absent means mono, because a track written before the panners existed was
+  // mono — there was not a single panner in the graph.
+  { name: 'width', whenAbsent: 0, write: user => byte (user.width), read: value => unbyte (value) }
+];
+
+// The knob-shaped tail fields, which are the ones quantising applies to.
+const TAIL_KNOBS = TAIL.filter (field => field.knob !== false).map (field => field.name);
 
 const VOICES = {
   lead: Object.keys (LEAD_VOICES),
@@ -96,7 +111,7 @@ const unsigned = value => (value - 128) / 255;
     link describes. */
 export function quantiseRecipe (recipe) {
   const user = { ...recipe.user };
-  for (const knob of [...KNOBS, ...LATE_KNOBS.map (late => late.name)]) {
+  for (const knob of [...KNOBS, ...TAIL_KNOBS]) {
     if (user[knob] !== undefined) user[knob] = unbyte (byte (user[knob]));
   }
 
@@ -152,8 +167,7 @@ export function packRecipe (recipe) {
   for (const knob of SCORE_KNOBS) w.u8 (signed (recipe.variation?.[knob]));
   for (const role of ['lead', 'keys', 'bass']) w.u8 (index (VOICES[role], recipe.voices?.[role]));
   w.u16 (Math.max (0, titleIndexOf (recipe.title)));
-  for (const { name } of LATE_KNOBS) w.u8 (byte (recipe.user?.[name]));
-  w.u8 (index (SCORINGS, recipe.structure?.scoring));
+  for (const field of TAIL) w.u8 (field.write (recipe.user ?? {}, recipe));
 
   return Uint8Array.from (w.bytes);
 }
@@ -189,8 +203,10 @@ export function unpackRecipe (bytes, { voiceOptions } = {}) {
   const voices = {};
   for (const role of ['lead', 'keys', 'bass']) voices[role] = VOICES[role][r.u8()] ?? VOICES[role][0];
   const title = titleAt (r.u16());
-  for (const { name, whenAbsent } of LATE_KNOBS) user[name] = r.has() ? unbyte (r.u8()) : whenAbsent;
-  const scoring = r.has() ? (SCORINGS[r.u8()] ?? 'full') : 'full';
+  const tail = {};
+  for (const field of TAIL) tail[field.name] = r.has() ? field.read (r.u8()) : field.whenAbsent;
+  for (const name of TAIL_KNOBS) user[name] = tail[name];
+  const scoring = tail.scoring;
 
   const table = PROGRESSIONS[scale] ?? PROGRESSIONS.minor;
 

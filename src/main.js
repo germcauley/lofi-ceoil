@@ -10,6 +10,7 @@ import { summarise } from './listening.js';
 import { decodeTrack } from './track-link.js';
 import { scoreToMidi, midiFilename } from './midi.js';
 import { MIN_TEMPO, DEFAULT_TEMPO } from './track-tempo.js';
+import { DEFAULT_WIDTH } from './stereo.js';
 
 const engine = createEngine();
 createPianoRoll (document.getElementById ('pianoRoll'), engine.getPlayback);
@@ -39,6 +40,7 @@ const TONE_KNOBS = [
   { id: 'pump', label: 'pump', min: 0, max: 1, step: 0.01, value: 0.35 },
   { id: 'echo', label: 'echo', min: 0, max: 1, step: 0.01, value: 0.22 },
   { id: 'drums', label: 'drums', min: 0, max: 1, step: 0.01, value: 1 },
+  { id: 'width', label: 'width', min: 0, max: 1, step: 0.01, value: DEFAULT_WIDTH },
   { id: 'volume', label: 'level', min: 0, max: 1, step: 0.01, value: 0.9 }
 ];
 

@@ -1,6 +1,7 @@
 // Synthesised and sampled voices, each with explicit ownership of its nodes.
 
 import * as Tone from 'tone';
+import { placementAt } from './stereo.js';
 
 /** PluckSynth is Karplus-Strong: a single noise burst into a delay line. That
     noise source keeps a state timeline, and it throws outright if a trigger
@@ -503,12 +504,23 @@ export function createDrums () {
     }
   });
 
+  // Each role gets its own place before they meet. The kick and snare stay
+  // centred — they are the anchor, and moving weight off centre costs
+  // headroom on one side for nothing — while the hats and the ghost notes sit
+  // either side of them. A kit stacked in one spot sounds like a machine in a
+  // box, which is most of what a real one does not sound like.
+  const voices = { kick: kickVoice, snare: snareVoice, ghost: ghostVoice, hat: hatVoice };
+  const places = Object.fromEntries (Object.keys (voices)
+    .map (role => [role, new Tone.Panner (placementAt (role, 1))]));
+
   // Everything meets at one gain so the kit can be turned down or off as a
   // kit. The per-role levels above are the balance between the pieces; this
   // is how much of the whole thing you want.
   const level = new Tone.Gain (1);
-  const voices = { kick: kickVoice, snare: snareVoice, ghost: ghostVoice, hat: hatVoice };
-  Object.values (voices).forEach (voice => voice.connect (level));
+  for (const [role, voice] of Object.entries (voices)) {
+    voice.connect (places[role]);
+    places[role].connect (level);
+  }
 
   return {
     kick: role (kickVoice, pickers.kick),
@@ -521,13 +533,24 @@ export function createDrums () {
     level,
     outputs: [level],
 
+    places,
+
     /** Nought is properly silent, not merely quiet. */
     setLevel (amount, when = Tone.now()) {
       level.gain.rampTo (Math.max (0, Math.min (1, amount)), 0.25, when);
     },
 
+    /** How far the kit spreads. Nought puts every piece back in the middle,
+        which is the mono mix and has to keep working. */
+    setWidth (width, when = Tone.now()) {
+      for (const [role, panner] of Object.entries (places)) {
+        panner.pan.rampTo (placementAt (role, width), 0.3, when);
+      }
+    },
+
     dispose () {
       Object.values (voices).forEach (node => node.dispose());
+      Object.values (places).forEach (node => node.dispose());
       level.dispose();
     }
   };

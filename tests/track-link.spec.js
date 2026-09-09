@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { encodeTrack, decodeTrack, quantiseRecipe, packRecipe } from '../src/track-link.js';
+import { encodeTrack, decodeTrack, quantiseRecipe, packRecipe, unpackRecipe } from '../src/track-link.js';
 import { composeTrack } from '../src/composition.js';
 import { PROGRESSIONS } from '../src/theory.js';
 import { titleAt, titleIndexOf, titleCount } from '../src/track-names.js';
@@ -70,6 +70,59 @@ test ('the details a listener would notice all survive the trip', () => {
   expect (decoded.arc).toEqual (original.arc);
   expect (decoded.motifA).toEqual (original.motifA);
   expect (decoded.motifB).toEqual (original.motifB);
+});
+
+/** The trap this format keeps setting. Fields added after links were already
+    in the wild live at the end of the layout, so an older link simply runs out
+    of bytes before reaching them — and a missing byte reads as nought, which
+    is the right answer for a field that did not exist and the wrong one for a
+    field whose absence meant "on".
+
+    It has bitten three times. Appending `echo` beside the other tone knobs
+    shifted the whole layout and an existing link came back as a different tune
+    entirely. Then `drums` defaulted to nought, which would have silenced the
+    kit on every tune shared before the knob existed. Then `scoring` turned out
+    to be written after the late knobs rather than among them, so adding
+    `width` to that list pushed `scoring` along by a byte and every shared
+    track's arrangement quietly became `full`.
+
+    The order below is restated rather than imported on purpose: importing the
+    list would make this test agree with any reordering, which is the one thing
+    it is here to refuse. */
+const TAIL = [
+  { name: 'echo', absent: 0 },
+  { name: 'drums', absent: 1 },
+  { name: 'scoring', absent: 'full', on: 'structure' },
+  { name: 'width', absent: 0 }
+];
+
+test ('a link that predates a field reads what its absence should mean', () => {
+  const bytes = packRecipe (recipeFor());
+  const full = unpackRecipe (bytes, { voiceOptions });
+  const valueOf = (recipe, field) =>
+    field.on === 'structure' ? recipe.structure[field.name] : recipe.user[field.name];
+
+  // Walk the tail backwards a byte at a time, which is exactly what an older
+  // link is.
+  for (let dropped = 1; dropped <= TAIL.length; dropped++) {
+    const older = unpackRecipe (bytes.slice (0, bytes.length - dropped), { voiceOptions });
+    const kept = TAIL.length - dropped;
+
+    for (const field of TAIL.slice (kept)) {
+      expect (valueOf (older, field)).toBe (field.absent);
+    }
+    // Everything before the missing bytes is untouched — the tune that comes
+    // back is still the same tune, and the fields ahead of the gap keep their
+    // own values rather than sliding into it.
+    for (const field of TAIL.slice (0, kept)) {
+      expect (valueOf (older, field)).toBe (valueOf (full, field));
+    }
+    expect (older.title).toBe (full.title);
+    expect (older.motifA).toEqual (full.motifA);
+    expect (older.progression.name).toBe (full.progression.name);
+    expect (older.voices).toEqual (full.voices);
+    expect (older.user.volume).toBe (full.user.volume);
+  }
 });
 
 test ('a broken link is refused rather than thrown', () => {
