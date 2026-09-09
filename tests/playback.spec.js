@@ -112,7 +112,10 @@ test ('auto tracks change voices and settings without reloading samples or movin
     const results = [];
     for (let i = 0; i < 8; i++) {
       const before = [e.state.leadVoice, e.state.keysVoice, e.state.bassVoice];
-      const oldVoices = [e.state.lead, e.state.keys, e.state.bass, e.state.pluck, e.state.drums.snare, e.state.vinyl.pops];
+      // The kit's roles are wrappers around samplers, not audio nodes, so the
+      // node to check disposal on is the sampler underneath.
+      const oldVoices = [e.state.lead, e.state.keys, e.state.bass, e.state.pluck,
+        e.state.drums.voices.snare, e.state.vinyl.pops];
       const variation = JSON.stringify (e.state.track.variation);
       const progression = e.state.progression.name;
       const started = performance.now();

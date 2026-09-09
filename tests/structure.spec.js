@@ -23,7 +23,7 @@ test ('openings vary their low-end entrance and give the tune a stable repeat', 
     // Observe actual instrument scheduling, including replacement voices on skip.
     const prototypes = new Set();
     for (const voice of [e.state.bass, e.state.drone, e.state.lead, e.state.keys,
-      e.state.drums.kick, e.state.drums.snare, ...samples.map (one => one.voice)]) {
+      e.state.drums.voices.kick, e.state.drums.voices.snare, ...samples.map (one => one.voice)]) {
       let proto = Object.getPrototypeOf (voice);
       while (! Object.hasOwn (proto, 'triggerAttackRelease')) proto = Object.getPrototypeOf (proto);
       prototypes.add (proto);
@@ -33,8 +33,10 @@ test ('openings vary their low-end entrance and give the tune a stable repeat', 
       const original = proto.triggerAttackRelease;
       proto.triggerAttackRelease = function (...args) {
         const s = e.state;
+        // A kit role is a wrapper; the sampler underneath is what schedules,
+        // so the name comes from the sampler table rather than the roles.
         const role = ['bass', 'drone', 'lead', 'keys'].find (key => s[key] === this)
-          ?? Object.keys (s.drums).find (key => s.drums[key] === this);
+          ?? Object.keys (s.drums.voices).find (key => s.drums.voices[key] === this);
         if (role) notes.push (role);
         return original.apply (this, args);
       };

@@ -72,7 +72,10 @@ export function createEngine () {
   let instrumentBus = new Tone.Gain (1).connect (chain.input);
   function connectInstruments () {
     [keys, lead, bass, drone, pluck, support].forEach (part => part.output.connect (instrumentBus));
-    drums.outputs.forEach (out => out.connect (instrumentBus));
+    // The kit takes the chain's own entrance rather than the instrument bus:
+    // it must not be ducked by its own kick, and it must not be filtered by a
+    // tone control set for the melody.
+    drums.outputs.forEach (out => out.connect (chain.kitInput));
     // The echo is fed by the melodic voices only. Sending the bass, drone or
     // drums into a delay is how a mix turns to porridge.
     [lead, support, pluck].forEach (part => part.output.connect (chain.echoSend));
@@ -357,6 +360,7 @@ export function createEngine () {
     if (! state.endingSet && ! state.resting) setTempo (state.tempo, 0.4);
 
     chain.tone.frequency.rampTo (400 + brightness * 7600, 2);
+    chain.setKitTone (brightness);
     chain.crusherMix.fade.rampTo (dust * 0.65, 1);
     chain.crusher.bits.value = Math.round (12 - dust * 8);
     // Calibrate the voices themselves; dust controls their shared level and
@@ -439,7 +443,14 @@ export function createEngine () {
         density:    (Math.random() - 0.5) * 0.30,
         counter:    (Math.random() - 0.5) * 0.40
       },
-      turnsLeft: 2 + Math.floor (Math.random() * 3),
+      // A turn is a full thirty-two bar tune, so a track is that tune played
+      // two to four times. Uniform across the three meant a mean of three
+      // turns — nearly five minutes at eighty, and over seven at the bottom of
+      // the tempo range with four turns. That is a long time to look at the
+      // same title, and the title is most of what marks one tune from the
+      // next. Weighted towards two: the long track still happens, but as the
+      // occasional one rather than one in three.
+      turnsLeft: [2, 2, 2, 2, 3, 3, 4][Math.floor (Math.random() * 7)],
       size
     };
 

@@ -1756,3 +1756,161 @@ have meant **muted**. Absent is not the same as off: no echo is right for a
 tune that predates the echo, no drums is not, because that tune had drums.
 Late knobs now carry what their absence should mean, and the reader
 distinguishes a byte that is nought from a byte that is not there.
+
+## 75. The bass was a wall and the kit was a rumour — done
+
+Two complaints, one measurement. Every part was triggered in isolation through
+the real chain and read off the master, at the velocities the score actually
+writes:
+
+| | peak | rms |
+| --- | --- | --- |
+| bass | −14.7 | **−20.7** |
+| lead | −14.7 | −22.5 |
+| kick | −11.1 | −29.9 |
+| snare | −17.8 | −36.5 |
+| hat | −31.9 | −56.0 |
+
+The bass was the loudest sustained thing in the mix — nearly two decibels
+above the tune it was meant to be supporting. And the hats were thirty-seven
+decibels under it, which is not a quiet kit, it is an absent one.
+
+Four causes. Only one of them was a level, and the biggest was not in the kit
+at all.
+
+**The kick was ducking itself.** Everything, drums included, ran through
+`chain.input`, which is the sidechain gain the kick ducks. So the pump ate the
+very transient that triggered it. A sidechain is supposed to duck the music
+*around* the drums.
+
+**The kit shared the melody's tone control.** The brightness knob is a lowpass
+sitting near 2.6 kHz by default and closing to 1.2 kHz at the dark end — below
+almost all of a hi-hat. The kit was being filtered by a control set for
+something else entirely.
+
+**The voices had never been levelled against each other.** This was the real
+one. Measured across the nine leads there was a **thirteen decibel** spread,
+from felt piano at −23.3 to the synth harp at −35.0, with rhodes and guitar —
+two of the most-reached-for voices — near the bottom. Whether the tune could
+be heard over the bass depended on which voice the track happened to draw. The
+bass had its own 8.6 dB spread for the same reason: `round` and `sub` sustain,
+`upright` and `electric` decay, and they had been set by ear on their attack.
+
+**And the kit's levels were set against the wrong mix** — calibrated when the
+bass was six decibels louder and the kit was ducking itself, so they were
+compensating for two faults rather than balancing four instruments.
+
+The kit now has its own entrance to the chain: past the duck, through its own
+lowpass that tracks brightness from an octave and a half higher and never
+closes below 4 kHz, and then into the saturation, the bitcrush, the wobble and
+the reverb with everything else. The treatment is what makes it sound like a
+record; the ducking and the dulling were never part of that.
+
+Every voice was then set by measurement. Two wrinkles worth recording. The
+tape path had to be pinned first — a track's own variation moves brightness,
+drive and space, and all three change what a level reads, so without arc depth
+at nought the same voice measures three decibels apart on two runs. And
+`rhodes` and `felt` appear in both the lead and keys tables, and `vibraphone`,
+`marimba` and `kalimba` in both lead and support: the same instrument carrying
+the tune and comping behind it are not the same part, so those functions now
+take their level and each table binds its own.
+
+The keys row had a ten-decibel spread of its own, and felt piano comping was
+measured level with the lead — an accompaniment that had stopped accompanying.
+It came down six.
+
+After, with the spread across the leads down from thirteen decibels to four
+and a half, and every role sitting where it belongs relative to the others
+(peak, RMS, and the mean of the two):
+
+| | peak | rms | mean |
+| --- | --- | --- | --- |
+| lead (median) | −15.9 | −27.0 | **−21.5** |
+| bass (median) | −18.7 | −28.2 | −23.8 |
+| keys (median) | −19.9 | −32.3 | −26.1 |
+| kick | −11.0 | −29.6 | − |
+| snare | −15.2 | −32.2 | − |
+| hat | −26.0 | −50.0 | − |
+
+The kit adds 2.7 dB of RMS and 3.5 dB of peak to a running track, where before
+it was inaudible in the numbers. This supersedes the kick figure recorded in
+**73**: that 5.8 dB was measured against a mix the bass was dominating.
+
+A test holds the shape rather than the numbers — no role internally spread by
+more than six decibels, the median bass and the median keys under the median
+lead, the snare within four of the bass at the peak, the hat within fifteen of
+the snare. It reads the voices off the chooser rows rather than a list written
+down in the test, so a voice added later is levelled without anyone
+remembering to add it. It
+judges each voice on the mean of peak and RMS, because neither alone is
+loudness: the synth harp has the loudest peak of any lead and the quietest
+RMS, since it is over almost immediately, and it is neither the loudest nor
+the quietest thing in the room.
+
+The guitar test had to move with this. It asserted the keys guitar sits
+between four and eight decibels under the lead guitar — a band written when
+nothing had been measured. Levelling the leads moved the guitar lead up, and a
+comp nine decibels under its own lead is where it should be, so the band now
+says what it means: both roles sound, and the accompaniment is under the tune.
+
+**Two tests had gone blind.** Rewriting the kit as samplers in **73** turned
+each role into a wrapper object rather than an audio node, and two tests
+walked the prototype chain of `drums.kick` and `drums.snare` to watch what the
+kit scheduled. They had been failing since — one of them the opening audit,
+which is the test that checks a track's entrance has a low end. It was
+reporting on a mix it could no longer see the drums in. Both now reach through
+to the samplers underneath.
+
+**And the titles were not changing.** Not a naming bug — there are 643 of them
+and the decks work. A track is a thirty-two bar tune played two to four times,
+and the count was uniform across the three: a mean of nearly five minutes at
+eighty, and over seven at the bottom of the tempo range. That is a long time
+to look at one title, and the title is most of what marks one tune from the
+next. Weighted towards two now, so the long track is the occasional one rather
+than one in three.
+
+## 76. Playing a tune you already have — ABC in, lofi out
+
+Paste a tune in ABC notation and hear this engine's treatment of it. Everything
+that makes the sound — the arrangement, the voices, the ornaments, the kit, the
+tape path, the energy arc — stays generative; only the tune itself comes from
+outside. That is the whole idea, and it is a much smaller change than it looks,
+because the pipeline already separates the two: a recipe describes a tune, and
+everything downstream performs it.
+
+Most of what is needed already exists in some form.
+
+**An ABC reader.** `tools/derive-tune-stats.mjs` already reads ABC — that is
+where the intervals, the transitions, the cadences and the chord symbols came
+from. But it reads at corpus scale, where noise averages out. A faithful
+rendering of one tune needs the parts that tool is allowed to skip: the unit
+note length, ties, triplets, broken rhythm, accidentals that hold for the bar,
+grace notes, and repeats with first and second endings.
+
+**Pitches that leave the mode.** Internally a note is a scale degree against a
+root, which is exactly right for generated material and wrong for real tunes,
+which have accidentals. Either the note representation widens to carry a
+chromatic offset, or imported tunes take a separate path to MIDI. The first is
+better and touches more.
+
+**The chords.** If the ABC carries them, use them. If not, infer: `harmony.js`
+holds what the corpus says about which chords follow which in each mode, so a
+progression can be scored against the tune's strong-beat notes and the best fit
+chosen. That is a genuinely nice use of work already done.
+
+**The form.** An ABC tune is an A part and a B part, usually eight bars each,
+usually repeated. The engine's turn is four eight-bar sections. Those line up
+because the engine's structure was taken from the tradition to begin with.
+
+Three things to decide rather than discover:
+
+*Ornaments.* The tune arrives with its own. Ours on top would be too much, so
+this needs an explicit choice between as written and as ornamented.
+
+*Tempo.* A reel written at 110 played at 78 is a different creature, which is
+the point — but note lengths have to be rescaled, not just the transport
+slowed, or the ornaments and the swing land wrong.
+
+*Provenance.* Traditional tunes are overwhelmingly public domain and the
+corpus is ODbL, but someone pasting a tune written in 2019 is a different
+matter. Worth saying so plainly next to the box rather than in a licence file.

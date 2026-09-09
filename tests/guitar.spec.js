@@ -32,7 +32,12 @@ test ('sampled guitar sounds in both roles and stays selected across skips witho
   });
   expect (peaks[0]).toBeGreaterThan (0.01);
   expect (peaks[0]).toBeLessThan (0.2);
-  expect (peaks[1] / peaks[0]).toBeGreaterThan (0.4);
+  // Both roles sound, and the accompaniment sits under the tune — between
+  // about four and fourteen decibels under it. The band was tighter when
+  // nothing had been measured; levelling the voices against each other moved
+  // the guitar lead up, and a comp nine decibels under its own lead is where
+  // it should be, not a regression.
+  expect (peaks[1] / peaks[0]).toBeGreaterThan (0.2);
   expect (peaks[1] / peaks[0]).toBeLessThan (0.65);
   expect (new Set (requests).size).toBe (10);
   const loaded = requests.length;

@@ -12,6 +12,17 @@ export function createChain () {
   // Musical material passes through here and gets ducked by the kick.
   const sidechain = new Tone.Gain (1);
 
+  // The kit has its own way in. Two things were wrong with sending it through
+  // the sidechain alongside everything else. The kick ducked itself, so the
+  // pump ate the very transient it was triggered by; and the kit shared the
+  // brightness lowpass, which is set for the melodic voices and sits near
+  // 2.6 kHz — below almost all of a hat. A sidechain is supposed to duck the
+  // music around the drums, not the drums as well.
+  const kitInput = new Tone.Gain (1);
+  // Its own tone control, tracking brightness so the kit darkens with the
+  // track, but from far higher up and with a floor that keeps the hats.
+  const kitTone = new Tone.Filter ({ type: 'lowpass', frequency: 9000, rolloff: -12, Q: 0.4 });
+
   const saturation = new Tone.Distortion ({ distortion: 0.18, oversample: '2x' });
   const crusher = new Tone.BitCrusher ({ bits: 8 });
   const crusherMix = new Tone.CrossFade (0.25);
@@ -54,6 +65,11 @@ export function createChain () {
   // Bitcrush is mixed in parallel rather than inline: fully crushed sounds
   // like a broken codec, a blend sounds like an old sampler.
   sidechain.connect (saturation);
+  // The kit joins after the duck and before the colour, so it is saturated,
+  // crushed and warbled with everything else — the treatment is what makes it
+  // sound like a record — but it is never ducked and never dulled.
+  kitInput.connect (kitTone);
+  kitTone.connect (saturation);
   saturation.connect (crusherMix.a);
   saturation.connect (crusher);
   crusher.connect (crusherMix.b);
@@ -79,6 +95,8 @@ export function createChain () {
   return {
     input: sidechain,
     sidechain,
+    kitInput,
+    kitTone,
     saturation,
     crusher,
     crusherMix,
@@ -91,6 +109,15 @@ export function createChain () {
     master,
     echoSend,
     echoDelay,
+
+    /** The kit's share of the brightness knob. It follows the same gesture as
+        the melodic tone so the whole track darkens together, but it starts an
+        octave and a half higher and never closes below 4 kHz, because past
+        that point a hat stops being quiet and starts being absent. */
+    setKitTone (brightness, when = Tone.now()) {
+      const amount = Math.max (0, Math.min (1, brightness));
+      kitTone.frequency.rampTo (4000 + amount * 10000, 2, when);
+    },
 
     /** How much of the melodic voices is fed to the echo. */
     setEcho (amount, when = Tone.now()) {

@@ -131,7 +131,7 @@ function sampled (folder, { volume = -10, release = 1.2, cutoff = 6000 } = {}) {
 /** Electric-piano-ish. FM with a low modulation index gets close to a Rhodes:
     a bell-like attack over a sine body. Chorus keeps it from sitting perfectly
     still, which is most of what separates it from a plain FM patch. */
-function rhodes () {
+function rhodes ({ volume = -11.5 } = {}) {
   const voice = new Tone.PolySynth (Tone.FMSynth, {
     maxPolyphony: 12,
     harmonicity: 2,
@@ -140,7 +140,7 @@ function rhodes () {
     envelope: { attack: 0.018, decay: 1.8, sustain: 0.22, release: 2.8 },
     modulation: { type: 'sine' },
     modulationEnvelope: { attack: 0.006, decay: 0.4, sustain: 0.06, release: 0.8 },
-    volume: -15
+    volume
   });
 
   const chorus = new Tone.Chorus ({ frequency: 0.6, delayTime: 3.5, depth: 0.5, wet: 0.35 }).start();
@@ -154,12 +154,12 @@ function rhodes () {
 
 /** Felt piano: hammers muted with cloth. A soft triangle body under a short
     filtered noise thump for the hammer, heavily rolled off. */
-function felt () {
+function felt ({ volume = -19.5 } = {}) {
   const voice = new Tone.PolySynth (Tone.Synth, {
     maxPolyphony: 12,
     oscillator: { type: 'triangle' },
     envelope: { attack: 0.03, decay: 2.4, sustain: 0.08, release: 2.6 },
-    volume: -13
+    volume
   });
 
   const tone = new Tone.Filter ({ type: 'lowpass', frequency: 1500, rolloff: -24 });
@@ -178,7 +178,7 @@ function pad () {
     maxPolyphony: 12,
     oscillator: { type: 'fatsawtooth', count: 3, spread: 22 },
     envelope: { attack: 0.7, decay: 1.4, sustain: 0.5, release: 2.6 },
-    volume: -22
+    volume: -20
   });
 
   const tone = new Tone.Filter ({ type: 'lowpass', frequency: 1100, rolloff: -24 });
@@ -195,13 +195,18 @@ function pianoKeys () {
 
 /** Nylon guitar, voiced lower in the mix for chords and arpeggios. */
 function guitarKeys () {
-  return sampled ('guitar', { volume: -16, release: 0.65, cutoff: 4200 });
+  return sampled ('guitar', { volume: -15.5, release: 0.65, cutoff: 4200 });
 }
 
 function guitar () {
-  return sampled ('guitar', { volume: -10, release: 0.8, cutoff: 5600 });
+  return sampled ('guitar', { volume: -6.5, release: 0.8, cutoff: 5600 });
 }
 
+// The defaults on `rhodes` and `felt` are the accompaniment levels, which is
+// why the lead table binds its own above: an instrument comping behind the
+// tune and the same instrument carrying it are different parts. Measured, the
+// keys row had a ten-decibel spread of its own, with felt piano sitting level
+// with the lead rather than under it.
 export const KEYS_VOICES = { rhodes, felt, piano: pianoKeys, guitar: guitarKeys, pad };
 
 // ------------------------------------------------------------------- lead
@@ -221,21 +226,21 @@ function whistleSampled () {
 /** Vibraphone, soft mallets. The signature lofi mallet sound, and the reason
     to reach for samples rather than synthesis: the metal bar's shimmer and the
     long unforced decay are not things an oscillator arrives at. */
-function vibraphone () {
-  return sampled ('vibraphone', { volume: -10, release: 1.6, cutoff: 6200 });
+function vibraphone ({ volume = -15 } = {}) {
+  return sampled ('vibraphone', { volume, release: 1.6, cutoff: 6200 });
 }
 
 /** Marimba. Wooden and dry where the vibraphone is metallic and ringing, so
     the two do not compete for the same job. */
-function marimba () {
-  return sampled ('marimba', { volume: -10, release: 0.9, cutoff: 5400 });
+function marimba ({ volume = -11.5 } = {}) {
+  return sampled ('marimba', { volume, release: 0.9, cutoff: 5400 });
 }
 
 /** Kalimba. A thumb piano: plucked metal tines, warm and slightly detuned by
     nature. One of the most recognisable lofi timbres, and it replaces the
     recorder, which was only ever a stand-in for a whistle nobody sampled. */
-function kalimba () {
-  return sampled ('kalimba', { volume: -10, release: 1.1, cutoff: 6000 });
+function kalimba ({ volume = -7 } = {}) {
+  return sampled ('kalimba', { volume, release: 1.1, cutoff: 6000 });
 }
 
 /** Glockenspiel, soft mallets — the supporting voice.
@@ -249,7 +254,7 @@ function glockenspiel () {
 
 /** A real folk harp — the instrument this music actually belongs to. */
 function harpSampled () {
-  return sampled ('harp', { volume: -10, release: 1.4, cutoff: 6500 });
+  return sampled ('harp', { volume: -9, release: 1.4, cutoff: 6500 });
 }
 
 /** Plucked, like a harp or a nylon-strung guitar. Karplus-Strong, so the decay
@@ -263,7 +268,7 @@ function harpSynth () {
     dampening: 3200,
     resonance: 0.94,
     release: 1.1,
-    volume: -5
+    volume: 0
   }));
 
   return instrument (voice);
@@ -277,7 +282,7 @@ function harpSynth () {
     The samples are vendored rather than fetched from someone else's host, and
     cached before playback so a new track can use them immediately. */
 function piano () {
-  return sampled ('piano', { volume: -10, release: 1.2, cutoff: 5200 });
+  return sampled ('piano', { volume: -9.5, release: 1.2, cutoff: 5200 });
 }
 
 // The two synthesised acoustic imitations — a sawtooth fiddle and a sine
@@ -287,6 +292,13 @@ function piano () {
 // Order is part of the link format — a voice is stored as its position here —
 // so new voices are appended and never inserted. `voice-palette.js` decides
 // how often each is reached for; this decides only what exists.
+/** The two shared voices, at the level a lead wants rather than the level an
+    accompaniment wants. Their functions take a volume for exactly this reason:
+    `rhodes` and `felt` appear in both tables, and a part carrying the tune has
+    to be louder than the same instrument playing chords behind it. */
+const rhodesLead = () => rhodes ({ volume: -10 });
+const feltLead = () => felt ({ volume: -16.5 });
+
 export const LEAD_VOICES = {
   guitar,
   vibraphone,
@@ -295,13 +307,22 @@ export const LEAD_VOICES = {
   piano,
   harp: harpSampled,
   'harp (synth)': harpSynth,
-  rhodes,
-  felt
+  rhodes: rhodesLead,
+  felt: feltLead
 };
 
 /** Voices for the supporting line. Anything that can decorate without
     competing — bright, short, and happy to sit above the tune. */
-export const SUPPORT_VOICES = { glockenspiel, vibraphone, kalimba, marimba };
+// The same three instruments as leads, at the level decoration wants. A voice
+// carrying the tune and a voice sprinkling over the top of it are not the same
+// part, and levelling the leads against each other would otherwise have moved
+// the support with them.
+export const SUPPORT_VOICES = {
+  glockenspiel,
+  vibraphone: () => vibraphone ({ volume: -10 }),
+  kalimba: () => kalimba ({ volume: -10 }),
+  marimba: () => marimba ({ volume: -10 })
+};
 
 // ------------------------------------------------------------------ others
 
@@ -322,7 +343,7 @@ function bassRound () {
       attack: 0.02, decay: 0.25, sustain: 0.35, release: 0.9,
       baseFrequency: 75, octaves: 2
     },
-    volume: -15
+    volume: -25
   });
 
   return instrument (voice);
@@ -340,7 +361,7 @@ function bassUpright () {
       attack: 0.004, decay: 0.14, sustain: 0.08, release: 0.3,
       baseFrequency: 90, octaves: 3.2
     },
-    volume: -13
+    volume: -17.5
   });
 
   return instrument (voice);
@@ -359,7 +380,11 @@ function bassSub () {
     },
     // A sine in the bottom octave carries far more energy than its number
     // suggests, so the sub sits lowest of the four rather than highest.
-    volume: -17
+    //
+    // All four came down four decibels together. The bass was the loudest
+    // sustained thing in the mix — louder over a bar than the lead — which is
+    // how a foundation turns into a wall.
+    volume: -27
   });
 
   return instrument (voice);
@@ -376,7 +401,7 @@ function bassElectric () {
       attack: 0.008, decay: 0.22, sustain: 0.2, release: 0.6,
       baseFrequency: 110, octaves: 2.6
     },
-    volume: -16
+    volume: -22
   });
 
   return instrument (voice);
@@ -438,13 +463,16 @@ export function createDrums () {
     return voice;
   };
 
-  // Measured against the mix rather than guessed: at −3 the kick's transient
-  // was topping the whole track, within a decibel of the mix peak. Drums in
-  // this music are present, not in front.
-  const kickVoice = bank (['C1', 'C#1'], -7);
-  const snareVoice = bank (['C2', 'C#2'], -13);
-  const ghostVoice = bank (['C2', 'C#2'], -25);
-  const hatVoice = bank (['C3', 'C#3', 'D3'], -21);
+  // Measured against the mix rather than guessed. The first pass set these
+  // against a mix where the bass was four decibels louder than it is now and
+  // the kit was ducking itself, and the result was a kit you had to look for:
+  // the hats were thirty-seven decibels under the bass, which is not quiet,
+  // it is missing. These are the levels at which the kit reads as the floor
+  // of the track rather than as an effect on it.
+  const kickVoice = bank (['C1', 'C#1'], -6.5);
+  const snareVoice = bank (['C2', 'C#2'], -9);
+  const ghostVoice = bank (['C2', 'C#2'], -21);
+  const hatVoice = bank (['C3', 'C#3', 'D3'], -16);
 
   // Round robin. Alternating two recordings is what stops a run of hats
   // sounding like one sample repeated, which is the giveaway of a machine.
