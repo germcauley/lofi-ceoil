@@ -298,6 +298,26 @@ body.running .power::after {
    keyboard user can find it; it just does not ask to be pressed. */
 body:not(.running) .next { opacity: 0.42; }
 
+.deck-transport { align-items: stretch; }
+.deck-transport .power { align-self: center; }
+.deck-transport .next { justify-content: center; }
+
+/* Melody only is a way of listening, and it can be set before anything plays,
+   so it never looks unavailable. Lit when on, because a muted band is exactly
+   the kind of thing a listener forgets they did. */
+body:not(.running) .solo { opacity: 1; }
+
+.solo[aria-pressed="true"] {
+  color: #2b0713;
+  border-color: transparent;
+  background: linear-gradient(96deg, var(--accent), var(--accent-warm));
+  box-shadow: 0 8px 20px -10px var(--accent-glow);
+}
+
+.solo[aria-pressed="true"]:hover {
+  background: linear-gradient(96deg, var(--accent-hot), var(--accent-warm));
+}
+
 /* ------------------------------------------------------------ now playing */
 
 .now-playing { grid-area: now; align-self: end; min-width: 0; position: relative; }
@@ -872,10 +892,25 @@ kbd {
 
   .tools-label { display: none; }
 
-  .deck-transport { flex-direction: row; justify-content: flex-start; gap: 0.75rem; }
+  /* On a wide screen the empty row holds its place, so the deck does not jump
+     when the first tune arrives. On a phone it was a blank band under the
+     switches before anything had played, which reads as something missing. */
+  .tune-tools[data-ready="false"] { display: none; }
+
+  /* Play on the left, the two switches stacked beside it. */
+  .deck-transport {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 0.85rem;
+    row-gap: 0.5rem;
+    align-items: center;
+  }
+
+  .deck-transport .power { grid-row: 1 / span 2; }
+  .deck-transport .next { justify-content: flex-start; justify-self: start; }
   .power { width: 68px; height: 68px; }
   .power svg { width: 26px; height: 26px; }
-  .next { height: 44px; }
+  .next { height: 42px; }
   .tool { height: 40px; padding: 0 0.72rem; }
   .tool.repeat-button { width: 40px; }
 

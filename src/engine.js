@@ -109,6 +109,15 @@ export function createEngine () {
   // to the new bus would skip the fade entirely and arrive at full level.
   const PLACED = ['keys', 'lead', 'bass', 'drone', 'pluck', 'support'];
   let places = {};
+
+  // Everything but the tune, for "melody only". Muted at the mix rather than
+  // taken out of the score, so the tune a link names does not change, the
+  // accompaniment comes back exactly where it would have been, and the switch
+  // is instant in both directions. The counter line is muted with the rest:
+  // even playing the tune itself, thinned out, it is a second player.
+  const ACCOMPANIMENT = ['keys', 'bass', 'drone', 'pluck', 'support'];
+  let levels = {};
+  let melodyOnly = false;
   // Read when the panners are built, which happens before `state` exists, so
   // it cannot be read off the knobs there.
   let width = DEFAULT_WIDTH;
@@ -116,9 +125,16 @@ export function createEngine () {
   function connectInstruments () {
     places = Object.fromEntries (PLACED.map (role =>
       [role, new Tone.Panner (placementAt (role, width))]));
+    // A gain after each panner, so a part can be muted without the voice
+    // swapper needing to know: voices still arrive at the panner. Built at the
+    // level the switch is already at, or a rebuild on skip would let the
+    // accompaniment blip in for the length of the ramp.
+    levels = Object.fromEntries (PLACED.map (role =>
+      [role, new Tone.Gain (melodyOnly && ACCOMPANIMENT.includes (role) ? 0 : 1)]));
     for (const [role, part] of Object.entries ({ keys, lead, bass, drone, pluck, support })) {
       part.output.connect (places[role]);
-      places[role].connect (instrumentBus);
+      places[role].connect (levels[role]);
+      levels[role].connect (instrumentBus);
     }
     // The kit takes the chain's own entrance rather than the instrument bus:
     // it must not be ducked by its own kick, and it must not be filtered by a
@@ -126,8 +142,9 @@ export function createEngine () {
     drums.outputs.forEach (out => out.connect (chain.kitInput));
     // The echo is fed by the melodic voices only. Sending the bass, drone or
     // drums into a delay is how a mix turns to porridge. Fed after the panner,
-    // so a repeat comes back from where the note was rather than the middle.
-    for (const role of ['lead', 'support', 'pluck']) places[role].connect (chain.echoSend);
+    // so a repeat comes back from where the note was rather than the middle —
+    // and after the level, so a muted part does not keep arriving as an echo.
+    for (const role of ['lead', 'support', 'pluck']) levels[role].connect (chain.echoSend);
     // Into the limiter, not past it. The surface stays outside the sidechain
     // and the tape path — a record does not pump and is not the tape — but it
     // must not be the one thing that can spike above everything else.
@@ -157,6 +174,7 @@ export function createEngine () {
     autoKeysVoice: true,
     autoBassVoice: true,
     autoCounterVoice: true,
+    melodyOnly: false,
 
     // Notified when a voice swap starts and when it is ready to play.
     onVoice: null,
@@ -399,7 +417,9 @@ export function createEngine () {
     state.ornament = value ('ornament');
     state.droneLevel = value ('drone');
     state.supportLevel = value ('support');
-    state.pump = value ('pump');
+    // With the kit muted the kick still fires, silently, and the tune would go
+    // on ducking to a beat nobody can hear.
+    state.pump = state.melodyOnly ? 0 : value ('pump');
     state.dust = value ('dust');
 
     const brightness = value ('brightness', 0.4);
@@ -424,7 +444,7 @@ export function createEngine () {
     chain.saturation.distortion = value ('drive') * 0.6;
     // Not run through `value`: the arc and the track's variation move the
     // texture already, and a listener who turns the kit off means off.
-    drums.setLevel (state.user.drums ?? 1);
+    drums.setLevel (state.melodyOnly ? 0 : (state.user.drums ?? 1));
     // Not run through `value` either. Where the parts sit is the shape of the
     // room, not something a track's own character should be moving about
     // underneath the listener.
@@ -433,6 +453,9 @@ export function createEngine () {
       panner.pan.rampTo (placementAt (role, width), 0.3);
     }
     drums.setWidth (width);
+
+    melodyOnly = Boolean (state.melodyOnly);
+    for (const role of ACCOMPANIMENT) levels[role]?.gain.rampTo (melodyOnly ? 0 : 1, 0.2);
     chain.setEcho (value ('echo'));
     // The delay is a dotted eighth, so it has to follow the track's tempo
     // rather than whatever the tempo was when the chain was built.
@@ -947,7 +970,7 @@ export function createEngine () {
   function replaceInstruments (time) {
     const outgoing = [keys, lead, bass, drums, drone, pluck, support, vinyl];
     const oldBus = instrumentBus;
-    const oldPlaces = Object.values (places);
+    const oldPlaces = [...Object.values (places), ...Object.values (levels)];
     const oldVinyl = vinyl;
     for (const kind of Object.keys (pendingVoices)) {
       swapTokens[kind]++;
@@ -1007,6 +1030,10 @@ export function createEngine () {
     echo (value) { state.user.echo = value; applySettings(); },
     drums (value) { state.user.drums = value; applySettings(); },
     width (value) { state.user.width = value; applySettings(); },
+
+    /** Everything but the tune, muted. Not a knob and not carried in a link:
+        it is how you are listening, not what was written. */
+    melodyOnly (on) { state.melodyOnly = Boolean (on); applySettings(); },
 
     volume (value) {
       chain.master.gain.rampTo (value, 0.2);

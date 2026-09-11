@@ -341,6 +341,19 @@ skipButton.addEventListener ('click', () => {
   setTimeout (() => { if (engine.state.running) status.textContent = 'running'; }, 1400);
 });
 
+// Everything but the tune, muted. Works before playback as well as during, and
+// holds across tracks until switched off again.
+const melodyOnlyButton = document.getElementById ('melodyOnlyButton');
+
+function setMelodyOnly (on) {
+  engine.controls.melodyOnly (on);
+  melodyOnlyButton.setAttribute ('aria-pressed', String (on));
+  melodyOnlyButton.title = on ? 'Bring the accompaniment back (M)' : 'Mute everything but the tune (M)';
+}
+
+melodyOnlyButton.addEventListener ('click', () =>
+  setMelodyOnly (melodyOnlyButton.getAttribute ('aria-pressed') !== 'true'));
+
 const replayButton = document.getElementById ('replayButton');
 const saveScoreButton = document.getElementById ('saveScoreButton');
 const copyLinkButton = document.getElementById ('copyLinkButton');
@@ -444,6 +457,13 @@ document.addEventListener ('keydown', event => {
     if (! engine.state.running) return;
     event.preventDefault();
     skipButton.click();
+    return;
+  }
+
+  if (event.key === 'm' || event.key === 'M') {
+    if (event.target.closest ('input, select, textarea, [contenteditable]')) return;
+    event.preventDefault();
+    melodyOnlyButton.click();
   }
 });
 

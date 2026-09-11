@@ -2251,3 +2251,41 @@ asserts. The new flows have tests of their own: tools appearing with the first
 tune, space and `N` including held keys, every panel on a wide screen, one at a
 time on a phone and remembered across a reload, the order of play and tools on a
 phone, and the phone page height.
+
+## 81. Melody only — done
+
+A switch on the deck, and `M` on the keyboard, that mutes everything but the
+tune: keys, bass, drone, the counter line, the support and the kit.
+
+It is done at the mix rather than in the score, which decided most of what
+follows. The tune a link names does not change when it is switched, the
+accompaniment comes back exactly where it would have been rather than from the
+top of something, and it is instant in both directions. It is not a knob and
+it is not carried in a link — it is how you are listening, not what was
+written.
+
+Three things had to be true for it to be silence rather than an approximation of
+it, and each was measured through the real chain rather than read off a flag.
+
+**The echo.** The counter line and the support both feed the echo send, so
+muting them at their own output would still have let them arrive a dotted
+quaver later as repeats. Each placed part now has a level after its panner, and
+the echo is fed from the level rather than the panner. With the echo turned up
+to 0.9, the counter line reads −120 dB while melody only is on.
+
+**The pump.** With the kit muted the kick still fires — silently — and the
+sidechain would have gone on ducking the tune to a beat nobody could hear. The
+pump is held at nought while the switch is on and restored after.
+
+**A new track.** Skipping rebuilds every instrument, levels included, and a
+level built at unity and then ramped down would let the accompaniment blip in
+for the length of the ramp. Levels are built at whatever the switch is already
+set to.
+
+Measured: bass, keys, counter, kick and snare all at −120 dB while it is on, the
+tune at −34, and bass and kick back at −30 and −35 afterwards.
+
+The counter line is muted with the rest, even when its texture is heterophony
+and it is playing the tune itself: it is still a second player, and the request
+was for the melody alone. Openings that bring the tune in late will be silent
+until it enters, which is what melody only honestly sounds like on those.

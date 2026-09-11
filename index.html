@@ -50,6 +50,15 @@
             </svg>
             <span>new track</span>
           </button>
+
+          <button id="melodyOnlyButton" class="next solo" aria-pressed="false" title="Mute everything but the tune (M)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+              <circle cx="8" cy="17" r="3.2"/>
+              <rect x="10.2" y="4" width="1.8" height="13.4" rx="0.9"/>
+              <path d="M12 4c2.7.6 4.7 2.4 5.1 5.2-1.4-1.3-3.2-1.9-5.1-1.9z"/>
+            </svg>
+            <span>melody only</span>
+          </button>
         </div>
 
         <div class="now-playing">
@@ -231,7 +240,7 @@
 
       <footer class="unit-foot">
         <span class="keys-hint">
-          <kbd>space</kbd> play &middot; <kbd>N</kbd> new track &middot; drag a knob, <kbd>shift</kbd> for fine, double-click to reset
+          <kbd>space</kbd> play &middot; <kbd>N</kbd> new track &middot; <kbd>M</kbd> melody only &middot; drag a knob, <kbd>shift</kbd> for fine, double-click to reset
         </span>
         <span class="touch-hint">drag a knob up or down &middot; double-tap to reset</span>
         <span class="serial">no.&thinsp;0002</span>
