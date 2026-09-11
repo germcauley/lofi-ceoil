@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lofi Ceoil — generative Irish lofi</title>
     <meta name="description" content="A browser instrument that generates endless lofi with an Irish accent, and lets you shape it while it plays." />
+    <meta name="theme-color" content="#200a12" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,40 +28,59 @@
             <span class="lamp" id="powerLamp" aria-hidden="true"></span>
             <span class="lamp-label" id="status">standby</span>
           </div>
-          <div class="model-plate">mk I &middot; generative lofi</div>
+          <div class="model-plate">mk II &middot; generative lofi</div>
         </div>
       </header>
 
-      <div class="now-playing">
-        <span class="track-label" id="trackLabel">on the air soon</span>
-        <span class="track-number" id="trackNumber"></span>
-        <p class="track-title" id="trackTitle" role="status" aria-live="polite" aria-atomic="true">press start, stay awhile</p>
-        <span class="track-time" id="trackTime" aria-label="Track elapsed time" aria-live="off">—:—</span>
-        <p class="track-subtitle" id="trackSubtitle" lang="en" hidden></p>
-      </div>
-
-      <div class="transport-bay">
-        <div class="transport-actions" role="group" aria-label="Playback controls">
-          <button id="playButton" class="power" aria-label="Start playback" title="Start playback">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">
+      <!-- The deck. Everything a listener reaches for without thinking about
+           it: play, a different tune, and what to do with the one playing. -->
+      <section class="deck" aria-label="Now playing">
+        <div class="deck-transport" role="group" aria-label="Playback controls">
+          <button id="playButton" class="power" aria-label="Start playback" title="Start playback (space)">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true" focusable="false">
               <path class="play-icon" d="M8 4.5v15L20 12z"/>
-              <rect class="stop-icon" x="5" y="5" width="14" height="14" rx="1.5"/>
+              <rect class="stop-icon" x="5.5" y="5.5" width="13" height="13" rx="1.5"/>
             </svg>
           </button>
 
-          <button id="replayButton" class="skip repeat-button" disabled aria-pressed="false" aria-label="Play the saved tune from the beginning" title="Play the saved tune from the beginning">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <button id="skipButton" class="next" aria-label="Start a new track" title="New track (N)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M5.5 5.5v13L15 12z"/>
+              <rect x="16.25" y="5.5" width="2.25" height="13" rx="1.1"/>
+            </svg>
+            <span>new track</span>
+          </button>
+        </div>
+
+        <div class="now-playing">
+          <div class="now-meta">
+            <span class="track-label" id="trackLabel">on the air soon</span>
+            <span class="track-number" id="trackNumber"></span>
+            <span class="track-time" id="trackTime" aria-label="Track elapsed time" aria-live="off">—:—</span>
+          </div>
+          <p class="track-title" id="trackTitle" role="status" aria-live="polite" aria-atomic="true">press start, stay awhile</p>
+          <p class="track-subtitle" id="trackSubtitle" lang="en" hidden></p>
+        </div>
+
+        <!-- Hidden until there is a tune to act on. Before the first one these
+             were three greyed-out buttons in the most prominent row on the
+             page, which is a lot of space spent saying "not yet". -->
+        <div class="tune-tools" id="tuneTools" role="group" aria-label="This tune" data-ready="false">
+          <span class="tools-label" aria-hidden="true">this tune</span>
+          <button id="replayButton" class="tool repeat-button" disabled aria-pressed="false" aria-label="Play the saved tune from the beginning" title="Play the saved tune from the beginning">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
               <path d="M17 3l3 3-3 3M20 6H7a3 3 0 0 0-3 3v1M7 21l-3-3 3-3M4 18h13a3 3 0 0 0 3-3v-1"/>
               <path d="M10.5 11l1.5-1v4m-1.5 0h3"/>
             </svg>
           </button>
-          <button id="saveScoreButton" class="skip" disabled title="Download the notes, arrangement and generation recipe as a JSON score">save score</button>
-          <button id="saveMidiButton" class="skip" disabled title="Download this tune as a MIDI file, to open in anything else">save midi</button>
-          <button id="copyLinkButton" class="skip" disabled title="Copy a link that plays this exact tune">copy link</button>
-
-          <button id="skipButton" class="skip" aria-label="Start a new track">new track</button>
+          <button id="copyLinkButton" class="tool" disabled title="Copy a link that plays this exact tune">copy link</button>
+          <button id="saveMidiButton" class="tool" disabled title="Download this tune as a MIDI file, to open in anything else">midi</button>
+          <button id="saveScoreButton" class="tool tool-quiet" disabled title="Download the notes, arrangement and generation recipe as a JSON score">score</button>
         </div>
+      </section>
 
+      <!-- What the machine is doing, in one band. -->
+      <section class="readout" aria-label="Instrument readout">
         <div class="tape" aria-hidden="true">
           <div class="reel"><span></span></div>
           <div class="tape-path"></div>
@@ -76,21 +96,33 @@
             <span class="counter-label">bar</span>
             <span class="counter-value" id="barReadout">000</span>
           </div>
-          <div class="counter-line">
-            <span class="counter-label">figure</span>
-            <span class="counter-value small" id="progressionReadout">—</span>
-          </div>
         </div>
 
         <div id="meterSlot"></div>
-      </div>
 
-      <div class="score-bay" aria-label="Current composition">
-        <div class="score-copy">
-          <span class="score-label">the written tune</span>
-          <span id="scoreSummary">A new composition with every track</span>
+        <div class="written" aria-label="Current composition">
+          <div class="written-line">
+            <span class="score-label">the written tune</span>
+            <span id="scoreSummary">A new composition with every track</span>
+          </div>
+          <!-- What the music is doing this bar. These three used to share one
+               line labelled "figure", which nobody could read. -->
+          <dl class="figure">
+            <div>
+              <dt>chords</dt>
+              <dd id="progressionReadout" title="The chord progression, counted from the home chord. i is home, lower case is minor.">—</dd>
+            </div>
+            <div>
+              <dt>counter</dt>
+              <dd id="textureReadout" title="How the second voice answers the tune: figuration breaks up the chord, imitation echoes the tune a bar late, heterophony plays the tune itself, thinned out.">—</dd>
+            </div>
+            <div>
+              <dt>energy</dt>
+              <dd id="energyReadout" title="The shape of the track's rise and fall, and how far along it the music is.">—</dd>
+            </div>
+          </dl>
         </div>
-      </div>
+      </section>
 
       <!-- Only appears once there is enough listening behind it to mean
            anything. Everything here is worked out in this browser and stays
@@ -102,7 +134,7 @@
           <span class="listening-note" id="listeningDetail"></span>
         </div>
         <div class="score-actions">
-          <button id="forgetListeningButton" class="skip" title="Delete the listening log kept in this browser">forget</button>
+          <button id="forgetListeningButton" class="tool" title="Delete the listening log kept in this browser">forget</button>
         </div>
       </div>
 
@@ -128,68 +160,81 @@
         <p class="roll-hint">Follow the colours. Tap an instrument to hide its notes.</p>
       </section>
 
-      <section class="module">
-        <div class="module-head">
-          <h2>Composition</h2>
-          <span class="rule"></span>
-        </div>
+      <!-- On a phone the three panels are one screen each, switched here.
+           On anything wider they are all on the page and this is not shown. -->
+      <div class="panel-tabs" role="group" aria-label="Controls">
+        <button type="button" class="panel-tab" data-panel="composition" aria-controls="panelComposition" aria-pressed="true">composition</button>
+        <button type="button" class="panel-tab" data-panel="voices" aria-controls="panelVoices" aria-pressed="false">voices</button>
+        <button type="button" class="panel-tab" data-panel="tape" aria-controls="panelTape" aria-pressed="false">tape</button>
+      </div>
 
-        <div class="selectors">
-          <div class="selector">
-            <span class="selector-label">key</span>
-            <div class="key-row" id="keyRow" role="radiogroup" aria-label="key"></div>
+      <div class="console" id="console" data-panel="composition">
+        <section class="module" id="panelComposition" data-panel="composition" aria-labelledby="headComposition">
+          <div class="module-head">
+            <h2 id="headComposition"><span class="module-index" aria-hidden="true">01</span>Composition</h2>
+            <span class="rule"></span>
           </div>
 
-          <div class="selector">
-            <span class="selector-label">mode</span>
-            <div class="segment" id="scaleRow" role="radiogroup" aria-label="mode"></div>
-          </div>
-        </div>
+          <div class="selectors">
+            <div class="selector">
+              <span class="selector-label">key</span>
+              <div class="key-row" id="keyRow" role="radiogroup" aria-label="key"></div>
+            </div>
 
-        <div class="knob-bank" id="musicKnobs"></div>
-      </section>
-
-      <section class="module">
-        <div class="module-head">
-          <h2>Voices</h2>
-          <span class="rule"></span>
-        </div>
-
-        <div class="selectors">
-          <div class="selector">
-            <span class="selector-label">lead</span>
-            <div class="segment" id="leadVoiceRow" role="radiogroup" aria-label="lead voice"></div>
+            <div class="selector">
+              <span class="selector-label">mode</span>
+              <div class="segment" id="scaleRow" role="radiogroup" aria-label="mode"></div>
+            </div>
           </div>
 
-          <div class="selector">
-            <span class="selector-label">keys</span>
-            <div class="segment" id="keysVoiceRow" role="radiogroup" aria-label="keys voice"></div>
+          <div class="knob-bank" id="musicKnobs"></div>
+        </section>
+
+        <section class="module module-voices" id="panelVoices" data-panel="voices" aria-labelledby="headVoices">
+          <div class="module-head">
+            <h2 id="headVoices"><span class="module-index" aria-hidden="true">02</span>Voices</h2>
+            <span class="rule"></span>
           </div>
 
-          <div class="selector">
-            <span class="selector-label">bass</span>
-            <div class="segment" id="bassVoiceRow" role="radiogroup" aria-label="bass voice"></div>
+          <div class="selectors">
+            <div class="selector">
+              <span class="selector-label">lead</span>
+              <div class="segment" id="leadVoiceRow" role="radiogroup" aria-label="lead voice"></div>
+            </div>
+
+            <div class="selector">
+              <span class="selector-label">keys</span>
+              <div class="segment" id="keysVoiceRow" role="radiogroup" aria-label="keys voice"></div>
+            </div>
+
+            <div class="selector">
+              <span class="selector-label">bass</span>
+              <div class="segment" id="bassVoiceRow" role="radiogroup" aria-label="bass voice"></div>
+            </div>
+
+            <div class="selector">
+              <span class="selector-label">counter</span>
+              <div class="segment" id="counterVoiceRow" role="radiogroup" aria-label="counter voice"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="module module-tape" id="panelTape" data-panel="tape" aria-labelledby="headTape">
+          <div class="module-head">
+            <h2 id="headTape"><span class="module-index" aria-hidden="true">03</span>Tape path</h2>
+            <span class="rule"></span>
           </div>
 
-          <div class="selector">
-            <span class="selector-label">counter</span>
-            <div class="segment" id="counterVoiceRow" role="radiogroup" aria-label="counter voice"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="module">
-        <div class="module-head">
-          <h2>Tape Path</h2>
-          <span class="rule"></span>
-        </div>
-
-        <div class="knob-bank" id="toneKnobs"></div>
-      </section>
+          <div class="knob-bank" id="toneKnobs"></div>
+        </section>
+      </div>
 
       <footer class="unit-foot">
-        <span>drag a knob &middot; shift for fine &middot; double-click to reset</span>
-        <span class="serial">no.&thinsp;0001</span>
+        <span class="keys-hint">
+          <kbd>space</kbd> play &middot; <kbd>N</kbd> new track &middot; drag a knob, <kbd>shift</kbd> for fine, double-click to reset
+        </span>
+        <span class="touch-hint">drag a knob up or down &middot; double-tap to reset</span>
+        <span class="serial">no.&thinsp;0002</span>
       </footer>
     </div>
 

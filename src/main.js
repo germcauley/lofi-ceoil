@@ -156,6 +156,28 @@ mountVoiceChooser ('counterVoiceRow',
   ['pluck', 'harp', 'guitar', 'piano', 'kalimba', 'glockenspiel', 'marimba'],
   'auto', value => engine.controls.counterVoice (value), 'autoCounterVoice');
 
+// ------------------------------------------------------------------ panels
+
+// On a phone the console is one panel at a time; on anything wider every panel
+// is on the page and this only keeps the state tidy. Which one was open is
+// remembered, since someone who went to the voices tends to come back to them.
+const consoleElement = document.getElementById ('console');
+const panelTabs = [...document.querySelectorAll ('.panel-tab')];
+const PANEL_KEY = 'lofi-ceoil.panel';
+
+function showPanel (name) {
+  if (! panelTabs.some (tab => tab.dataset.panel === name)) name = 'composition';
+  consoleElement.dataset.panel = name;
+  panelTabs.forEach (tab => tab.setAttribute ('aria-pressed', String (tab.dataset.panel === name)));
+  try { localStorage.setItem (PANEL_KEY, name); } catch { /* private window */ }
+}
+
+panelTabs.forEach (tab => tab.addEventListener ('click', () => showPanel (tab.dataset.panel)));
+
+let savedPanel = null;
+try { savedPanel = localStorage.getItem (PANEL_KEY); } catch { /* storage refused */ }
+showPanel (savedPanel ?? 'composition');
+
 const meter = createMeter();
 document.getElementById ('meterSlot').append (meter.element);
 
@@ -175,6 +197,8 @@ function updatePlayButton () {
 const status = document.getElementById ('status');
 const barReadout = document.getElementById ('barReadout');
 const progressionReadout = document.getElementById ('progressionReadout');
+const textureReadout = document.getElementById ('textureReadout');
+const energyReadout = document.getElementById ('energyReadout');
 const trackLabel = document.getElementById ('trackLabel');
 const trackTitle = document.getElementById ('trackTitle');
 const trackSubtitle = document.getElementById ('trackSubtitle');
@@ -185,6 +209,13 @@ const pageTitle = document.title;
 
 engine.state.onTrack = ({ title, titleEnglish, titleLanguage, number }) => {
   trackLabel.textContent = 'now playing';
+  if (trackTitle.textContent !== title) {
+    trackTitle.classList.remove ('arrive');
+    // Reading layout restarts the animation when two tracks arrive close
+    // together; without it the second would land with no movement at all.
+    void trackTitle.offsetWidth;
+    trackTitle.classList.add ('arrive');
+  }
   trackTitle.textContent = title;
   trackTitle.lang = titleLanguage ?? 'en';
   trackSubtitle.textContent = titleEnglish ?? '';
@@ -208,9 +239,23 @@ engine.state.onVoice = (kind, name, ready) => {
   showVoice (kind);
 };
 
-engine.state.onBar = (bar, progressionName) => {
+engine.state.onBar = (bar, progressionName, figure) => {
   barReadout.textContent = String (bar + 1).padStart (3, '0');
-  progressionReadout.textContent = progressionName;
+  if (figure?.resting) {
+    progressionReadout.textContent = 'between tunes';
+    textureReadout.textContent = '—';
+    energyReadout.textContent = '—';
+  } else if (figure) {
+    progressionReadout.textContent = figure.progression;
+    textureReadout.textContent = figure.texture || '—';
+    // With the arc knob at nought there is no shape to report, only a level
+    // that does not move.
+    energyReadout.textContent = figure.arc
+      ? `${figure.arc} · ${Math.round (figure.energy * 100)}%`
+      : 'steady';
+  } else {
+    progressionReadout.textContent = progressionName;
+  }
   updateScoreSummary();
 };
 
@@ -253,6 +298,8 @@ playButton.addEventListener ('click', async () => {
     status.textContent = 'standby';
     barReadout.textContent = '000';
     progressionReadout.textContent = '—';
+    textureReadout.textContent = '—';
+    energyReadout.textContent = '—';
     trackLabel.textContent = 'on the air soon';
     trackTitle.textContent = 'press start, stay awhile';
     trackTitle.lang = 'en';
@@ -299,6 +346,7 @@ const saveScoreButton = document.getElementById ('saveScoreButton');
 const copyLinkButton = document.getElementById ('copyLinkButton');
 const saveMidiButton = document.getElementById ('saveMidiButton');
 const scoreSummary = document.getElementById ('scoreSummary');
+const tuneTools = document.getElementById ('tuneTools');
 
 function updateReplayButton () {
   const queued = engine.isReplayQueued();
@@ -318,6 +366,9 @@ function updateScoreSummary () {
   saveScoreButton.disabled = false;
   copyLinkButton.disabled = false;
   saveMidiButton.disabled = false;
+  // Shown from the first tune on and never hidden again: once there has been
+  // a tune this session there is always one to repeat, share or keep.
+  tuneTools.dataset.ready = 'true';
   const edit = score.revisions?.length ? ' · edited' : '';
   scoreSummary.textContent = `${score.recipe.structure.meter === '6/8' ? '6/8 jig' : '4/4'} · ${score.barCount} bars · ${score.recipe.structure.sections.join ('')} · ${score.turns.length} turns${edit}`;
 }
@@ -375,13 +426,25 @@ saveScoreButton.addEventListener ('click', () => {
   setTimeout (() => URL.revokeObjectURL (url), 1000);
 });
 
-// Space toggles transport, the way it does on anything that plays audio.
+// Space toggles transport, the way it does on anything that plays audio, and
+// N moves to a new tune — the two things a listener does without looking.
+// Held keys are ignored: autorepeat on space used to strobe play and stop.
 document.addEventListener ('keydown', event => {
-  if (event.code !== 'Space') return;
-  if (event.target.closest ('button, select, input, [role="slider"]')) return;
+  if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
 
-  event.preventDefault();
-  playButton.click();
+  if (event.code === 'Space') {
+    if (event.target.closest ('button, select, input, [role="slider"]')) return;
+    event.preventDefault();
+    playButton.click();
+    return;
+  }
+
+  if (event.key === 'n' || event.key === 'N') {
+    if (event.target.closest ('input, select, textarea, [contenteditable]')) return;
+    if (! engine.state.running) return;
+    event.preventDefault();
+    skipButton.click();
+  }
 });
 
 // ------------------------------------------------------------------ sharing

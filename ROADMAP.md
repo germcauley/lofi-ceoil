@@ -2170,3 +2170,84 @@ which waited for turn two and expected the hook back. The hook returns in the
 *final* turn, which is what a return is — turn two is only the final turn on a
 short track, and the old bag made short tracks common enough that nobody
 noticed. It now selects a track short enough for the question it is asking.
+
+## 80. The panel, reorganised around what gets touched — and a bug it turned up
+
+The look was never the problem. The near-black instrument on hot pink, the
+display serif and condensed panel face, the reels and the knobs are an
+identity, and they stay. What was wrong was hierarchy and flow: the biggest
+things on the page were not the things anyone used most.
+
+### A background tab never heard which track was playing
+
+Found while looking at the panel rather than while looking for bugs. The track
+title, the key and the mode reached the page through Tone.Draw, which delivers
+callbacks on animation frames and silently drops anything more than a quarter
+of a second late. A hidden tab gets no animation frames at all.
+
+So a listener who put a tune on and switched to another tab — which is most of
+how a lofi stream is listened to — came back to the previous track's title for
+the whole of this one, and the browser tab never changed its name. That tab
+label is the one thing a listener sees while the page is in the background, so
+the fault hit exactly the moment the label mattered.
+
+Announcements now go on timers aligned to audio time. A timer in a hidden tab is
+throttled, sometimes by a second or more, but never dropped. Draw's cancel used
+to be what stopped a queued announcement landing after its track had been cut;
+a generation number does that now, moved on by stop and by skip. Per-frame
+visuals — the bar counter, the meter — stay on Draw, where a dropped frame costs
+nothing and the next bar corrects it.
+
+The test removes animation frames before the page loads, which is exactly what
+hiding the tab does, and it failed against the old engine before the fix went
+in. One wrinkle worth keeping: Playwright's `waitForFunction` polls on animation
+frames unless told otherwise, so in a frameless page it checks once and then
+waits forever.
+
+### The deck
+
+Play, a new track, and what to do with the tune that is playing — the three
+things a listener reaches for without thinking — are now one zone at the top.
+The play button is the largest thing on the panel and breathes while it runs.
+
+Repeat, copy link, MIDI and score used to sit in the transport row as six pills
+of equal weight, three of them greyed out until something had played: a lot of
+the most prominent space on the page spent saying "not yet". They are grouped
+as *this tune*, appear once there is a tune, and stay for the session.
+
+The English under an Irish title is set as a gloss, with a rule leading into
+it, so it reads as a translation rather than as a second line of title. A new
+title arrives with a short rise and blur rather than being swapped in.
+
+`N` moves to a new tune alongside space for play. Held keys are ignored: space
+used to strobe play and stop on autorepeat.
+
+### The readout
+
+Reels, the written tune, tempo and bar, and the meter in one band. The tape used
+to stretch across two thirds of the strip with nothing on it but a line.
+
+The line that was labelled *figure* is now three: **chords**, **counter** and
+**energy**. It was the progression, the counter line's texture and the energy
+arc run together with dots, and it was unreadable to anyone who had not written
+it — the question that prompted this was "what are the things in the figure
+section?", which is the readout's own verdict on itself.
+
+### The console
+
+On a wide screen, Composition and Voices side by side with the tape path
+underneath. The two columns came out close to the same height, which is the
+split at which nothing on a laptop needs scrolling to reach. Voices are laid out
+as a rack of labelled rows, which is what they are.
+
+On a phone the page was nearly three thousand pixels of stacked controls. It is
+now one panel at a time behind a sticky tab bar that remembers which was open,
+and play comes before the tools that act on what is playing, because a thumb
+goes to the first big thing rather than the fourth small one. The page is
+around 1,300 pixels.
+
+Every element ID a test depends on is unchanged, and so is every string one
+asserts. The new flows have tests of their own: tools appearing with the first
+tune, space and `N` including held keys, every panel on a wide screen, one at a
+time on a phone and remembered across a reload, the order of play and tools on a
+phone, and the phone page height.

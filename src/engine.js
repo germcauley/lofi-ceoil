@@ -38,6 +38,28 @@ export function createEngine () {
   let previousOpeningProgression = null;
   let previousTempoOffset = null;
   let announcedTrack = null;
+  // Announcements — which track is playing, which key it is in — are state,
+  // not animation, and they cannot be allowed to go missing. They used to go
+  // through Tone.Draw, which runs on animation frames and quietly drops
+  // anything more than a quarter-second late. A hidden tab gets no animation
+  // frames at all, so a listener who put a tune on and switched tabs came back
+  // to the previous track's title, and the browser tab never changed its name
+  // — the one thing on screen while the page is in the background.
+  //
+  // A timer still fires in a hidden tab: throttled, sometimes by a second or
+  // more, but never dropped. The per-frame visuals stay on Draw, where a
+  // dropped frame costs nothing.
+  //
+  // Draw's cancel is what used to stop a queued announcement landing after the
+  // track it described had been cut. A generation number does that job now:
+  // stopping or skipping moves it on, and anything queued before that is
+  // discarded when it arrives.
+  let announcements = 0;
+  function announce (callback, time) {
+    const generation = announcements;
+    const delay = Math.max (0, (time - Tone.immediate()) * 1000);
+    setTimeout (() => { if (generation === announcements) callback(); }, delay);
+  }
   const playbackTimeline = createPlaybackTimeline();
   let lastComposition = null;
   let replayPending = null;
@@ -349,7 +371,7 @@ export function createEngine () {
 
     if (state.onKey) {
       const name = NOTE_NAMES[state.rootMidi % 12];
-      Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
+      announce (() => state.onKey?.(name, state.scale), Tone.now());
     }
   }
 
@@ -442,7 +464,7 @@ export function createEngine () {
       state.scale = recipe.scale;
       state.pendingKey = null;
       state.previousVoicing = null;
-      Tone.getDraw().schedule (() => state.onKey?.(NOTE_NAMES[recipe.rootMidi % 12], recipe.scale), Tone.now());
+      announce (() => state.onKey?.(NOTE_NAMES[recipe.rootMidi % 12], recipe.scale), Tone.now());
       for (const role of ['lead', 'keys', 'bass']) {
         if (state[role === 'lead' ? 'autoVoice' : role === 'keys' ? 'autoKeysVoice' : 'autoBassVoice']) {
           swapVoice (role, recipe.voices[role]);
@@ -662,7 +684,7 @@ export function createEngine () {
       state.barIndex++;
 
       if (state.onBar) {
-        Tone.getDraw().schedule (() => state.onBar (restingBar, '— — —'), time);
+        Tone.getDraw().schedule (() => state.onBar (restingBar, '— — —', { resting: true }), time);
       }
 
       return;
@@ -703,7 +725,7 @@ export function createEngine () {
 
         if (state.onKey) {
           const name = NOTE_NAMES[state.rootMidi % 12];
-          Tone.getDraw().schedule (() => state.onKey (name, state.scale), Tone.now());
+          announce (() => state.onKey?.(name, state.scale), Tone.now());
         }
       }
     }
@@ -729,7 +751,7 @@ export function createEngine () {
       trackBeganAtBar = state.barIndex;
       listening.began ({ code: encodeTrack (state.track.composition.recipe),
         title: state.track.title, bars: state.track.composition.bars.length });
-      Tone.getDraw().schedule (() => state.onTrack?.(track), time);
+      announce (() => state.onTrack?.(track), time);
     }
 
     const track = state.track;
@@ -749,7 +771,7 @@ export function createEngine () {
     if (state.rootMidi !== writtenBar.rootMidi || state.scale !== writtenBar.scale) {
       state.rootMidi = writtenBar.rootMidi;
       state.scale = writtenBar.scale;
-      Tone.getDraw().schedule (() => state.onKey?.(NOTE_NAMES[writtenBar.rootMidi % 12], writtenBar.scale), time);
+      announce (() => state.onKey?.(NOTE_NAMES[writtenBar.rootMidi % 12], writtenBar.scale), time);
     }
     state.progression = { name: writtenBar.progression, chords: [writtenBar.chord] };
     if (barInPart === 0) {
@@ -786,8 +808,16 @@ export function createEngine () {
         : '';
 
       const description = writtenBar.progression + (texture ? ' · ' + texture : '') + arc;
+      // The same three facts, kept apart. Run together behind one label they
+      // were unreadable to anyone who had not written them.
+      const figure = {
+        progression: writtenBar.progression,
+        texture,
+        arc: state.arcDepth > 0 ? state.arcShape : null,
+        energy: state.energy
+      };
       Tone.getDraw().schedule (
-        () => state.onBar (bar, description),
+        () => state.onBar (bar, description, figure),
         time);
     }
   }
@@ -837,6 +867,7 @@ export function createEngine () {
     setReplayPending (null);
     playbackTimeline.reset();
     Tone.getDraw().cancel (Tone.immediate());
+    announcements++;
     replaceInstruments (Tone.now());
 
     state.barIndex = 0;
@@ -1005,6 +1036,7 @@ export function createEngine () {
       if (scheduleId !== null) transport.clear (scheduleId);
       transport.stop (time);
       Tone.getDraw().cancel (Tone.immediate());
+      announcements++;
       restartTime = time;
       try {
         replaceInstruments (time);
